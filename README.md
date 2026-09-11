@@ -35,8 +35,8 @@ Mood decays slowly (5-minute time constant for valence) so a market crash or fai
 - **Fast path**: CoreAffect directly from fly circuit (approach/avoid + arousal)
 - **Slow path**: Optional LLM/heuristic appraisal for cognitive dimensions (novelty, controllability, goal relevance)
 
-### 3. **Reconsolidation** (planned)
-Re-encountering similar stimuli within a labile window updates affective tags instead of duplicating memories (computational analogue of extinction/reconsolidation).
+### 3. **Reconsolidation**
+Re-encountering the same stimulus (ticker / event) within a labile window updates the affective tag instead of duplicating the memory (computational analogue of extinction/reconsolidation).
 
 ### 4. **Mood-Conditioned Launch Gate**
 Actions only trigger when mood criteria (approach + valence) hold for N consecutive ticks. Prevents impulsive decisions during avoidant states.
@@ -53,7 +53,7 @@ Human emotion labels (fear, joy, sadness) are **optional interpretive readouts**
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-org/affective-fly.git
+git clone https://github.com/gianlucamazza/affective-fly.git
 cd affective-fly
 
 # Install with uv
@@ -61,6 +61,7 @@ uv sync
 
 # Or with all extras (Brian2, viz)
 uv sync --all-extras
+# Brian2 2.9 on Python 3.11 needs numpy 1.x (pinned in pyproject).
 ```
 
 ### Using pip
@@ -151,9 +152,11 @@ See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for detailed system design.
        │
        v
 ┌──────────────┐
-│ FlyCircuit   │  (LIF neurons: KC → DAN/MBON)
+│ FlyCircuit   │  (KC → DAN/MBON)
 │ - MockFly    │
 │ - LIFCircuit │
+│ - Brian2     │
+│ - MaleCNS    │  (Aso 2014 names; random weights)
 └──────┬───────┘
        │
        v
@@ -168,12 +171,18 @@ See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for detailed system design.
        │
        v
 ┌──────────────┐
-│EmotionalMem. │  (encode with affect, retrieve mood-weighted)
+│EmotionalMem. │  (encode or reconsolidate; mood-weighted retrieve)
+│ DualPath     │  (slow Scherer appraisal attached, not blended)
 └──────┬───────┘
        │
        v
 ┌──────────────┐
 │   Policy     │  (approach/avoid + memories → action)
+└──────┬───────┘
+       │
+       v
+┌──────────────┐
+│  LaunchGate  │  (CLICK/TYPE only after N ticks of approach+valence)
 └──────┬───────┘
        │
        v
@@ -239,7 +248,7 @@ All tests run **offline with mocks** (no network, no real LLM required).
 
 - Flies experience **human emotions** (they don't feel "sad" or "joyful")
 - Our circuits are **biologically accurate** (this is a functional abstraction)
-- Current implementation uses **real connectome data** (v1 uses simplified stubs)
+- Current circuits use **MaleCNS/Schlegel body IDs or connectome weights** (v0.2 labels published Aso types; synapses stay random)
 
 Human emotion labels (`honesty.py`) are **interpretive readouts only**, clearly marked as heuristic projections from the circumplex.
 
@@ -247,11 +256,14 @@ Human emotion labels (`honesty.py`) are **interpretive readouts only**, clearly 
 
 See [`docs/ROADMAP.md`](docs/ROADMAP.md) for details:
 
-- [ ] Real MaleCNS v1.0 neuron IDs (PAM/DAN, MBON subsets)
-- [ ] Brian2-based spiking implementation
-- [ ] Reconsolidation during labile window
+- [x] Published Aso cell-type labels (`MaleCNSCircuit`; connectome weights still pending)
+- [x] Brian2-based spiking implementation (`uv sync --extra brian`)
+- [x] Reconsolidation during labile window
+- [x] Dual-path heuristic appraisal (LLM optional later)
+- [ ] MaleCNS/Schlegel connectome weights (HDF5/JSON; no invented IDs)
+- [ ] TD learning (outcome → DAN → KC→MBON)
 - [ ] Hebbian resonance graph hooks
-- [ ] Multi-agent swarm emergent culture
+- [ ] Concrete LLM client (OpenAI / Ollama) on `DualPathEncoder.from_llm`
 - [ ] On-chain integration (token launches, PnL tracking)
 
 ## Contributing
@@ -277,6 +289,6 @@ If you use Affective Fly in research, please cite:
 
 ---
 
-**Status**: v0.1.0 — Scaffold complete, ready for MaleCNS integration
+**Status**: v0.2.0 — Dual-path, reconsolidation, Brian2, Aso labels. Connectome weights pending.
 
 **Disclaimer**: This is experimental research software. Fly circuits are simplified abstractions. Human emotion labels are interpretive, not ground truth.

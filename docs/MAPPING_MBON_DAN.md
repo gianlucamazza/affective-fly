@@ -222,15 +222,16 @@ state = MBONDanState(
 
 **Goal**: Map to actual neuron IDs from MaleCNS connectome.
 
-**Approach MBONs** (partial list):
-- MBON-γ1pedc>α/β (M4/M6): Reward memory expression
+**Approach MBONs** (partial list, Aso 2014):
 - MBON-γ5β'2a: Approach after odor-reward learning
-- MBON-β'2mp: Appetitive memory
+- MBON-β'2mp: Appetitive / approach
+- MBON-β2β'2a: Approach-promoting medial lobe
 
-**Avoid MBONs** (partial list):
+**Avoid MBONs** (partial list, Aso 2014):
 - MBON-γ2α'1: Aversive memory expression
 - MBON-α3: Avoidance after odor-shock
-- MBON-α'2: Electric shock-induced avoidance
+- MBON-α'2: Vertical-lobe avoidance
+- MBON-γ1pedc>α/β (MBON-11): GABAergic; aversive memory expression
 
 **DANs** (partial list):
 - PAM-α1: Reward signal
@@ -238,7 +239,7 @@ state = MBONDanState(
 - PPL1-γ1pedc: Punishment signal
 - PPL1-α2α'2: Shock reinforcement
 
-**Status**: Placeholder in code (commented as "TODO: MaleCNS IDs"). Do NOT invent fake IDs.
+**Status**: Published Aso names live in `aso.py` / `MaleCNSCircuit`. Weights are still random. Do NOT invent MaleCNS/Schlegel body IDs until an HDF5/JSON export is available.
 
 #### 2. Nonlinear Mapping
 
@@ -348,6 +349,6 @@ If better data emerges (e.g., quantitative MBON→behavior curves), we'll update
 
 ---
 
-**Version**: 0.1.0  
-**Last Updated**: 2024-09-11  
-**Status**: Linear mapping implemented and tested. MaleCNS integration pending.
+**Version**: 0.2.0  
+**Last Updated**: 2026-09-11  
+**Status**: Linear mapping implemented and tested. Aso 2014 names in `aso.py`. Connectome weights pending.

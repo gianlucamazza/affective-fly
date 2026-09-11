@@ -2,45 +2,49 @@
 
 Development plan for Affective Fly.
 
-## Current Status (v0.1.0) ✅
+## Current Status (v0.2.0) ✅
 
 **Complete Scaffold** — All core components implemented and tested:
 
 - [x] Project structure (pyproject.toml, Makefile, uv-based install)
-- [x] Fly circuit implementations (MockFlyCircuit, LIFCircuit stub)
+- [x] Fly circuit implementations (MockFlyCircuit, LIFCircuit, Brian2Circuit, MaleCNSCircuit)
 - [x] Affect bridge (MBON/DAN → CoreAffect with explicit mapping)
 - [x] MoodField (slow EMA for persistent mood)
-- [x] Affective loop (sensory → circuit → encode → retrieve → policy)
+- [x] Affective loop (sensory → circuit → encode/reconsolidate → dual-path → policy → gate)
 - [x] Policy (action selection based on mood + memories)
 - [x] Journal (JSONL logging with circumplex coordinates)
-- [x] Launch gate (mood-conditioned action gating)
+- [x] Launch gate (wired into the loop; blocks CLICK/TYPE)
+- [x] Dual-path heuristic appraisal (`DualPathEncoder`; `from_llm` hook)
+- [x] Reconsolidation (labile window, extinction test)
+- [x] Aso 2014 cell-type catalog (published names only)
 - [x] Swarm (N=8 agents sharing EmotionalMemory)
 - [x] Honesty layer (human labels as interpretive readouts)
-- [x] Comprehensive tests (pytest, offline, CI-ready)
+- [x] Tests (pytest, offline; Brian2 extra optional)
+- [x] CI, MIT license, `uv.lock`
 - [x] Documentation (README, ARCHITECTURE, MAPPING)
 - [x] Working demos (loop, mood launch, swarm)
 
 **Quality Bar Met**:
-- ✅ `uv sync` installs cleanly
-- ✅ `make test` passes (all tests green)
+- ✅ `uv sync --all-extras` installs cleanly
+- ✅ `make test` passes (76 tests green)
 - ✅ `make demo` runs end-to-end
-- ✅ Type hints and ruff-compliant
 - ✅ Conventional commits style
 
-## Near-Term (v0.2.0)
+## Next (v0.3.0)
 
-**Target**: Real MaleCNS neuron IDs + Brian2 integration
+**Target**: Connectome weights, TD plasticity, resonance
+
+Leftover from v0.2 that needs external data or a live LLM:
 
 ### 1. MaleCNS v1.0 Connectome Integration
 
 **Goal**: Replace generic MBON/DAN splits with actual neuron IDs from MaleCNS.
 
 **Tasks**:
+- [x] Published Aso cell-type catalog (approach/avoid MBON + PAM/PPL1)
+- [x] `MaleCNSCircuit` labels populations with those names
 - [ ] Parse MaleCNS neuron database (HDF5 or JSON export)
-- [ ] Map specific approach MBONs (γ1pedc>α/β, γ5β'2a, β'2mp, etc.)
-- [ ] Map specific avoid MBONs (γ2α'1, α3, α'2, etc.)
-- [ ] Map specific DANs (PAM-α1, PAM-β'2a, PPL1-γ1pedc, PPL1-α2α'2)
-- [ ] Update `FlyCircuit` to track individual neuron IDs
+- [ ] Replace random weights with connectome matrix
 - [ ] Validate mapping against published optogenetics results
 
 **Dependencies**:
@@ -54,12 +58,13 @@ Development plan for Affective Fly.
 **Goal**: Replace LIF stub with full Brian2 simulation.
 
 **Tasks**:
-- [ ] Implement Kenyon cell layer (2000 neurons, sparse ~5% active)
-- [ ] Implement DAN layer (20 neurons) with realistic firing dynamics
-- [ ] Implement MBON layer (34 neurons) with approach/avoid split
-- [ ] Add synaptic plasticity (DAN → KC-MBON modulation)
+- [x] Implement Kenyon cell layer (sparse ~5% active)
+- [x] Implement DAN layer with PAM/PPL1 split
+- [x] Implement MBON layer with approach/avoid split
+- [x] DAN → MBON gain synapses (not KC→MBON TD plasticity)
+- [x] Add Brian2 to `pyproject.toml` optional dependencies (numpy codegen)
 - [ ] Benchmark performance (target: 100 Hz loop rate)
-- [ ] Add Brian2 to `pyproject.toml` optional dependencies
+- [ ] Synaptic plasticity (DAN-modulated KC→MBON; v0.3 TD)
 
 **Dependencies**:
 - Brian2 library
@@ -72,22 +77,21 @@ Development plan for Affective Fly.
 **Goal**: Add optional LLM-based appraisal for cognitive dimensions.
 
 **Tasks**:
-- [ ] Add LLM client (OpenAI, Anthropic, or local Ollama)
-- [ ] Implement appraisal prompt (novelty, controllability, goal relevance)
-- [ ] Cache appraisal results (avoid redundant LLM calls)
-- [ ] Merge fast (circuit) + slow (LLM) paths into `AppraisalVector`
+- [x] Heuristic slow path (novelty, goal relevance, coping, norms, self-relevance)
+- [x] Cache appraisal results (avoid redundant calls)
+- [x] Attach `AppraisalVector` without overwriting circuit `CoreAffect`
+- [x] `DualPathEncoder.from_llm(callable)` wrapping emotional-memory LLMAppraisalEngine
+- [ ] Wire a concrete OpenAI/Anthropic/Ollama client (caller-supplied)
 - [ ] Benchmark encoding latency (should stay < 100ms without LLM, < 1s with)
 
 **Dependencies**:
-- LLM API or local model
+- LLM API or local model (only for the optional engine)
 
-**Deliverable**: `DualPathEncoder` that optionally adds LLM appraisal.
+**Deliverable**: `DualPathEncoder` with offline heuristic; any `AppraisalEngine` can be swapped in.
 
-## Mid-Term (v0.3.0)
+## Mid-Term (continued)
 
-**Target**: Reconsolidation, resonance, and real-world integration
-
-### 4. Memory Reconsolidation
+### 4. Memory Reconsolidation (done in v0.2.0)
 
 **Goal**: Update memories during labile window instead of duplicating.
 
@@ -100,10 +104,10 @@ Development plan for Affective Fly.
 - Else: encode new memory
 
 **Tasks**:
-- [ ] Add labile window timer to `EmotionalMemory` wrapper
-- [ ] Implement similarity metric (embedding cosine or context hash)
-- [ ] Add affective tag update rule (e.g., `tag_new = α * tag_old + (1-α) * tag_current`)
-- [ ] Test extinction-like behavior (repeated neutral exposure reduces valence)
+- [x] Add labile window timer (`Reconsolidator`, default 10 min)
+- [x] Stimulus identity (ticker / event / page) — not embedding cosine (FakeEmbedder-safe)
+- [x] Affective tag update rule (`tag_new = (1-α) * tag_old + α * tag_current`)
+- [x] Test extinction-like behavior (repeated neutral exposure reduces valence)
 
 **Biological Analogy**: Computational model of reconsolidation (memory updating during retrieval).
 
@@ -290,14 +294,17 @@ Development plan for Affective Fly.
 - [x] Tests pass (100% of unit tests)
 - [x] Documentation complete (README, ARCHITECTURE, MAPPING)
 
-### v0.2.0 (MaleCNS + Brian2)
-- [ ] Circuit uses real neuron IDs (not generic MBON/DAN)
-- [ ] Brian2 achieves <10ms loop latency
+### v0.2.0 (Aso labels + Brian2 + dual-path)
+- [x] Circuit can label published Aso types (`MaleCNSCircuit`)
+- [x] Brian2 backend implements `FlyAffectReadout` (numpy codegen)
+- [x] Dual-path heuristic + `from_llm` hook
+- [ ] Connectome weights (HDF5/JSON)
+- [ ] Brian2 <10ms at full 2000 KC (needs C++ codegen)
 - [ ] Validation against published optogenetics results
 
-### v0.3.0 (Reconsolidation + Real Integration)
-- [ ] Reconsolidation reduces duplicate memories by >50%
-- [ ] Token launch agent achieves positive P&L over 24-hour run
+### v0.3.0 (Connectome + TD + Resonance)
+- [ ] Connectome weights loaded from HDF5/JSON export
+- [ ] TD/outcome loop updates KC→MBON weights
 - [ ] Resonance graph shows emergent structure (clustering)
 
 ### v1.0 (Production-Ready)
@@ -308,6 +315,6 @@ Development plan for Affective Fly.
 
 ---
 
-**Version**: 0.1.0  
-**Last Updated**: 2024-09-11  
-**Next Milestone**: v0.2.0 (MaleCNS + Brian2)
+**Version**: 0.2.0  
+**Last Updated**: 2026-09-11  
+**Next Milestone**: MaleCNS connectome weights (HDF5/JSON) + TD learning

@@ -7,9 +7,10 @@ Detailed system design for Affective Fly.
 Affective Fly implements an **affective agent loop** where:
 1. Sensory input drives a simplified fly mushroom body circuit
 2. Circuit readout (MBON/DAN firing rates) maps to affect (valence, arousal)
-3. Affect tags memories and weights retrieval
-4. Policy selects actions based on mood + memories
-5. Mood persists via slow exponential moving average (EMA)
+3. Mood persists via slow exponential moving average (EMA)
+4. Events are encoded or reconsolidated (same stimulus inside the labile window)
+5. Slow-path Scherer appraisal is attached without overwriting circuit CoreAffect
+6. Policy selects actions; LaunchGate blocks impulsive CLICK/TYPE
 
 This creates agents with **persistent mood** that learn affect-congruent memories and make mood-dependent decisions.
 
@@ -21,7 +22,9 @@ This creates agents with **persistent mood** that learn affect-congruent memorie
 
 **Implementations**:
 - **MockFlyCircuit**: Deterministic mock for testing. Maps sensory input to MBON/DAN rates via simple linear transform.
-- **LIFCircuit**: Leaky Integrate-and-Fire neurons for MB + DAN + MBON. Stub for Brian2 integration.
+- **LIFCircuit**: Deterministic Python LIF for MB + DAN + MBON.
+- **Brian2Circuit**: Optional Brian2 backend (numpy codegen). Same `FlyAffectReadout` contract.
+- **MaleCNSCircuit**: Aso 2014 names on MBON/DAN populations; random weights until connectome export.
 
 **Circuit Structure**:
 ```
@@ -189,6 +192,24 @@ mood = mood + (current - mood) * α
 
 **Principle**: Human emotion words are **readouts**, not ground truth. Primary observables are (valence, arousal, approach_tendency).
 
+### 10. DualPathEncoder (`dual_path.py`)
+
+**Purpose**: LeDoux-style slow path for cognitive appraisal.
+
+- Fast path: `CoreAffect` from the fly circuit (`set_affect` + `encode`)
+- Slow path: `HeuristicAppraisalEngine` (default) or `DualPathEncoder.from_llm(callable)`
+- `attach()` writes `AppraisalVector` onto the memory tag and **does not lerp** circuit valence/arousal
+
+Passing `appraisal=` into `emotional_memory.encode()` would project Scherer dimensions onto CoreAffect and overwrite the fly readout. Do not do that in this loop.
+
+### 11. Reconsolidator (`reconsolidate.py`)
+
+**Purpose**: Update a labile memory instead of duplicating it.
+
+- Stimulus key: `ticker`, else `event`, else `page[+query]`
+- Default window: 600 s; blend α = 0.4 toward the new circuit affect
+- `labile_window_seconds <= 0` disables reconsolidation
+
 ## Main Loop (`loop.py`)
 
 **AffectiveLoop** integrates all components:
@@ -208,18 +229,26 @@ def step(sensory_frame, encode_memory=True, retrieve_top_k=5):
     # 4. Set affect in EmotionalMemory
     emotional_memory.set_affect(core_affect)
     
-    # 5. Encode into memory
-    if encode_memory:
-        emotional_memory.encode(content, metadata)
+    # 5. Encode or reconsolidate (same ticker inside labile window)
+    memory = reconsolidator.update(...) if match else emotional_memory.encode(content, metadata)
+
+    # 5b. Slow path: attach Scherer appraisal; do NOT lerp CoreAffect
+    appraisal = dual_path.appraise(query, context)
+    dual_path.attach(emotional_memory, memory, appraisal)
     
     # 6. Retrieve memories (mood-weighted)
     retrieved = emotional_memory.retrieve(query, top_k)
     
     # 7. Policy decision
     decision = policy.decide(mood, retrieved, sensory_context)
+
+    # 8. Launch gate: block CLICK/TYPE until mood holds for N ticks
+    gate_state = launch_gate.update(mood)
+    if not gate_state.is_open and decision.action in (CLICK, TYPE):
+        decision = WAIT
     
-    # 8. Log to journal
-    journal.log(decision, sensory_context, len(retrieved))
+    # 9. Log to journal
+    journal.log(decision, sensory_context, len(retrieved), gate_open=gate_state.is_open)
     
     return decision
 ```
@@ -374,15 +403,11 @@ class MyPolicy(Policy):
 
 ### Adding New Appraisal Dimensions
 
-Use `AppraisalVector` for dual-path encoding:
+Use `DualPathEncoder` so circuit CoreAffect is preserved:
 ```python
-appraisal = affect_bridge.create_appraisal(
-    mbon_dan_state,
-    novelty=compute_novelty(context),
-    controllability=estimate_control(context),
-    goal_relevance=assess_relevance(context),
-)
-emotional_memory.encode(content, appraisal=appraisal)
+appraisal = dual_path.appraise(query, context)
+memory = emotional_memory.encode(content, metadata=metadata)
+dual_path.attach(emotional_memory, memory, appraisal)
 ```
 
 ## Security & Safety
@@ -400,13 +425,12 @@ emotional_memory.encode(content, appraisal=appraisal)
 
 See [ROADMAP.md](ROADMAP.md) for details:
 
-1. **Real connectome integration**: Map to actual MaleCNS neuron IDs
-2. **Reconsolidation**: Update memories during labile window (not duplicate)
-3. **Resonance graph**: Explicit Hebbian links between memories
-4. **Multi-circuit ensemble**: Multiple fly brain types (male, female, virgin) with different priors
-5. **Online learning**: Update MBON weights based on outcomes (TD learning)
+1. **Connectome weights**: Replace random synapses with MaleCNS/Schlegel export (names already in `aso.py`)
+2. **Resonance graph**: Explicit Hebbian links between memories
+3. **Multi-circuit ensemble**: Multiple fly brain types (male, female, virgin) with different priors
+4. **Online learning**: Update MBON weights based on outcomes (TD learning)
 
 ---
 
-**Version**: 0.1.0  
-**Last Updated**: 2024-09-11
+**Version**: 0.2.0  
+**Last Updated**: 2026-09-11
