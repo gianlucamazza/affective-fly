@@ -210,6 +210,16 @@ Passing `appraisal=` into `emotional_memory.encode()` would project Scherer dime
 - Default window: 600 s; blend α = 0.4 toward the new circuit affect
 - `labile_window_seconds <= 0` disables reconsolidation
 
+### 12. TD plasticity (`td.py`)
+
+**Purpose**: Outcome-driven update of KC→MBON weights.
+
+- `δ = r − V` (bandit, default `γ=0`) or `r + γ V' − V`
+- Three-factor: Δw = α δ e_KC g_DAN
+- Positive δ: strengthen approach columns, weaken avoid
+- Context keys: `reward`, `outcome`, `pnl` (clipped to [-1, 1])
+- `FlyAffectReadout.learn()` no-op by default; Mock/LIF/Brian2/MaleCNS implement it
+
 ## Main Loop (`loop.py`)
 
 **AffectiveLoop** integrates all components:
@@ -218,6 +228,8 @@ Passing `appraisal=` into `emotional_memory.encode()` would project Scherer dime
 def step(sensory_frame, encode_memory=True, retrieve_top_k=5):
     # 1. Circuit step
     mbon_dan_state = fly_circuit.step(sensory_frame.visual)
+    if (reward := extract_reward(context)) is not None:
+        fly_circuit.learn(reward)
     
     # 2. MBON/DAN → CoreAffect
     core_affect = affect_bridge.mbon_dan_to_core_affect(mbon_dan_state)
@@ -428,7 +440,8 @@ See [ROADMAP.md](ROADMAP.md) for details:
 1. **Connectome weights**: Replace random synapses with MaleCNS/Schlegel export (names already in `aso.py`)
 2. **Resonance graph**: Explicit Hebbian links between memories
 3. **Multi-circuit ensemble**: Multiple fly brain types (male, female, virgin) with different priors
-4. **Online learning**: Update MBON weights based on outcomes (TD learning)
+4. **Sequential TD (γ>0)**: Bootstrap V' from the next state (bandit residual is in `learn()`)
+5. **Connectome-constrained TD**: Gate plasticity by real PAM/PPL1 compartments
 
 ---
 

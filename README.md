@@ -47,6 +47,9 @@ Multiple fly brains (N=8 default) with independent circuits share one `Emotional
 ### 6. **Honesty Layer**
 Human emotion labels (fear, joy, sadness) are **optional interpretive readouts**, explicitly marked as heuristic projections. The primary observables are approach/avoid + arousal.
 
+### 7. **TD Plasticity**
+Outcomes (`reward` / `outcome` / `pnl` in the sensory context) update KC→MBON weights with a three-factor rule: KC eligibility × DAN gate × prediction error `δ = r − V`.
+
 ## Installation
 
 ### Using `uv` (recommended)
@@ -84,6 +87,7 @@ make demo
 uv run python examples/demo_loop.py
 uv run python examples/demo_mood_launch.py
 uv run python examples/demo_swarm.py
+uv run python examples/demo_td.py
 ```
 
 ### Run Tests
@@ -157,6 +161,11 @@ See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for detailed system design.
 │ - LIFCircuit │
 │ - Brian2     │
 │ - MaleCNS    │  (Aso 2014 names; random weights)
+└──────┬───────┘
+       │
+       v
+┌──────────────┐
+│  TD learn()  │  (reward → δ → Δw KC→MBON)
 └──────┬───────┘
        │
        v
@@ -260,8 +269,8 @@ See [`docs/ROADMAP.md`](docs/ROADMAP.md) for details:
 - [x] Brian2-based spiking implementation (`uv sync --extra brian`)
 - [x] Reconsolidation during labile window
 - [x] Dual-path heuristic appraisal (LLM optional later)
+- [x] TD learning (outcome → DAN → KC→MBON; `learn()` / context `reward`)
 - [ ] MaleCNS/Schlegel connectome weights (HDF5/JSON; no invented IDs)
-- [ ] TD learning (outcome → DAN → KC→MBON)
 - [ ] Hebbian resonance graph hooks
 - [ ] Concrete LLM client (OpenAI / Ollama) on `DualPathEncoder.from_llm`
 - [ ] On-chain integration (token launches, PnL tracking)
@@ -289,6 +298,6 @@ If you use Affective Fly in research, please cite:
 
 ---
 
-**Status**: v0.2.0 — Dual-path, reconsolidation, Brian2, Aso labels. Connectome weights pending.
+**Status**: v0.2.0 — Dual-path, reconsolidation, Brian2, Aso labels, TD bandit. Connectome weights pending.
 
 **Disclaimer**: This is experimental research software. Fly circuits are simplified abstractions. Human emotion labels are interpretive, not ground truth.

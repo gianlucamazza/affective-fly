@@ -214,7 +214,7 @@ state = MBONDanState(
 1. **Linear mapping**: Real affect might be nonlinear
 2. **No temporal dynamics**: Ignores rate of change (momentum)
 3. **Simplified anatomy**: Real MBONs have ~14 approach + 20 avoid types, not binary split
-4. **No learning**: MBON weights are fixed (no TD learning yet)
+4. **Learning is residual/bandit by default**: `learn()` implements `δ = r − V` (γ=0). Sequential `r + γV' − V` is supported but not the loop default.
 
 ### Planned Improvements
 

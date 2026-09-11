@@ -21,6 +21,8 @@ demo:
 	uv run python examples/demo_mood_launch.py
 	@echo "\nRunning swarm demo..."
 	uv run python examples/demo_swarm.py
+	@echo "\nRunning TD bandit demo..."
+	uv run python examples/demo_td.py
 
 journal:
 	uv run python -m affective_fly.journal $(JOURNAL)

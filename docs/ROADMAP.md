@@ -10,7 +10,8 @@ Development plan for Affective Fly.
 - [x] Fly circuit implementations (MockFlyCircuit, LIFCircuit, Brian2Circuit, MaleCNSCircuit)
 - [x] Affect bridge (MBON/DAN → CoreAffect with explicit mapping)
 - [x] MoodField (slow EMA for persistent mood)
-- [x] Affective loop (sensory → circuit → encode/reconsolidate → dual-path → policy → gate)
+- [x] Affective loop (sensory → circuit → TD → encode/reconsolidate → dual-path → policy → gate)
+- [x] TD plasticity (`td.py`: three-factor KC × DAN × δ; context `reward`/`outcome`/`pnl`)
 - [x] Policy (action selection based on mood + memories)
 - [x] Journal (JSONL logging with circumplex coordinates)
 - [x] Launch gate (wired into the loop; blocks CLICK/TYPE)
@@ -22,17 +23,17 @@ Development plan for Affective Fly.
 - [x] Tests (pytest, offline; Brian2 extra optional)
 - [x] CI, MIT license, `uv.lock`
 - [x] Documentation (README, ARCHITECTURE, MAPPING)
-- [x] Working demos (loop, mood launch, swarm)
+- [x] Working demos (loop, mood launch, swarm, TD bandit)
 
 **Quality Bar Met**:
 - ✅ `uv sync --all-extras` installs cleanly
-- ✅ `make test` passes (76 tests green)
+- ✅ `make test` passes (85 tests green)
 - ✅ `make demo` runs end-to-end
 - ✅ Conventional commits style
 
 ## Next (v0.3.0)
 
-**Target**: Connectome weights, TD plasticity, resonance
+**Target**: Connectome weights, sequential TD (γ>0), resonance
 
 Leftover from v0.2 that needs external data or a live LLM:
 
@@ -64,7 +65,7 @@ Leftover from v0.2 that needs external data or a live LLM:
 - [x] DAN → MBON gain synapses (not KC→MBON TD plasticity)
 - [x] Add Brian2 to `pyproject.toml` optional dependencies (numpy codegen)
 - [ ] Benchmark performance (target: 100 Hz loop rate)
-- [ ] Synaptic plasticity (DAN-modulated KC→MBON; v0.3 TD)
+- [x] Synaptic plasticity (DAN-modulated KC→MBON; bandit TD in `learn()`)
 
 **Dependencies**:
 - Brian2 library
@@ -176,10 +177,11 @@ Leftover from v0.2 that needs external data or a live LLM:
 - Update KC→MBON weights: `Δw = α * δ * activity(KC) * activity(DAN)`
 
 **Tasks**:
-- [ ] Add weight matrix to `FlyCircuit`
-- [ ] Implement TD error computation
-- [ ] Add weight update rule
-- [ ] Test on simple bandit or grid-world task
+- [x] Add weight matrix to `LIFCircuit` / Brian2 (KC→MBON)
+- [x] Implement TD error computation (`td.py`, γ=0 bandit or γ>0 bootstrap)
+- [x] Three-factor update: KC eligibility × DAN gate × δ
+- [x] Test on two-odor bandit (mock + LIF weights)
+- [ ] Grid-world / sequential task with γ>0
 
 **Biological Grounding**: This mirrors actual DAN-mediated plasticity at KC-MBON synapses.
 
@@ -260,7 +262,7 @@ Leftover from v0.2 that needs external data or a live LLM:
 ## Dependencies & Infrastructure
 
 ### Required for v0.2.0
-- [ ] Brian2 library + C++ compiler
+- [x] Brian2 library (numpy codegen; C++ optional for speed)
 - [ ] MaleCNS dataset access (or equivalent)
 - [ ] Benchmark suite (latency tracking)
 
@@ -304,7 +306,7 @@ Leftover from v0.2 that needs external data or a live LLM:
 
 ### v0.3.0 (Connectome + TD + Resonance)
 - [ ] Connectome weights loaded from HDF5/JSON export
-- [ ] TD/outcome loop updates KC→MBON weights
+- [x] TD/outcome loop updates KC→MBON weights (bandit; sequential γ>0 still open)
 - [ ] Resonance graph shows emergent structure (clustering)
 
 ### v1.0 (Production-Ready)
@@ -317,4 +319,4 @@ Leftover from v0.2 that needs external data or a live LLM:
 
 **Version**: 0.2.0  
 **Last Updated**: 2026-09-11  
-**Next Milestone**: MaleCNS connectome weights (HDF5/JSON) + TD learning
+**Next Milestone**: MaleCNS connectome weights (HDF5/JSON) + sequential TD (γ>0)
