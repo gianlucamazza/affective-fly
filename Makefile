@@ -23,7 +23,7 @@ demo:
 	uv run python examples/demo_swarm.py
 
 journal:
-	uv run python -m affective_fly.journal
+	uv run python -m affective_fly.journal $(JOURNAL)
 
 clean:
 	rm -rf __pycache__ .pytest_cache .mypy_cache .ruff_cache
