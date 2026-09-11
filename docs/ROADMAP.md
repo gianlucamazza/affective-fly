@@ -2,6 +2,10 @@
 
 [ARCHITECTURE.md](ARCHITECTURE.md), [MAPPING_MBON_DAN.md](MAPPING_MBON_DAN.md).
 
+## v0.2.3
+
+`python -m affective_fly run --interval 2` ticks forever (or `--ticks N`). Persists db + journal.
+
 ## v0.2.2
 
 CLI (`python -m affective_fly`), mood in the same SQLite file (`save_mood` / `load_mood`), CI ruff+pytest without the embed extra.

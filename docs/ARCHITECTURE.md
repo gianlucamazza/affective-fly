@@ -35,6 +35,7 @@ SensoryFrame
 | `swarm.py` | Independent circuits, shared store. Default N = 8. |
 | `honesty.py` | Circumplex quadrant → string + disclaimer. |
 | `aso.py` | Aso et al. 2014 names. No invented body IDs. |
+| `run.py` | `live_loop`: interval ticks, SQLite + journal. CLI `run`. |
 
 Store, embed, retrieve, and optional resonance stay in `emotional-memory`. On-disk memories: `SQLiteStore`. Mood in the same file: `save_mood` / `load_mood` (`persist.py`, `examples/demo_persist.py`). CLI: `python -m affective_fly`. Semantic vectors: `SentenceTransformerEmbedder` (`examples/demo_embedder.py`, extra `embed`). Delayed US: `examples/demo_cs_us.py` and `AffectiveLoop(td_sequential=True)`. Resonance links: `examples/demo_resonance.py` (emotional-memory default).
 
