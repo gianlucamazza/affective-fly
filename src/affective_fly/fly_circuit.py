@@ -49,8 +49,20 @@ class FlyAffectReadout(ABC):
         """Reset circuit to initial state."""
         pass
 
-    def learn(self, reward: float, *, v_next: float | None = None):
-        """Optional TD update at KC→MBON synapses. Default: no plasticity."""
+    def learn(
+        self,
+        reward: float,
+        *,
+        v_next: float | None = None,
+        sequential: bool = False,
+        prediction_error: bool = False,
+    ):
+        """Optional three-factor update at KC→MBON. Default: no plasticity.
+
+        Bandit: US writes onto the current odor's eligibility.
+        Sequential: delayed US writes onto the previous odor's trace.
+        ``prediction_error=True`` uses r − V as the DAN drive.
+        """
         return None
 
 
@@ -61,16 +73,23 @@ class MockFlyCircuit(FlyAffectReadout):
     Fully deterministic for reproducible tests.
     """
 
-    def __init__(self, seed: int = 42, td_alpha: float = 0.15):
+    def __init__(
+        self,
+        seed: int = 42,
+        td_alpha: float = 0.15,
+        prediction_error: bool = False,
+    ):
         self.seed = seed
         self.rng = np.random.RandomState(seed)
         self.baseline_approach = 10.0  # Hz
         self.baseline_avoid = 10.0  # Hz
         self.baseline_dan = 5.0  # Hz
         self.td_alpha = td_alpha
+        self.prediction_error = prediction_error
         self.approach_bias = 0.0
         self.avoid_bias = 0.0
         self.last_state: MBONDanState | None = None
+        self.td_prev_value: float | None = None
 
     def step(self, sensory_input: np.ndarray, dt: float = 0.001) -> MBONDanState:
         """
@@ -109,23 +128,47 @@ class MockFlyCircuit(FlyAffectReadout):
             dan_reinforcement_rate=dan,
             arousal_rate=arousal,
         )
+        if self.last_state is not None:
+            from .td import value_from_state as _v
+
+            self.td_prev_value = _v(self.last_state)
         self.last_state = state
         return state
 
-    def learn(self, reward: float, *, v_next: float | None = None):
-        from .td import TDResult, td_error, value_from_state
+    def learn(
+        self,
+        reward: float,
+        *,
+        v_next: float | None = None,
+        sequential: bool = False,
+        prediction_error: bool | None = None,
+    ):
+        from .td import TDResult, rescorla_wagner, teaching_signal, value_from_state
 
         if self.last_state is None:
             return None
-        value = value_from_state(self.last_state)
-        delta = td_error(reward, value, v_next=v_next, gamma=0.0)
+        if sequential:
+            if self.td_prev_value is None:
+                return None
+            value = self.td_prev_value
+        else:
+            value = value_from_state(self.last_state)
+        pe = self.prediction_error if prediction_error is None else prediction_error
+        pam, ppl1 = teaching_signal(reward, value, prediction_error=pe)
         self.approach_bias = float(
-            np.clip(self.approach_bias + self.td_alpha * delta * 25.0, -40.0, 40.0)
+            np.clip(self.approach_bias + self.td_alpha * (pam - ppl1) * 25.0, -40.0, 40.0)
         )
         self.avoid_bias = float(
-            np.clip(self.avoid_bias + self.td_alpha * (-delta) * 25.0, -40.0, 40.0)
+            np.clip(self.avoid_bias + self.td_alpha * (ppl1 - pam) * 25.0, -40.0, 40.0)
         )
-        return TDResult(delta=delta, value=value, reward=float(reward), v_next=v_next)
+        return TDResult(
+            delta=rescorla_wagner(reward, value),
+            value=value,
+            reward=float(reward),
+            sequential=sequential,
+            pam=pam,
+            ppl1=ppl1,
+        )
 
     def reset(self) -> None:
         """Reset to baseline state (including learned biases)."""
@@ -133,6 +176,7 @@ class MockFlyCircuit(FlyAffectReadout):
         self.approach_bias = 0.0
         self.avoid_bias = 0.0
         self.last_state = None
+        self.td_prev_value = None
 
 
 class LIFCircuit(FlyAffectReadout):
@@ -167,7 +211,8 @@ class LIFCircuit(FlyAffectReadout):
         n_approach: int | None = None,
         n_pam: int | None = None,
         td_alpha: float = 0.05,
-        td_gamma: float = 0.0,
+        elig_tau: float = 1.0,
+        prediction_error: bool = False,
     ):
         self.n_kc = n_kc
         self.n_dan = n_dan
@@ -182,11 +227,13 @@ class LIFCircuit(FlyAffectReadout):
         self.dan_mod_gain = dan_mod_gain
         self.spike_window = spike_window
         self.td_alpha = td_alpha
-        self.td_gamma = td_gamma
+        self.elig_tau = elig_tau
+        self.prediction_error = prediction_error
         self.last_eligibility = np.zeros(n_kc)
         self.last_pam_frac = 0.0
         self.last_ppl_frac = 0.0
         self.last_state: MBONDanState | None = None
+        self.td_prev = None
 
         self.n_approach = n_mbon // 2 if n_approach is None else n_approach
         self.n_avoid = n_mbon - self.n_approach
@@ -249,6 +296,11 @@ class LIFCircuit(FlyAffectReadout):
         """
         sensory = np.asarray(sensory_input, dtype=float).ravel()
         self._ensure_input_weights(sensory.size)
+        from .td import decay_eligibility
+
+        self.last_eligibility = decay_eligibility(
+            self.last_eligibility, np.zeros(self.n_kc), dt, self.elig_tau
+        )
         kc_input = self._sparse_kc_drive(sensory)
 
         dv_kc = (-(self.v_kc - self.v_rest) + kc_input) / self.tau_m * dt
@@ -303,38 +355,71 @@ class LIFCircuit(FlyAffectReadout):
         avoid_rate = self._mean_rate(avoid_counts, self.n_avoid, elapsed)
         dan_rate = self._mean_rate(dan_counts, self.n_dan, elapsed)
 
-        driven = (kc_input > 0).astype(float)
-        self.last_eligibility = np.maximum(kc_act, driven)
-        self.last_pam_frac = pam_frac
-        self.last_ppl_frac = ppl_frac
+        driven = np.maximum(kc_act, (kc_input > 0).astype(float))
         state = MBONDanState(
             mbon_approach_rate=float(approach_rate),
             mbon_avoid_rate=float(avoid_rate),
             dan_reinforcement_rate=float(dan_rate),
             arousal_rate=float(dan_rate),
         )
+        if self.last_state is not None:
+            from .td import PlasticityTrace
+            from .td import value_from_state as _v
+
+            self.td_prev = PlasticityTrace(
+                eligibility=self.last_eligibility.copy(),
+                value=_v(self.last_state),
+            )
+        self.last_eligibility = np.clip(self.last_eligibility + driven, 0.0, 1.0)
+        self.last_pam_frac = pam_frac
+        self.last_ppl_frac = ppl_frac
         self.last_state = state
         return state
 
-    def learn(self, reward: float, *, v_next: float | None = None):
-        from .td import TDResult, apply_three_factor, td_error, value_from_state
+    def learn(
+        self,
+        reward: float,
+        *,
+        v_next: float | None = None,
+        sequential: bool = False,
+        prediction_error: bool | None = None,
+    ):
+        from .td import (
+            TDResult,
+            apply_three_factor,
+            rescorla_wagner,
+            teaching_signal,
+            value_from_state,
+        )
 
         if self.last_state is None:
             return None
-        value = value_from_state(self.last_state)
-        delta = td_error(reward, value, v_next=v_next, gamma=self.td_gamma)
-        pam_gate = max(self.last_pam_frac, 0.05)
-        ppl_gate = max(self.last_ppl_frac, 0.05)
+        if sequential:
+            if self.td_prev is None:
+                return None
+            value = self.td_prev.value
+            eligibility = self.td_prev.eligibility
+        else:
+            value = value_from_state(self.last_state)
+            eligibility = self.last_eligibility
+        pe = self.prediction_error if prediction_error is None else prediction_error
+        pam, ppl1 = teaching_signal(reward, value, prediction_error=pe)
         self.w_kc_mbon = apply_three_factor(
             self.w_kc_mbon,
-            self.last_eligibility,
-            delta,
-            self.n_approach,
-            pam_gate,
-            ppl_gate,
+            eligibility,
+            pam,
+            ppl1,
             self.td_alpha,
+            self.n_approach,
         )
-        return TDResult(delta=delta, value=value, reward=float(reward), v_next=v_next)
+        return TDResult(
+            delta=rescorla_wagner(reward, value),
+            value=value,
+            reward=float(reward),
+            sequential=sequential,
+            pam=pam,
+            ppl1=ppl1,
+        )
 
     def reset(self) -> None:
         """Reset voltages and spike history. Learned weights are kept."""
@@ -350,3 +435,4 @@ class LIFCircuit(FlyAffectReadout):
         self.last_pam_frac = 0.0
         self.last_ppl_frac = 0.0
         self.last_state = None
+        self.td_prev = None

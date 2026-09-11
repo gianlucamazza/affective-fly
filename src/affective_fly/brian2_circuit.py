@@ -37,7 +37,8 @@ class Brian2Circuit(FlyAffectReadout):
         n_pam: int | None = None,
         tau_ms: float = 20.0,
         td_alpha: float = 0.05,
-        td_gamma: float = 0.0,
+        elig_tau: float = 1.0,
+        prediction_error: bool = False,
     ):
         b2.prefs.codegen.target = "numpy"
         b2.seed(seed)
@@ -58,11 +59,13 @@ class Brian2Circuit(FlyAffectReadout):
         self.w_in_kc: np.ndarray | None = None
         self.last_kc_driven_frac = 0.0
         self.td_alpha = td_alpha
-        self.td_gamma = td_gamma
+        self.elig_tau = elig_tau
+        self.prediction_error = prediction_error
         self.last_eligibility = np.zeros(n_kc)
         self.last_pam_frac = 0.0
         self.last_ppl_frac = 0.0
         self.last_state: MBONDanState | None = None
+        self.td_prev = None
         self.time = 0.0
         self._spike_events: list[tuple[float, int, int, int]] = []
         self.mbon_spikes: list[float] = []
@@ -176,6 +179,11 @@ class Brian2Circuit(FlyAffectReadout):
     def step(self, sensory_input: np.ndarray, dt: float = 0.001) -> MBONDanState:
         sensory = np.asarray(sensory_input, dtype=float).ravel()
         self._ensure_input_weights(sensory.size)
+        from .td import decay_eligibility
+
+        self.last_eligibility = decay_eligibility(
+            self.last_eligibility, np.zeros(self.n_kc), dt, self.elig_tau
+        )
         self.kc.I = self._sparse_kc_drive(sensory)
         self.dan.I = 0
         self.mbon.I = 0
@@ -208,38 +216,73 @@ class Brian2Circuit(FlyAffectReadout):
         avoid_rate = self._mean_rate([e[2] for e in self._spike_events], self.n_avoid, elapsed)
         dan_rate = self._mean_rate([e[3] for e in self._spike_events], self.n_dan, elapsed)
         drive = np.asarray(self.kc.I[:], dtype=float)
-        self.last_eligibility = (drive > 0).astype(float)
-        self.last_pam_frac = float(dan_delta[: self.n_pam].mean()) if self.n_pam else 0.0
-        self.last_ppl_frac = float(dan_delta[self.n_pam :].mean()) if self.n_ppl1 else 0.0
         state = MBONDanState(
             mbon_approach_rate=float(approach_rate),
             mbon_avoid_rate=float(avoid_rate),
             dan_reinforcement_rate=float(dan_rate),
             arousal_rate=float(dan_rate),
         )
+        if self.last_state is not None:
+            from .td import PlasticityTrace
+            from .td import value_from_state as _v
+
+            self.td_prev = PlasticityTrace(
+                eligibility=self.last_eligibility.copy(),
+                value=_v(self.last_state),
+            )
+        self.last_eligibility = np.clip(self.last_eligibility + (drive > 0).astype(float), 0.0, 1.0)
+        self.last_pam_frac = float(dan_delta[: self.n_pam].mean()) if self.n_pam else 0.0
+        self.last_ppl_frac = float(dan_delta[self.n_pam :].mean()) if self.n_ppl1 else 0.0
         self.last_state = state
         return state
 
-    def learn(self, reward: float, *, v_next: float | None = None):
-        from .td import TDResult, apply_three_factor, td_error, value_from_state
+    def learn(
+        self,
+        reward: float,
+        *,
+        v_next: float | None = None,
+        sequential: bool = False,
+        prediction_error: bool | None = None,
+    ):
+        from .td import (
+            TDResult,
+            apply_three_factor,
+            rescorla_wagner,
+            teaching_signal,
+            value_from_state,
+        )
 
         if self.last_state is None:
             return None
-        value = value_from_state(self.last_state)
-        delta = td_error(reward, value, v_next=v_next, gamma=self.td_gamma)
+        if sequential:
+            if self.td_prev is None:
+                return None
+            value = self.td_prev.value
+            eligibility = self.td_prev.eligibility
+        else:
+            value = value_from_state(self.last_state)
+            eligibility = self.last_eligibility
+        pe = self.prediction_error if prediction_error is None else prediction_error
+        pam, ppl1 = teaching_signal(reward, value, prediction_error=pe)
         self.w_kc_mbon = apply_three_factor(
             self.w_kc_mbon,
-            self.last_eligibility,
-            delta,
-            self.n_approach,
-            max(self.last_pam_frac, 0.05),
-            max(self.last_ppl_frac, 0.05),
+            eligibility,
+            pam,
+            ppl1,
             self.td_alpha,
+            self.n_approach,
             w_min=0.0,
             w_max=2.0,
         )
         self.syn_km.w = self.w_kc_mbon.flatten()
-        return TDResult(delta=delta, value=value, reward=float(reward), v_next=v_next)
+        return TDResult(
+            delta=rescorla_wagner(reward, value),
+            value=value,
+            reward=float(reward),
+            sequential=sequential,
+            pam=pam,
+            ppl1=ppl1,
+        )
 
     def reset(self) -> None:
         self.kc.v = 0
@@ -257,3 +300,4 @@ class Brian2Circuit(FlyAffectReadout):
         self.last_pam_frac = 0.0
         self.last_ppl_frac = 0.0
         self.last_state = None
+        self.td_prev = None

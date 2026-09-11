@@ -79,7 +79,7 @@ class ActionJournal:
             gate_reason: LaunchGate reason string
             reconsolidated: True if this step updated a labile memory
             appraisal_novelty: Slow-path novelty in [-1, 1]
-            td_delta: TD prediction error if an outcome was present
+            td_delta: Rescorla–Wagner residual r − V if an outcome was present
         """
         entry = JournalEntry(
             timestamp=datetime.now().isoformat(),

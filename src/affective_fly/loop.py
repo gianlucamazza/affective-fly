@@ -59,7 +59,7 @@ class AffectiveLoop:
 
     Steps:
     1. Sensory frame → fly circuit → MBON/DAN readout
-    1b. If context has reward/outcome/pnl: TD update of KC→MBON weights
+    1b. If context has reward/outcome/pnl: three-factor KC→MBON update
     2. MBON/DAN → CoreAffect (via AffectBridge)
     3. Update MoodField (slow EMA)
     4. Encode into EmotionalMemory with current affect
@@ -82,6 +82,8 @@ class AffectiveLoop:
         launch_gate: LaunchGate | None = None,
         dual_path: DualPathEncoder | None = None,
         reconsolidator: Reconsolidator | None = None,
+        td_sequential: bool = False,
+        td_prediction_error: bool = False,
     ):
         """
         Initialize loop with all components.
@@ -98,6 +100,10 @@ class AffectiveLoop:
                 runs so CLICK/TYPE require sustained approach+valence.
             dual_path: Slow-path appraisal (default HeuristicAppraisalEngine).
             reconsolidator: Labile-window updater (default 10 min window).
+            td_sequential: If True, a reward on this frame is a delayed US
+                that writes onto the previous odor's eligibility.
+            td_prediction_error: If True, DAN drive is r − V (Rescorla–Wagner).
+                Default False: the US *is* the DAN (PAM if r>0, PPL1 if r<0).
         """
         self.fly_circuit = fly_circuit
         self.emotional_memory = emotional_memory
@@ -108,6 +114,8 @@ class AffectiveLoop:
         self.launch_gate = launch_gate or LaunchGate()
         self.dual_path = dual_path or DualPathEncoder()
         self.reconsolidator = reconsolidator or Reconsolidator()
+        self.td_sequential = td_sequential
+        self.td_prediction_error = td_prediction_error
 
         self.step_count = 0
         self.last_gate_state: LaunchGateState | None = None
@@ -135,11 +143,15 @@ class AffectiveLoop:
         # 1. Fly circuit step
         mbon_dan_state = self.fly_circuit.step(sensory_frame.visual, dt=0.05)
 
-        # 1b. TD plasticity if this frame carries an outcome
+        # 1b. Three-factor plasticity if this frame carries an outcome
         self.last_td = None
         reward = extract_reward(sensory_frame.context)
         if reward is not None:
-            self.last_td = self.fly_circuit.learn(reward)
+            self.last_td = self.fly_circuit.learn(
+                reward,
+                sequential=self.td_sequential,
+                prediction_error=self.td_prediction_error,
+            )
 
         # 2. MBON/DAN → CoreAffect
         core_affect = self.affect_bridge.mbon_dan_to_core_affect(mbon_dan_state)

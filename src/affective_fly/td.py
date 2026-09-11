@@ -1,12 +1,14 @@
 """
-Temporal-difference plasticity at KC→MBON synapses.
+Three-factor KC→MBON plasticity (Rescorla–Wagner).
 
-Three-factor rule (KC eligibility × DAN gate × prediction error), the
-computational analogue of DAN-modulated KC–MBON learning (Hige et al. 2015).
+The teaching signal is the US routed as DAN: PAM if appetitive, PPL1 if
+aversive. Optional prediction-error mode uses r − V (Rescorla–Wagner).
+There is no discounted bootstrap (γ V'); sequential learning is a delayed
+US that writes onto the previous odor's eligibility trace.
 
-δ = r + γ V' − V
-With γ = 0 (bandit / residual): δ = r − V.
-Positive δ strengthens KC→approach and weakens KC→avoid.
+Functional contrast (not Hige heterosynaptic depression): PAM raises
+approach weights and lowers avoid; PPL1 does the opposite. No update
+when both DAN gates are zero.
 """
 
 from __future__ import annotations
@@ -21,12 +23,25 @@ from .fly_circuit import MBONDanState
 
 @dataclass(frozen=True)
 class TDResult:
-    """Outcome of one learn() call."""
+    """Outcome of one learn() call (name kept for journal compatibility)."""
 
     delta: float
     value: float
     reward: float
     v_next: float | None = None
+    sequential: bool = False
+    pam: float = 0.0
+    ppl1: float = 0.0
+
+
+@dataclass
+class PlasticityTrace:
+    """Eligibility snapshot of the previous odor (delayed US)."""
+
+    eligibility: np.ndarray | None
+    value: float
+    pam_frac: float = 0.0
+    ppl_frac: float = 0.0
 
 
 def value_from_state(state: MBONDanState) -> float:
@@ -36,18 +51,36 @@ def value_from_state(state: MBONDanState) -> float:
     return (approach - avoid) / (approach + avoid + 1e-6)
 
 
+def rescorla_wagner(reward: float, value: float) -> float:
+    """Prediction error r − V, clipped to [-1, 1]."""
+    return max(-1.0, min(1.0, float(reward) - float(value)))
+
+
 def td_error(
     reward: float,
     value: float,
     v_next: float | None = None,
     gamma: float = 0.0,
 ) -> float:
-    """TD(0) error, clipped to [-1, 1]. ``v_next is None`` → residual r − V."""
-    if v_next is None:
-        raw = float(reward) - float(value)
-    else:
-        raw = float(reward) + float(gamma) * float(v_next) - float(value)
-    return max(-1.0, min(1.0, raw))
+    """Alias of ``rescorla_wagner``. ``v_next`` / ``gamma`` are ignored."""
+    return rescorla_wagner(reward, value)
+
+
+def teaching_signal(
+    reward: float,
+    value: float | None = None,
+    *,
+    prediction_error: bool = False,
+) -> tuple[float, float]:
+    """Map an outcome to (PAM, PPL1) gates in [0, 1].
+
+    Default: the US *is* the DAN (PAM if r>0, PPL1 if r<0).
+    ``prediction_error=True``: DAN drive is r − V.
+    """
+    drive = max(-1.0, min(1.0, float(reward)))
+    if prediction_error and value is not None:
+        drive = rescorla_wagner(reward, value)
+    return max(drive, 0.0), max(-drive, 0.0)
 
 
 def extract_reward(context: dict[str, Any]) -> float | None:
@@ -58,27 +91,49 @@ def extract_reward(context: dict[str, Any]) -> float | None:
     return None
 
 
+def decay_eligibility(
+    eligibility: np.ndarray,
+    kc: np.ndarray,
+    dt: float,
+    tau: float,
+) -> np.ndarray:
+    """e ← e·exp(−dt/τ) + kc, clipped to [0, 1]. τ≤0 clears the trace."""
+    e = np.asarray(eligibility, dtype=float)
+    k = np.asarray(kc, dtype=float)
+    if tau <= 0 or dt < 0:
+        return np.clip(k, 0.0, 1.0)
+    lam = float(np.exp(-float(dt) / float(tau)))
+    return np.clip(lam * e + k, 0.0, 1.0)
+
+
 def apply_three_factor(
     weights: np.ndarray,
-    eligibility: np.ndarray,
-    delta: float,
-    n_approach: int,
-    pam_gate: float,
-    ppl_gate: float,
+    eligibility: np.ndarray | None,
+    pam: float,
+    ppl1: float,
     alpha: float,
+    n_approach: int,
     w_min: float = -2.0,
     w_max: float = 2.0,
 ) -> np.ndarray:
     """
-    Δw_km = α δ e_k g_DAN.
+    Functional contrast: Δw_app = α e (PAM − PPL1), Δw_av = α e (PPL1 − PAM).
 
-    Approach columns use PAM gate and +δ; avoid columns use PPL1 gate and −δ.
+    No update if both DAN gates are 0 or eligibility is empty.
     """
-    if weights.size == 0 or eligibility.size == 0 or alpha == 0.0:
+    if weights.size == 0 or alpha == 0.0:
+        return weights
+    if eligibility is None:
         return weights
     e = np.asarray(eligibility, dtype=float).reshape(-1, 1)
-    dw = np.zeros_like(weights, dtype=float)
+    if e.size == 0 or not np.any(e):
+        return weights
+    pam_f = float(pam)
+    ppl_f = float(ppl1)
+    if pam_f == 0.0 and ppl_f == 0.0:
+        return weights
     n_app = max(0, min(int(n_approach), weights.shape[1]))
-    dw[:, :n_app] = alpha * delta * e * float(pam_gate)
-    dw[:, n_app:] = alpha * (-delta) * e * float(ppl_gate)
+    dw = np.zeros_like(weights, dtype=float)
+    dw[:, :n_app] = alpha * e * (pam_f - ppl_f)
+    dw[:, n_app:] = alpha * e * (ppl_f - pam_f)
     return np.clip(weights + dw, w_min, w_max)

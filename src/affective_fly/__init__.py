@@ -1,9 +1,4 @@
-"""
-Affective Fly: Drosophila MB valence circuit bridged to Affective Field Theory.
-
-This package implements a persistent mood system based on fly mushroom body circuits,
-interfacing with the emotional-memory library for affect-weighted retrieval.
-"""
+"""Reduced mushroom-body circuit as the affect source for emotional-memory."""
 
 __version__ = "0.2.0"
 
@@ -21,7 +16,16 @@ from .mood_field import MoodField
 from .policy import Policy, PolicyDecision
 from .reconsolidate import Reconsolidator, stimulus_key
 from .swarm import Swarm
-from .td import TDResult, extract_reward, td_error, value_from_state
+from .td import (
+    PlasticityTrace,
+    TDResult,
+    decay_eligibility,
+    extract_reward,
+    rescorla_wagner,
+    td_error,
+    teaching_signal,
+    value_from_state,
+)
 
 try:
     from .brian2_circuit import Brian2Circuit
@@ -56,7 +60,11 @@ __all__ = [
     "Reconsolidator",
     "stimulus_key",
     "TDResult",
+    "PlasticityTrace",
     "td_error",
+    "rescorla_wagner",
+    "teaching_signal",
+    "decay_eligibility",
     "extract_reward",
     "value_from_state",
     "Swarm",

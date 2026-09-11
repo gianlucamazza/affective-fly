@@ -1,7 +1,7 @@
 [project]
 name = "affective-fly"
 version = "0.2.0"
-description = "Drosophila MB valence circuit bridged to Affective Field Theory for persistent mood agents"
+description = "Reduced Drosophila mushroom-body circuit as the affect source for emotional-memory"
 authors = [
     {name = "Gianluca Mazza"}
 ]
