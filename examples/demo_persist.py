@@ -1,15 +1,14 @@
 #!/usr/bin/env python3
-"""Two sessions: SQLite memories plus MoodField sidecar JSON."""
+"""Two sessions on one SQLite file: memories and MoodField (table fly_mood)."""
 
-import json
 from pathlib import Path
 
 from emotional_memory import EmotionalMemory, SQLiteStore
 
 from affective_fly import AffectiveLoop, FakeEmbedder, MockFlyCircuit, MoodField, SensoryFrame
+from affective_fly.persist import load_mood, save_mood
 
 DB = Path("affective_fly.db")
-MOOD = Path("affective_fly.mood.json")
 
 
 def session(store: SQLiteStore, mood: MoodField | None = None) -> AffectiveLoop:
@@ -23,8 +22,6 @@ def session(store: SQLiteStore, mood: MoodField | None = None) -> AffectiveLoop:
 def main() -> None:
     if DB.exists():
         DB.unlink()
-    if MOOD.exists():
-        MOOD.unlink()
 
     store = SQLiteStore(DB)
     loop = session(store)
@@ -35,13 +32,14 @@ def main() -> None:
         encode_memory=True,
     )
     n = len(store.list_all())
-    mood_snap = loop.mood_field.to_dict()
-    MOOD.write_text(json.dumps(mood_snap, indent=2))
+    save_mood(DB, loop.mood_field)
+    v1 = loop.mood_field.valence
     store.close()
-    print(f"session 1: {n} memories, mood V={mood_snap['valence']:+.3f}")
+    print(f"session 1: {n} memories, mood V={v1:+.3f}")
 
     store = SQLiteStore(DB)
-    mood = MoodField.from_dict(json.loads(MOOD.read_text()))
+    mood = load_mood(DB)
+    assert mood is not None
     loop = session(store, mood)
     hits = loop.emotional_memory.retrieve("crash", top_k=3)
     print(f"session 2: retrieve {len(hits)} hit(s), mood V={loop.mood_field.valence:+.3f}")

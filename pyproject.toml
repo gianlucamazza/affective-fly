@@ -1,6 +1,6 @@
 [project]
 name = "affective-fly"
-version = "0.2.1"
+version = "0.2.2"
 description = "Reduced Drosophila mushroom-body circuit as the affect source for emotional-memory"
 authors = [
     {name = "Gianluca Mazza"}
@@ -14,6 +14,13 @@ dependencies = [
     "scipy>=1.10.0",
     "pydantic>=2.0.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/gianlucamazza/affective-fly"
+Releases = "https://github.com/gianlucamazza/affective-fly/releases"
+
+[project.scripts]
+affective-fly = "affective_fly.cli:main"
 
 [project.optional-dependencies]
 dev = [

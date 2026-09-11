@@ -1,6 +1,6 @@
 """Reduced mushroom-body circuit as the affect source for emotional-memory."""
 
-__version__ = "0.2.1"
+__version__ = "0.2.2"
 
 from .affect_bridge import AffectBridge, MBONDanReadout
 from .aso import ASO_CATALOG, AsoCatalog, NamedCell
@@ -13,6 +13,7 @@ from .launch_gate import LaunchGate
 from .loop import AffectiveLoop, SensoryFrame
 from .malecns import MaleCNSCircuit
 from .mood_field import MoodField
+from .persist import load_mood, save_mood
 from .policy import Policy, PolicyDecision
 from .reconsolidate import Reconsolidator, stimulus_key
 from .swarm import Swarm
@@ -48,6 +49,8 @@ __all__ = [
     "HumanEmotionLabel",
     "map_to_human_label",
     "MoodField",
+    "save_mood",
+    "load_mood",
     "AffectiveLoop",
     "SensoryFrame",
     "Policy",

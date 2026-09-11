@@ -1,10 +1,9 @@
-"""Memories survive a SQLite reopen."""
-
-import json
+"""Memories and mood survive a SQLite reopen."""
 
 from emotional_memory import EmotionalMemory, SQLiteStore
 
-from affective_fly import AffectiveLoop, FakeEmbedder, MockFlyCircuit, SensoryFrame
+from affective_fly import AffectiveLoop, FakeEmbedder, MockFlyCircuit, MoodField, SensoryFrame
+from affective_fly.persist import load_mood, save_mood
 
 
 def test_sqlite_store_reopen(tmp_path):
@@ -30,11 +29,8 @@ def test_sqlite_store_reopen(tmp_path):
     assert len(hits) >= 1
 
 
-def test_mood_survives_to_dict_after_loop(tmp_path):
-    from affective_fly import MoodField
-
+def test_mood_survives_in_same_sqlite(tmp_path):
     db = tmp_path / "fly.db"
-    mood_path = tmp_path / "mood.json"
     store = SQLiteStore(db)
     mood = MoodField(tau_valence=8.0, tau_arousal=4.0, tau_approach=5.0)
     loop = AffectiveLoop(
@@ -46,11 +42,11 @@ def test_mood_survives_to_dict_after_loop(tmp_path):
         SensoryFrame.from_dict({"ticker": "MEME", "sentiment": -1.0, "query": "crash"}),
         encode_memory=True,
     )
-    snapshot = loop.mood_field.to_dict()
-    mood_path.write_text(json.dumps(snapshot))
-    assert loop.mood_field.valence != 0.0
+    save_mood(db, loop.mood_field)
+    valence = loop.mood_field.valence
+    assert valence != 0.0
     store.close()
 
-    restored = MoodField.from_dict(json.loads(mood_path.read_text()))
-    assert restored.valence == snapshot["valence"]
-    assert restored.approach_tendency == snapshot["approach_tendency"]
+    restored = load_mood(db)
+    assert restored is not None
+    assert restored.valence == valence
