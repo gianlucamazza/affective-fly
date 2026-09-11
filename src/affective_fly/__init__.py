@@ -21,6 +21,7 @@ from .mood_field import MoodField
 from .policy import Policy, PolicyDecision
 from .reconsolidate import Reconsolidator, stimulus_key
 from .swarm import Swarm
+from .td import TDResult, extract_reward, td_error, value_from_state
 
 try:
     from .brian2_circuit import Brian2Circuit
@@ -54,5 +55,9 @@ __all__ = [
     "HeuristicAppraisalEngine",
     "Reconsolidator",
     "stimulus_key",
+    "TDResult",
+    "td_error",
+    "extract_reward",
+    "value_from_state",
     "Swarm",
 ]

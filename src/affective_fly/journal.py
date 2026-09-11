@@ -31,6 +31,7 @@ class JournalEntry:
     gate_reason: str | None = None
     reconsolidated: bool | None = None
     appraisal_novelty: float | None = None
+    td_delta: float | None = None
 
     def to_dict(self) -> dict:
         """Export as dictionary."""
@@ -65,6 +66,7 @@ class ActionJournal:
         gate_reason: str | None = None,
         reconsolidated: bool | None = None,
         appraisal_novelty: float | None = None,
+        td_delta: float | None = None,
     ) -> None:
         """
         Log a policy decision.
@@ -77,6 +79,7 @@ class ActionJournal:
             gate_reason: LaunchGate reason string
             reconsolidated: True if this step updated a labile memory
             appraisal_novelty: Slow-path novelty in [-1, 1]
+            td_delta: TD prediction error if an outcome was present
         """
         entry = JournalEntry(
             timestamp=datetime.now().isoformat(),
@@ -94,6 +97,7 @@ class ActionJournal:
             gate_reason=gate_reason,
             reconsolidated=reconsolidated,
             appraisal_novelty=appraisal_novelty,
+            td_delta=td_delta,
         )
         self.entries.append(entry)
         self.step_counter += 1

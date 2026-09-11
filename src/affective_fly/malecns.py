@@ -64,6 +64,10 @@ class MaleCNSCircuit(FlyAffectReadout):
         self.backend.reset()
         self.last_state = None
 
+    def learn(self, reward: float, *, v_next: float | None = None):
+        result = self.backend.learn(reward, v_next=v_next)
+        return result
+
     def named_rates(self) -> dict[str, float]:
         """Last-step rates keyed by Aso cell-type name."""
         if self.last_state is None:

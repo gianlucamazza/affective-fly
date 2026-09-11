@@ -36,6 +36,8 @@ class Brian2Circuit(FlyAffectReadout):
         n_approach: int | None = None,
         n_pam: int | None = None,
         tau_ms: float = 20.0,
+        td_alpha: float = 0.05,
+        td_gamma: float = 0.0,
     ):
         b2.prefs.codegen.target = "numpy"
         b2.seed(seed)
@@ -55,6 +57,12 @@ class Brian2Circuit(FlyAffectReadout):
         self.rng = np.random.RandomState(seed)
         self.w_in_kc: np.ndarray | None = None
         self.last_kc_driven_frac = 0.0
+        self.td_alpha = td_alpha
+        self.td_gamma = td_gamma
+        self.last_eligibility = np.zeros(n_kc)
+        self.last_pam_frac = 0.0
+        self.last_ppl_frac = 0.0
+        self.last_state: MBONDanState | None = None
         self.time = 0.0
         self._spike_events: list[tuple[float, int, int, int]] = []
         self.mbon_spikes: list[float] = []
@@ -99,7 +107,7 @@ class Brian2Circuit(FlyAffectReadout):
         self.mbon.v = 0
 
         w_kc_dan = np.abs(self.rng.randn(n_kc, n_dan)) * syn_w
-        w_kc_mbon = np.abs(self.rng.randn(n_kc, n_mbon)) * syn_w
+        self.w_kc_mbon = np.abs(self.rng.randn(n_kc, n_mbon)) * syn_w
 
         self.syn_kd = b2.Synapses(
             self.kc, self.dan, "w : 1", on_pre="v_post += w", name=f"syn_kd_{uid}"
@@ -111,7 +119,7 @@ class Brian2Circuit(FlyAffectReadout):
             self.kc, self.mbon, "w : 1", on_pre="v_post += w", name=f"syn_km_{uid}"
         )
         self.syn_km.connect()
-        self.syn_km.w = w_kc_mbon.flatten()
+        self.syn_km.w = self.w_kc_mbon.flatten()
 
         self.syn_dm = b2.Synapses(
             self.dan, self.mbon, "w : 1", on_pre="v_post += w", name=f"syn_dm_{uid}"
@@ -199,12 +207,39 @@ class Brian2Circuit(FlyAffectReadout):
         )
         avoid_rate = self._mean_rate([e[2] for e in self._spike_events], self.n_avoid, elapsed)
         dan_rate = self._mean_rate([e[3] for e in self._spike_events], self.n_dan, elapsed)
-        return MBONDanState(
+        drive = np.asarray(self.kc.I[:], dtype=float)
+        self.last_eligibility = (drive > 0).astype(float)
+        self.last_pam_frac = float(dan_delta[: self.n_pam].mean()) if self.n_pam else 0.0
+        self.last_ppl_frac = float(dan_delta[self.n_pam :].mean()) if self.n_ppl1 else 0.0
+        state = MBONDanState(
             mbon_approach_rate=float(approach_rate),
             mbon_avoid_rate=float(avoid_rate),
             dan_reinforcement_rate=float(dan_rate),
             arousal_rate=float(dan_rate),
         )
+        self.last_state = state
+        return state
+
+    def learn(self, reward: float, *, v_next: float | None = None):
+        from .td import TDResult, apply_three_factor, td_error, value_from_state
+
+        if self.last_state is None:
+            return None
+        value = value_from_state(self.last_state)
+        delta = td_error(reward, value, v_next=v_next, gamma=self.td_gamma)
+        self.w_kc_mbon = apply_three_factor(
+            self.w_kc_mbon,
+            self.last_eligibility,
+            delta,
+            self.n_approach,
+            max(self.last_pam_frac, 0.05),
+            max(self.last_ppl_frac, 0.05),
+            self.td_alpha,
+            w_min=0.0,
+            w_max=2.0,
+        )
+        self.syn_km.w = self.w_kc_mbon.flatten()
+        return TDResult(delta=delta, value=value, reward=float(reward), v_next=v_next)
 
     def reset(self) -> None:
         self.kc.v = 0
@@ -218,3 +253,7 @@ class Brian2Circuit(FlyAffectReadout):
         self.dan_spikes.clear()
         self.time = 0.0
         self.last_kc_driven_frac = 0.0
+        self.last_eligibility[:] = 0.0
+        self.last_pam_frac = 0.0
+        self.last_ppl_frac = 0.0
+        self.last_state = None

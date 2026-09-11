@@ -18,6 +18,7 @@ from .launch_gate import LaunchGate, LaunchGateState
 from .mood_field import MoodField
 from .policy import Action, Policy, PolicyDecision
 from .reconsolidate import Reconsolidator, stimulus_key
+from .td import TDResult, extract_reward
 
 
 @dataclass
@@ -58,6 +59,7 @@ class AffectiveLoop:
 
     Steps:
     1. Sensory frame → fly circuit → MBON/DAN readout
+    1b. If context has reward/outcome/pnl: TD update of KC→MBON weights
     2. MBON/DAN → CoreAffect (via AffectBridge)
     3. Update MoodField (slow EMA)
     4. Encode into EmotionalMemory with current affect
@@ -111,6 +113,7 @@ class AffectiveLoop:
         self.last_gate_state: LaunchGateState | None = None
         self.last_appraisal: AppraisalVector | None = None
         self.last_reconsolidated = False
+        self.last_td: TDResult | None = None
 
     def step(
         self,
@@ -131,6 +134,12 @@ class AffectiveLoop:
         """
         # 1. Fly circuit step
         mbon_dan_state = self.fly_circuit.step(sensory_frame.visual, dt=0.05)
+
+        # 1b. TD plasticity if this frame carries an outcome
+        self.last_td = None
+        reward = extract_reward(sensory_frame.context)
+        if reward is not None:
+            self.last_td = self.fly_circuit.learn(reward)
 
         # 2. MBON/DAN → CoreAffect
         core_affect = self.affect_bridge.mbon_dan_to_core_affect(mbon_dan_state)
@@ -220,6 +229,7 @@ class AffectiveLoop:
             appraisal_novelty=(
                 self.last_appraisal.novelty if self.last_appraisal is not None else None
             ),
+            td_delta=self.last_td.delta if self.last_td is not None else None,
         )
 
         self.step_count += 1
@@ -234,4 +244,5 @@ class AffectiveLoop:
         self.last_gate_state = None
         self.last_appraisal = None
         self.last_reconsolidated = False
+        self.last_td = None
         self.step_count = 0

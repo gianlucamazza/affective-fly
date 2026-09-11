@@ -49,6 +49,10 @@ class FlyAffectReadout(ABC):
         """Reset circuit to initial state."""
         pass
 
+    def learn(self, reward: float, *, v_next: float | None = None):
+        """Optional TD update at KC→MBON synapses. Default: no plasticity."""
+        return None
+
 
 class MockFlyCircuit(FlyAffectReadout):
     """Deterministic mock fly circuit for testing.
@@ -57,12 +61,16 @@ class MockFlyCircuit(FlyAffectReadout):
     Fully deterministic for reproducible tests.
     """
 
-    def __init__(self, seed: int = 42):
+    def __init__(self, seed: int = 42, td_alpha: float = 0.15):
         self.seed = seed
         self.rng = np.random.RandomState(seed)
         self.baseline_approach = 10.0  # Hz
         self.baseline_avoid = 10.0  # Hz
         self.baseline_dan = 5.0  # Hz
+        self.td_alpha = td_alpha
+        self.approach_bias = 0.0
+        self.avoid_bias = 0.0
+        self.last_state: MBONDanState | None = None
 
     def step(self, sensory_input: np.ndarray, dt: float = 0.001) -> MBONDanState:
         """
@@ -84,8 +92,8 @@ class MockFlyCircuit(FlyAffectReadout):
             approach = self.baseline_approach + mean_input * 10
             avoid = self.baseline_avoid - mean_input * 30
 
-        approach = np.clip(approach, 0, 100)
-        avoid = np.clip(avoid, 0, 100)
+        approach = np.clip(approach + self.approach_bias, 0, 100)
+        avoid = np.clip(avoid + self.avoid_bias, 0, 100)
 
         # DAN tracks valence (approach - avoid)
         dan = self.baseline_dan + (approach - avoid) * 0.5
@@ -95,16 +103,36 @@ class MockFlyCircuit(FlyAffectReadout):
         arousal = self.baseline_dan + abs_input * 40
         arousal = np.clip(arousal, 0, 80)
 
-        return MBONDanState(
+        state = MBONDanState(
             mbon_approach_rate=approach,
             mbon_avoid_rate=avoid,
             dan_reinforcement_rate=dan,
             arousal_rate=arousal,
         )
+        self.last_state = state
+        return state
+
+    def learn(self, reward: float, *, v_next: float | None = None):
+        from .td import TDResult, td_error, value_from_state
+
+        if self.last_state is None:
+            return None
+        value = value_from_state(self.last_state)
+        delta = td_error(reward, value, v_next=v_next, gamma=0.0)
+        self.approach_bias = float(
+            np.clip(self.approach_bias + self.td_alpha * delta * 25.0, -40.0, 40.0)
+        )
+        self.avoid_bias = float(
+            np.clip(self.avoid_bias + self.td_alpha * (-delta) * 25.0, -40.0, 40.0)
+        )
+        return TDResult(delta=delta, value=value, reward=float(reward), v_next=v_next)
 
     def reset(self) -> None:
-        """Reset to baseline state."""
+        """Reset to baseline state (including learned biases)."""
         self.rng = np.random.RandomState(self.seed)
+        self.approach_bias = 0.0
+        self.avoid_bias = 0.0
+        self.last_state = None
 
 
 class LIFCircuit(FlyAffectReadout):
@@ -138,6 +166,8 @@ class LIFCircuit(FlyAffectReadout):
         spike_window: float = 0.1,
         n_approach: int | None = None,
         n_pam: int | None = None,
+        td_alpha: float = 0.05,
+        td_gamma: float = 0.0,
     ):
         self.n_kc = n_kc
         self.n_dan = n_dan
@@ -151,6 +181,12 @@ class LIFCircuit(FlyAffectReadout):
         self.syn_gain = syn_gain
         self.dan_mod_gain = dan_mod_gain
         self.spike_window = spike_window
+        self.td_alpha = td_alpha
+        self.td_gamma = td_gamma
+        self.last_eligibility = np.zeros(n_kc)
+        self.last_pam_frac = 0.0
+        self.last_ppl_frac = 0.0
+        self.last_state: MBONDanState | None = None
 
         self.n_approach = n_mbon // 2 if n_approach is None else n_approach
         self.n_avoid = n_mbon - self.n_approach
@@ -227,9 +263,9 @@ class LIFCircuit(FlyAffectReadout):
         dan_spikes = self.v_dan >= self.v_thresh
         self.v_dan[dan_spikes] = self.v_rest
 
-        # Placeholder anatomical split: PAM (first half) gain-modulates
-        # approach MBONs; PPL1 (second half) gain-modulates avoid MBONs.
-        # Instantaneous gain, not KC→MBON plasticity (that's v0.3 TD).
+        # PAM (first half) gain-modulates approach MBONs;
+        # PPL1 (second half) gain-modulates avoid MBONs.
+        # Plasticity of KC→MBON is in learn(), not here.
         pam_frac = float(np.mean(dan_spikes[: self.n_pam])) if self.n_pam else 0.0
         ppl_frac = float(np.mean(dan_spikes[self.n_pam :])) if self.n_ppl1 else 0.0
 
@@ -267,15 +303,41 @@ class LIFCircuit(FlyAffectReadout):
         avoid_rate = self._mean_rate(avoid_counts, self.n_avoid, elapsed)
         dan_rate = self._mean_rate(dan_counts, self.n_dan, elapsed)
 
-        return MBONDanState(
+        driven = (kc_input > 0).astype(float)
+        self.last_eligibility = np.maximum(kc_act, driven)
+        self.last_pam_frac = pam_frac
+        self.last_ppl_frac = ppl_frac
+        state = MBONDanState(
             mbon_approach_rate=float(approach_rate),
             mbon_avoid_rate=float(avoid_rate),
             dan_reinforcement_rate=float(dan_rate),
             arousal_rate=float(dan_rate),
         )
+        self.last_state = state
+        return state
+
+    def learn(self, reward: float, *, v_next: float | None = None):
+        from .td import TDResult, apply_three_factor, td_error, value_from_state
+
+        if self.last_state is None:
+            return None
+        value = value_from_state(self.last_state)
+        delta = td_error(reward, value, v_next=v_next, gamma=self.td_gamma)
+        pam_gate = max(self.last_pam_frac, 0.05)
+        ppl_gate = max(self.last_ppl_frac, 0.05)
+        self.w_kc_mbon = apply_three_factor(
+            self.w_kc_mbon,
+            self.last_eligibility,
+            delta,
+            self.n_approach,
+            pam_gate,
+            ppl_gate,
+            self.td_alpha,
+        )
+        return TDResult(delta=delta, value=value, reward=float(reward), v_next=v_next)
 
     def reset(self) -> None:
-        """Reset voltages and spike history. Weights stay fixed."""
+        """Reset voltages and spike history. Learned weights are kept."""
         self.v_kc[:] = self.v_rest
         self.v_dan[:] = self.v_rest
         self.v_mbon[:] = self.v_rest
@@ -284,3 +346,7 @@ class LIFCircuit(FlyAffectReadout):
         self.dan_spikes.clear()
         self.time = 0.0
         self.last_kc_driven_frac = 0.0
+        self.last_eligibility[:] = 0.0
+        self.last_pam_frac = 0.0
+        self.last_ppl_frac = 0.0
+        self.last_state = None
