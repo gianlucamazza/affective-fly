@@ -54,3 +54,15 @@ ENV/
 
 # OS
 .DS_Store
+
+# Type checking
+.mypy_cache/
+
+# Linting
+.ruff_cache/
+
+# Brian2
+brian2_benchmark_cpp/
+
+# Benchmark outputs (local only)
+docs/benchmark_results.txt

@@ -107,7 +107,7 @@ class Appraiser(Protocol):
         self,
         event_text: str,
         context: dict[str, Any] | None = None,
-    ) -> AppraisalVector: ...
+    ) -> AppraisalVector | Any: ...  # Allow GenericAppraisalVector from LLM
 
 
 class DualPathEncoder:

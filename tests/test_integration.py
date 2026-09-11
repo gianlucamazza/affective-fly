@@ -287,3 +287,83 @@ def test_loop_with_lif_circuit():
     assert decision is not None
     assert hasattr(decision, "action")
     assert len(store.list_all()) == 1
+
+
+def test_full_emotional_memory_integration_path():
+    """
+    Comprehensive test: encode→retrieve→reconsolidate→policy influence.
+
+    Demonstrates real EmotionalMemory APIs throughout AffectiveLoop with LIFCircuit:
+    1. Memory store grows on encode
+    2. Positive memory doesn't block action
+    3. Negative memory for same ticker reconsolidates (no duplicate)
+    4. Retrieved negative valence influences policy to SKIP
+    """
+    fly_circuit = LIFCircuit(n_kc=80, n_dan=8, n_mbon=16, seed=42)
+    store = InMemoryStore()
+    embedder = FakeEmbedder()
+    emotional_memory = EmotionalMemory(store=store, embedder=embedder)
+
+    loop = AffectiveLoop(
+        fly_circuit=fly_circuit,
+        emotional_memory=emotional_memory,
+    )
+
+    # 1. Start with empty memory
+    assert len(store.list_all()) == 0
+
+    # 2. Encode positive memory for ticker MEME
+    positive_frame = SensoryFrame.from_dict({
+        "ticker": "MEME",
+        "page": "launchpad",
+        "query": "launch token MEME",
+        "sentiment": 0.9,
+    })
+    d1 = loop.step(positive_frame, encode_memory=True, retrieve_top_k=5)
+
+    # Memory store grew to 1
+    assert len(store.list_all()) == 1
+    first_mem = store.list_all()[0]
+    assert "MEME" in first_mem.metadata.get("ticker", "")
+    # Note: LIFCircuit may produce near-zero valence on first step (sparse KC, no warm-up)
+    # The key is that memory was created and the loop proceeds
+
+    # Positive mood + no negative memories → action is not SKIP
+    assert d1.action != Action.SKIP
+
+    # 3. Encode negative memory for same ticker MEME
+    negative_frame = SensoryFrame.from_dict({
+        "ticker": "MEME",
+        "page": "chart",
+        "query": "MEME crash",
+        "sentiment": -0.8,
+        "reward": -0.9,
+    })
+    loop.step(negative_frame, encode_memory=True, retrieve_top_k=5)
+
+    # 4. Reconsolidation occurred: still only 1 memory (no duplicate)
+    assert len(store.list_all()) == 1
+    assert loop.last_reconsolidated is True
+
+    reconsolidated_mem = store.list_all()[0]
+    assert reconsolidated_mem.id == first_mem.id
+    assert reconsolidated_mem.metadata.get("reconsolidation_count", 0) >= 1
+    # Reconsolidation blends affects; exact values depend on circuit dynamics
+
+    # 5. Third step: retrieve with query on same ticker
+    # Retrieved memory has negative valence → policy blocks action
+    query_frame = SensoryFrame.from_dict({
+        "ticker": "MEME",
+        "page": "launchpad",
+        "query": "should I launch MEME again?",
+        "sentiment": 0.1,  # Weakly positive sensory, but memory overrides
+    })
+    d3 = loop.step(query_frame, encode_memory=False, retrieve_top_k=5)
+
+    # Policy decision influenced by negative retrieved memory
+    # With negative valence in memory and low approach, policy should SKIP or WAIT
+    # (not CLICK/TYPE)
+    assert d3.action in (Action.SKIP, Action.WAIT), (
+        f"Expected SKIP or WAIT due to negative memory, got {d3.action}. "
+        f"Mood valence={d3.mood_valence:.2f}, approach={d3.approach_tendency:.2f}"
+    )
