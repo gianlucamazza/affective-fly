@@ -8,6 +8,8 @@ Provides a protocol for fly affect readout and implementations:
 This module focuses on MB + DAN + MBON only, not full CNS.
 """
 
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 

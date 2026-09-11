@@ -6,12 +6,11 @@ A market dump or failed form leaves mood depressed for tens of minutes,
 not just a spike-and-gone response.
 """
 
+from __future__ import annotations
+
 from dataclasses import dataclass
-from typing import Optional
 
 import numpy as np
-
-from .fly_circuit import MBONDanState
 
 
 @dataclass
@@ -121,3 +120,27 @@ class MoodField:
         self.valence = valence
         self.arousal = arousal
         self.approach_tendency = approach
+
+    def to_dict(self) -> dict:
+        """Serialize taus and current state (JSON-friendly)."""
+        return {
+            "tau_valence": self.tau_valence,
+            "tau_arousal": self.tau_arousal,
+            "tau_approach": self.tau_approach,
+            "valence": float(self.valence),
+            "arousal": float(self.arousal),
+            "approach_tendency": float(self.approach_tendency),
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> MoodField:
+        """Restore a MoodField from ``to_dict()``."""
+        field = cls(
+            tau_valence=float(data["tau_valence"]),
+            tau_arousal=float(data["tau_arousal"]),
+            tau_approach=float(data["tau_approach"]),
+            initial_valence=float(data["valence"]),
+            initial_arousal=float(data["arousal"]),
+            initial_approach=float(data["approach_tendency"]),
+        )
+        return field

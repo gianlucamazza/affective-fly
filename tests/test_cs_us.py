@@ -28,3 +28,41 @@ def test_delayed_us_raises_cs_plus_not_cs_minus():
     assert va1 > va0
     assert va1 > vb1
     assert abs(vb1 - vb0) < abs(va1 - va0)
+
+
+def test_loop_delayed_us_cs_plus_over_cs_minus():
+    from emotional_memory import EmotionalMemory, InMemoryStore
+
+    from affective_fly import AffectiveLoop, FakeEmbedder, SensoryFrame
+
+    rng = np.random.RandomState(0)
+    visual_a = rng.randn(32) * 0.3 + 0.8
+    visual_b = rng.randn(32) * 0.3 - 0.8
+    blank = np.zeros(32)
+    circuit = LIFCircuit(n_kc=80, n_dan=8, n_mbon=16, seed=7, td_alpha=0.35, elig_tau=2.0)
+    loop = AffectiveLoop(
+        fly_circuit=circuit,
+        emotional_memory=EmotionalMemory(store=InMemoryStore(), embedder=FakeEmbedder()),
+        td_sequential=True,
+    )
+
+    def eval_v(visual: np.ndarray) -> float:
+        circuit.reset()
+        loop.step(SensoryFrame(visual=visual, context={"eval": True}), encode_memory=False)
+        assert circuit.last_state is not None
+        return value_from_state(circuit.last_state)
+
+    va0 = eval_v(visual_a)
+    vb0 = eval_v(visual_b)
+    for _ in range(12):
+        circuit.reset()
+        loop.step(SensoryFrame(visual=visual_a, context={"cs": "A"}), encode_memory=False)
+        loop.step(
+            SensoryFrame(visual=blank, context={"reward": 1.0}),
+            encode_memory=False,
+        )
+    va1 = eval_v(visual_a)
+    vb1 = eval_v(visual_b)
+    assert va1 > va0
+    assert va1 > vb1
+    assert abs(vb1 - vb0) < abs(va1 - va0)
