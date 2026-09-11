@@ -32,3 +32,21 @@ Not in scope for this repo: token-launch product, sex/mating ensembles, swarm N 
 ## Questions
 
 Whether τ_valence = 300 s is appropriate; whether valence should stay linear; how long the labile window should be; how retrieval behaves as the store grows. These need a real agent or user study, not guesswork.
+
+## Development Phases
+
+See [ARCHITECTURE_COMPLETE.md](ARCHITECTURE_COMPLETE.md) for full system design.
+
+**Phase 0** (complete): Scaffold - MockFlyCircuit, EmotionalMemory integration, basic loop.
+
+**Phase 1** (complete): Polish - LIFCircuit integration tests, benchmarks, mypy in lint, comprehensive docs. v0.2.4.
+
+**Phase 2** (open): Host adapters - Real SensoryFrame schema from production frames, journal replay, host-side outcome reporting. No NullHost stubs.
+
+**Phase 3** (blocked): Embed + LLM - Production semantic embedder (SentenceTransformer) + production LLM for DualPathEncoder.from_llm(). Requires API keys/secrets.
+
+**Phase 4** (blocked): MaleCNS connectivity - Published HDF5/JSON from Aso et al. (2014). No invented weights.
+
+**Phase 5** (blocked): Brian2 C++ codegen - Device selection, standalone build lifecycle. Current Brian2Circuit hardcodes numpy.
+
+**Phase 6** (empirical): τ parameter tuning - Real agent or user study to validate τ_valence=300s, labile window, etc.
