@@ -65,4 +65,4 @@ MIT. See [LICENSE](LICENSE).
 
 - Aso, Y. et al. (2014). *eLife* 3:e04577.
 - Russell, J. A. (1980). *J. Pers. Soc. Psychol.* 39(6), 1161–1178.
-- Mazza, G. (2024). emotional-memory. https://github.com/gianlucamazza/emotional-memory
+- Mazza, G. (2026). *emotional-memory: Affective Field Theory for LLM Memory*. https://doi.org/10.5281/zenodo.21870707
