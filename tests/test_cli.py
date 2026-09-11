@@ -9,6 +9,14 @@ def test_cli_version(capsys):
     assert capsys.readouterr().out.strip() == __version__
 
 
+def test_cli_run_ticks(tmp_path, capsys, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    assert main(["run", "--interval", "0", "--ticks", "2"]) == 0
+    out = capsys.readouterr().out
+    assert "0000" in out
+    assert "0001" in out
+
+
 def test_cli_journal_missing(tmp_path, capsys):
     path = tmp_path / "empty.jsonl"
     assert main(["journal", str(path)]) == 0

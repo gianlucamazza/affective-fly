@@ -39,7 +39,10 @@ demo_journal.jsonl
 demo_viz.json
 demo_loop.png
 affective_fly.db
+affective_fly.db-shm
+affective_fly.db-wal
 affective_fly.mood.json
+journal.jsonl
 swarm_journal.jsonl
 test_journal.jsonl
 
