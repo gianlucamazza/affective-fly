@@ -37,6 +37,7 @@ htmlcov/
 # Demo outputs
 demo_journal.jsonl
 demo_viz.json
+demo_loop.png
 swarm_journal.jsonl
 test_journal.jsonl
 
