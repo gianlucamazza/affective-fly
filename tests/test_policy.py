@@ -1,6 +1,5 @@
 """Tests for policy."""
 
-import pytest
 
 from affective_fly.mood_field import MoodState
 from affective_fly.policy import Action, Policy, PolicyDecision
@@ -26,9 +25,9 @@ def test_policy_avoidance():
     """Test policy triggers avoidance for low approach."""
     policy = Policy(threshold_avoid=-0.3)
     mood = MoodState(valence=0.0, arousal=0.0, approach_tendency=-0.5)
-    
+
     decision = policy.decide(mood, [], {})
-    
+
     assert decision.action == Action.SKIP
     assert "avoidance" in decision.reason.lower() or "approach" in decision.reason.lower()
 
@@ -37,9 +36,9 @@ def test_policy_low_arousal():
     """Test policy waits when arousal too low."""
     policy = Policy(threshold_calm=-0.5)
     mood = MoodState(valence=0.5, arousal=-0.7, approach_tendency=0.3)
-    
+
     decision = policy.decide(mood, [], {})
-    
+
     assert decision.action == Action.WAIT
     assert "arousal" in decision.reason.lower()
 
@@ -49,9 +48,9 @@ def test_policy_positive_action():
     policy = Policy(threshold_act=0.2)
     mood = MoodState(valence=0.6, arousal=0.4, approach_tendency=0.5)
     context = {"ticker": "MEME"}
-    
+
     decision = policy.decide(mood, [], context)
-    
+
     assert decision.action in [Action.CLICK, Action.TYPE]
     if decision.action == Action.TYPE:
         assert decision.target == "MEME"
@@ -61,12 +60,12 @@ def test_policy_memory_avoidance():
     """Test policy respects negative memories."""
     policy = Policy()
     mood = MoodState(valence=0.0, arousal=0.0, approach_tendency=0.0)
-    
+
     # Memory with strong negative valence
     memories = [{"content": "crash", "valence": -0.8, "arousal": 0.5}]
-    
+
     decision = policy.decide(mood, memories, {})
-    
+
     assert decision.action == Action.SKIP
 
 
@@ -74,7 +73,7 @@ def test_policy_default_wait():
     """Test policy defaults to wait with neutral state."""
     policy = Policy()
     mood = MoodState(valence=0.0, arousal=0.0, approach_tendency=0.0)
-    
+
     decision = policy.decide(mood, [], {})
-    
+
     assert decision.action == Action.WAIT

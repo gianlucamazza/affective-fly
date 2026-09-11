@@ -1,7 +1,6 @@
 """Tests for affect bridge."""
 
-import pytest
-from emotional_memory import AppraisalVector, CoreAffect
+from emotional_memory import AppraisalVector
 
 from affective_fly.affect_bridge import AffectBridge
 from affective_fly.fly_circuit import MBONDanState
@@ -16,9 +15,9 @@ def test_affect_bridge_balanced():
         dan_reinforcement_rate=10.0,
         arousal_rate=10.0,
     )
-    
+
     affect = bridge.mbon_dan_to_core_affect(state)
-    
+
     # Balanced approach/avoid should give near-zero valence
     assert -0.1 < affect.valence < 0.1
 
@@ -32,9 +31,9 @@ def test_affect_bridge_approach_dominant():
         dan_reinforcement_rate=30.0,
         arousal_rate=30.0,
     )
-    
+
     affect = bridge.mbon_dan_to_core_affect(state)
-    
+
     # Approach > avoid should give positive valence
     assert affect.valence > 0.5
 
@@ -48,9 +47,9 @@ def test_affect_bridge_avoid_dominant():
         dan_reinforcement_rate=10.0,
         arousal_rate=10.0,
     )
-    
+
     affect = bridge.mbon_dan_to_core_affect(state)
-    
+
     # Avoid > approach should give negative valence
     assert affect.valence < -0.5
 
@@ -58,7 +57,7 @@ def test_affect_bridge_avoid_dominant():
 def test_affect_bridge_arousal_mapping():
     """Test arousal mapping from DAN activity."""
     bridge = AffectBridge(dan_baseline=5.0, dan_max=80.0)
-    
+
     # Low DAN activity
     state_low = MBONDanState(
         mbon_approach_rate=30.0,
@@ -67,7 +66,7 @@ def test_affect_bridge_arousal_mapping():
         arousal_rate=5.0,
     )
     affect_low = bridge.mbon_dan_to_core_affect(state_low)
-    
+
     # High DAN activity
     state_high = MBONDanState(
         mbon_approach_rate=30.0,
@@ -76,7 +75,7 @@ def test_affect_bridge_arousal_mapping():
         arousal_rate=80.0,
     )
     affect_high = bridge.mbon_dan_to_core_affect(state_high)
-    
+
     # High DAN should give higher arousal
     assert affect_high.arousal > affect_low.arousal
 
@@ -84,7 +83,7 @@ def test_affect_bridge_arousal_mapping():
 def test_affect_bridge_bounds():
     """Test affect bridge respects [-1, 1] bounds."""
     bridge = AffectBridge()
-    
+
     # Extreme approach
     state = MBONDanState(
         mbon_approach_rate=100.0,
@@ -93,7 +92,7 @@ def test_affect_bridge_bounds():
         arousal_rate=80.0,
     )
     affect = bridge.mbon_dan_to_core_affect(state)
-    
+
     assert -1.0 <= affect.valence <= 1.0
     assert -1.0 <= affect.arousal <= 1.0
 
@@ -107,7 +106,7 @@ def test_create_appraisal():
         dan_reinforcement_rate=25.0,
         arousal_rate=25.0,
     )
-    
+
     appraisal = bridge.create_appraisal(
         state,
         novelty=0.5,
@@ -116,7 +115,7 @@ def test_create_appraisal():
         norm_congruence=0.2,
         self_relevance=0.8,
     )
-    
+
     # In v0.18, AppraisalVector contains cognitive dimensions only
     # CoreAffect (valence/arousal) is set separately via set_affect()
     assert isinstance(appraisal, AppraisalVector)
@@ -136,9 +135,9 @@ def test_readout_to_tuple():
         dan_reinforcement_rate=15.0,
         arousal_rate=15.0,
     )
-    
+
     valence, arousal, approach_tendency = bridge.readout_to_tuple(state)
-    
+
     assert -1.0 <= valence <= 1.0
     assert -1.0 <= arousal <= 1.0
     assert -1.0 <= approach_tendency <= 1.0

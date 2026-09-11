@@ -6,7 +6,6 @@ Implements safety mechanism: don't act when mood is strongly avoidant.
 """
 
 from dataclasses import dataclass
-from typing import Optional
 
 from .mood_field import MoodState
 

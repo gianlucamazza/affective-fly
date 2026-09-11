@@ -7,9 +7,6 @@ Maps approach/avoid + arousal + memory retrieval to concrete actions:
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Optional
-
-import numpy as np
 
 from .mood_field import MoodState
 
@@ -28,7 +25,7 @@ class PolicyDecision:
     """Policy decision with affective justification."""
 
     action: Action
-    target: Optional[str] = None  # For TYPE or CLICK
+    target: str | None = None  # For TYPE or CLICK
     confidence: float = 0.0  # [0, 1]
     mood_valence: float = 0.0
     mood_arousal: float = 0.0

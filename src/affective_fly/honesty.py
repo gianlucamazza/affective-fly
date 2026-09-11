@@ -7,7 +7,6 @@ explicitly marked as interpretive, not ground truth.
 """
 
 from dataclasses import dataclass
-from typing import Optional
 
 from .mood_field import MoodState
 
@@ -89,7 +88,7 @@ def print_with_honesty(mood: MoodState, show_disclaimer: bool = True) -> None:
     """
     human_label = map_to_human_label(mood, strict=show_disclaimer)
 
-    print(f"\n=== Fly Affective State ===")
+    print("\n=== Fly Affective State ===")
     print(f"Valence: {mood.valence:+.2f}")
     print(f"Arousal: {mood.arousal:+.2f}")
     print(f"Approach tendency: {mood.approach_tendency:+.2f}")

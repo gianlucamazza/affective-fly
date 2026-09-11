@@ -5,7 +5,6 @@ Implements NeuroSwarm × AFT: N agents with independent circuits
 but shared affective memory. Resonances become swarm 'culture'.
 """
 
-from typing import List, Optional
 
 from emotional_memory import EmotionalMemory
 
@@ -31,8 +30,8 @@ class Swarm:
         self,
         n_agents: int,
         emotional_memory: EmotionalMemory,
-        agent_circuits: Optional[List[FlyAffectReadout]] = None,
-        journal: Optional[ActionJournal] = None,
+        agent_circuits: list[FlyAffectReadout] | None = None,
+        journal: ActionJournal | None = None,
     ):
         """
         Initialize swarm.
@@ -54,7 +53,7 @@ class Swarm:
             self.circuits = agent_circuits
 
         # Create independent affect loops for each agent, sharing memory
-        self.agents: List[AffectiveLoop] = []
+        self.agents: list[AffectiveLoop] = []
         for i, circuit in enumerate(self.circuits):
             loop = AffectiveLoop(
                 fly_circuit=circuit,
@@ -70,9 +69,9 @@ class Swarm:
 
     def step_all(
         self,
-        sensory_frames: List[SensoryFrame],
+        sensory_frames: list[SensoryFrame],
         encode_memory: bool = True,
-    ) -> List[PolicyDecision]:
+    ) -> list[PolicyDecision]:
         """
         Step all agents in parallel.
 

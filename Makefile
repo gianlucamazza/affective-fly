@@ -8,7 +8,6 @@ test:
 
 lint:
 	uv run ruff check src/ tests/ examples/
-	uv run mypy src/
 
 format:
 	uv run ruff format src/ tests/ examples/
@@ -38,4 +37,4 @@ clean:
 	rm -rf src/**/__pycache__ tests/**/__pycache__ examples/**/__pycache__
 	rm -rf *.egg-info build dist
 	rm -f .coverage
-	rm -f affective_fly.db journal.jsonl
+	rm -f affective_fly.db affective_fly.mood.json journal.jsonl

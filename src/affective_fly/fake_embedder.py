@@ -6,7 +6,6 @@ any real model or network access.
 """
 
 import hashlib
-from typing import List
 
 
 class FakeEmbedder:
@@ -26,7 +25,7 @@ class FakeEmbedder:
         """
         self.dimension = dimension
 
-    def embed(self, text: str) -> List[float]:
+    def embed(self, text: str) -> list[float]:
         """
         Convert text to fake embedding vector.
 
@@ -52,7 +51,7 @@ class FakeEmbedder:
 
         return embedding
 
-    def embed_batch(self, texts: List[str]) -> List[List[float]]:
+    def embed_batch(self, texts: list[str]) -> list[list[float]]:
         """
         Convert batch of texts to embeddings.
 
