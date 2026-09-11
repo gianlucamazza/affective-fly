@@ -1,6 +1,6 @@
 """Reduced mushroom-body circuit as the affect source for emotional-memory."""
 
-__version__ = "0.2.3"
+__version__ = "0.2.4"
 
 from .affect_bridge import AffectBridge, MBONDanReadout
 from .aso import ASO_CATALOG, AsoCatalog, NamedCell
