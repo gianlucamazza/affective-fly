@@ -47,7 +47,9 @@ class Swarm:
 
         # Create agent circuits (independent)
         if agent_circuits is None:
-            self.circuits = [MockFlyCircuit(seed=42 + i) for i in range(n_agents)]
+            self.circuits: list[FlyAffectReadout] = [
+                MockFlyCircuit(seed=42 + i) for i in range(n_agents)
+            ]
         else:
             assert len(agent_circuits) == n_agents
             self.circuits = agent_circuits

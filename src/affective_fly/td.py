@@ -101,9 +101,9 @@ def decay_eligibility(
     e = np.asarray(eligibility, dtype=float)
     k = np.asarray(kc, dtype=float)
     if tau <= 0 or dt < 0:
-        return np.clip(k, 0.0, 1.0)
+        return np.clip(k, 0.0, 1.0)  # type: ignore[no-any-return]
     lam = float(np.exp(-float(dt) / float(tau)))
-    return np.clip(lam * e + k, 0.0, 1.0)
+    return np.clip(lam * e + k, 0.0, 1.0)  # type: ignore[no-any-return]
 
 
 def apply_three_factor(
@@ -136,4 +136,5 @@ def apply_three_factor(
     dw = np.zeros_like(weights, dtype=float)
     dw[:, :n_app] = alpha * e * (pam_f - ppl_f)
     dw[:, n_app:] = alpha * e * (ppl_f - pam_f)
-    return np.clip(weights + dw, w_min, w_max)
+    w_new = np.clip(weights + dw, w_min, w_max)
+    return w_new  # type: ignore[no-any-return]

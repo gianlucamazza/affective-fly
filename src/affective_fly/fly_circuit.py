@@ -12,8 +12,12 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 import numpy as np
+
+if TYPE_CHECKING:
+    from .td import PlasticityTrace
 
 
 @dataclass
@@ -57,7 +61,7 @@ class FlyAffectReadout(ABC):
         *,
         v_next: float | None = None,
         sequential: bool = False,
-        prediction_error: bool = False,
+        prediction_error: bool | None = False,
     ):
         """Optional three-factor update at KC→MBON. Default: no plasticity.
 
@@ -235,7 +239,7 @@ class LIFCircuit(FlyAffectReadout):
         self.last_pam_frac = 0.0
         self.last_ppl_frac = 0.0
         self.last_state: MBONDanState | None = None
-        self.td_prev = None
+        self.td_prev: PlasticityTrace | None = None
 
         self.n_approach = n_mbon // 2 if n_approach is None else n_approach
         self.n_avoid = n_mbon - self.n_approach

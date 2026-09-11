@@ -8,10 +8,14 @@ Uses the numpy codegen target so no C++ compiler is required.
 from __future__ import annotations
 
 import uuid
+from typing import TYPE_CHECKING
 
 import numpy as np
 
 from .fly_circuit import FlyAffectReadout, MBONDanState
+
+if TYPE_CHECKING:
+    from .td import PlasticityTrace
 
 try:
     import brian2 as b2
@@ -65,7 +69,7 @@ class Brian2Circuit(FlyAffectReadout):
         self.last_pam_frac = 0.0
         self.last_ppl_frac = 0.0
         self.last_state: MBONDanState | None = None
-        self.td_prev = None
+        self.td_prev: PlasticityTrace | None = None
         self.time = 0.0
         self._spike_events: list[tuple[float, int, int, int]] = []
         self.mbon_spikes: list[float] = []
