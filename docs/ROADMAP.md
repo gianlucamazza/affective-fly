@@ -2,9 +2,9 @@
 
 [ARCHITECTURE.md](ARCHITECTURE.md), [MAPPING_MBON_DAN.md](MAPPING_MBON_DAN.md).
 
-## v0.2.0
+## v0.2.1 (scaffold freeze)
 
-Mock, LIF, Brian2 (numpy codegen), MaleCNS labels (Aso names, random weights), affect bridge, mood EMA, reconsolidation, dual-path attach, policy, launch gate, journal, `plot_journal` PNG, swarm, honesty, `learn()`, CI. `make demo` includes gate/SKIP loop, SQLite reopen, delayed US (`demo_cs_us.py`), resonance links.
+v0.2.0 plus: MoodField JSON round-trip, delayed US through `AffectiveLoop`, `make lint` = ruff check (matches CI pytest; mypy not in the gate).
 
 ## Open
 
