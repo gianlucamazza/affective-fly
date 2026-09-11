@@ -7,7 +7,7 @@
 
 ## Overview
 
-Affective Fly bridges neuroscience-inspired valence circuits from *Drosophila* (fruit fly) mushroom body with [Gianluca Mazza's `emotional-memory`](https://github.com/gianlucamazza/emotional-memory) library (Affective Field Theory / AFT). This creates **organisms with persistent mood** that learn and make decisions based on affective state, not just semantic similarity.
+Affective Fly bridges neuroscience-inspired valence circuits from *Drosophila* (fruit fly) mushroom body with the [`emotional-memory`](https://github.com/gianlucamazza/emotional-memory) library (Affective Field Theory / AFT). This creates **organisms with persistent mood** that learn and make decisions based on affective state, not just semantic similarity.
 
 ### What This Is NOT
 
@@ -274,13 +274,6 @@ If you use Affective Fly in research, please cite:
 - Mazza, G. (2024). *Emotional Memory: Affective Field Theory*. [GitHub](https://github.com/gianlucamazza/emotional-memory)
 - Russell, J. A. (1980). A circumplex model of affect. *Journal of Personality and Social Psychology*, 39(6), 1161-1178.
 - Aso, Y., et al. (2014). The neuronal architecture of the mushroom body provides a logic for associative learning. *eLife*, 3, e04577.
-
-## Acknowledgments
-
-- **Gianluca Mazza** for `emotional-memory` and AFT framework
-- **Drosophila connectomics community** (FlyEM, MaleCNS) for circuit data
-- **LeDoux** for dual-path affective processing theory
-- **Russell** for circumplex model of affect
 
 ---
 
