@@ -25,6 +25,10 @@ demo:
 	uv run python examples/demo_td.py
 	@echo "\nRunning SQLite persist demo..."
 	uv run python examples/demo_persist.py
+	@echo "\nRunning delayed-US demo..."
+	uv run python examples/demo_cs_us.py
+	@echo "\nRunning resonance demo..."
+	uv run python examples/demo_resonance.py
 
 journal:
 	uv run python -m affective_fly.journal $(JOURNAL)
