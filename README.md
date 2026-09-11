@@ -11,16 +11,19 @@ Human-emotion words from `honesty.py` are labels on the circumplex, not claims a
 ```bash
 git clone https://github.com/gianlucamazza/affective-fly.git
 cd affective-fly
-uv sync --all-extras
+git checkout v0.2.2
+uv sync --extra dev --extra brian --extra viz
 ```
 
-`numpy` is pinned below 2.x so Brian2 2.9 imports on 3.11. Extras: `dev`, `brian`, `viz`, `embed` (sentence-transformers; MiniLM is not loaded by `make demo`). Equivalent: `pip install -e ".[dev,brian,viz]"`.
+`numpy` is pinned below 2.x so Brian2 2.9 imports on 3.11. Extra `embed` (sentence-transformers) is optional; MiniLM is not loaded by `make demo`. Equivalent: `pip install -e ".[dev,brian,viz]"`.
 
 ## Usage
 
 ```bash
 make demo    # writes demo_loop.png (circumplex + mood/gate; needs viz extra)
 make test
+python -m affective_fly version
+python -m affective_fly demo persist
 ```
 
 ```python
@@ -57,7 +60,7 @@ print(decision.action, decision.mood_valence, decision.reason)
 
 `sentiment` is added to the sensory vector. `reward`, `outcome`, or `pnl` call `learn()` (PAM if positive, PPL1 if negative).
 
-To persist across processes, pass `SQLiteStore("affective_fly.db")` instead of `InMemoryStore`, and save mood with `MoodField.to_dict()` (`examples/demo_persist.py`). Swap `FakeEmbedder` for `SentenceTransformerEmbedder` (`uv sync --extra embed`; downloads a model). See `examples/demo_embedder.py`.
+To persist across processes, pass `SQLiteStore("affective_fly.db")` and `save_mood` / `load_mood` on the same file (`examples/demo_persist.py`). Swap `FakeEmbedder` for `SentenceTransformerEmbedder` (`uv sync --extra embed`; downloads a model). See `examples/demo_embedder.py`.
 
 ## License
 
