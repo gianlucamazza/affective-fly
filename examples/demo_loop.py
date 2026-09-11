@@ -10,13 +10,12 @@ Shows end-to-end flow:
 5. Journal logging
 """
 
-import numpy as np
 from emotional_memory import EmotionalMemory, InMemoryStore
 
 from affective_fly import (
+    ActionJournal,
     AffectBridge,
     AffectiveLoop,
-    ActionJournal,
     FakeEmbedder,
     MockFlyCircuit,
     MoodField,
@@ -28,17 +27,18 @@ from affective_fly.honesty import print_with_honesty
 
 def main():
     print("=== Affective Fly Demo: Complete Loop ===\n")
-    
+
     # Initialize components
     fly_circuit = MockFlyCircuit(seed=42)
     store = InMemoryStore()
     embedder = FakeEmbedder()
     emotional_memory = EmotionalMemory(store=store, embedder=embedder)
     affect_bridge = AffectBridge()
-    mood_field = MoodField()
+    # Faster taus so 8 steps show mood motion (production defaults are minutes).
+    mood_field = MoodField(tau_valence=30.0, tau_arousal=10.0, tau_approach=20.0)
     policy = Policy()
     journal = ActionJournal(filepath="demo_journal.jsonl")
-    
+
     # Create affective loop
     loop = AffectiveLoop(
         fly_circuit=fly_circuit,
@@ -48,7 +48,7 @@ def main():
         policy=policy,
         journal=journal,
     )
-    
+
     # Scenario: simulated market events with affective consequences
     scenarios = [
         {"page": "launchpad", "ticker": "MEME", "sentiment": 1.0, "query": "launch token"},
@@ -60,44 +60,54 @@ def main():
         {"page": "chart", "ticker": "CHAD", "sentiment": 0.9, "query": "price surge"},
         {"page": "launchpad", "ticker": "DOGE", "sentiment": 0.2, "query": "neutral signal"},
     ]
-    
+
     print("Running affective loop through scenarios...\n")
-    
+
     for i, scenario in enumerate(scenarios):
         print(f"\n--- Step {i}: {scenario['page']} / {scenario['ticker']} ---")
-        
-        # Create sensory frame
+
+        # Create sensory frame (sentiment is applied inside from_dict)
         frame = SensoryFrame.from_dict(scenario)
-        
-        # Bias the sensory input by sentiment
-        frame.visual = frame.visual + scenario["sentiment"]
-        
+
         # Execute loop step
         decision = loop.step(frame, encode_memory=True, retrieve_top_k=3)
-        
+
         # Display results
         mood = loop.mood_field.get_state()
-        print(f"Mood: V={mood.valence:+.2f}, A={mood.arousal:+.2f}, App={mood.approach_tendency:+.2f}")
+        gate = loop.last_gate_state
+        gate_label = "OPEN" if gate and gate.is_open else "CLOSED"
+        print(
+            f"Mood: V={mood.valence:+.2f}, A={mood.arousal:+.2f}, App={mood.approach_tendency:+.2f}"
+        )
+        print(
+            f"Gate: {gate_label} ({gate.consecutive_ticks if gate else 0}/{loop.launch_gate.required_ticks})"
+        )
         print(f"Decision: {decision.action.value.upper()} (conf={decision.confidence:.2f})")
         print(f"Reason: {decision.reason}")
         if decision.target:
             print(f"Target: {decision.target}")
-    
-    print("\n" + "="*60)
+        if loop.last_appraisal is not None:
+            ap = loop.last_appraisal
+            print(
+                f"Appraisal: nov={ap.novelty:+.2f} goal={ap.goal_relevance:+.2f} "
+                f"cope={ap.coping_potential:.2f} reconsol={'yes' if loop.last_reconsolidated else 'no'}"
+            )
+
+    print("\n" + "=" * 60)
     print("\n=== Final Mood State ===")
     final_mood = loop.mood_field.get_state()
     print_with_honesty(final_mood, show_disclaimer=True)
-    
+
     print("\n=== Journal Summary ===")
     journal.print_summary(last_n=8)
-    
+
     # Save journal
     journal.save()
     print(f"\nJournal saved to {journal.filepath}")
-    
+
     # Export for viz
     journal.export_for_viz("demo_viz.json")
-    
+
     print("\n=== Demo Complete ===")
     print("The fly's mood persists across events due to MoodField EMA.")
     print("Negative events (crash) leave lingering avoidance tendency.")
