@@ -57,6 +57,8 @@ print(decision.action, decision.mood_valence, decision.reason)
 
 `sentiment` is added to the sensory vector. `reward`, `outcome`, or `pnl` call `learn()` (PAM if positive, PPL1 if negative).
 
+To persist across processes, pass `SQLiteStore("affective_fly.db")` instead of `InMemoryStore`. Swap `FakeEmbedder` for `SentenceTransformerEmbedder` from emotional-memory when you want semantic retrieval (downloads a model). See `examples/demo_persist.py`.
+
 ## License
 
 MIT. See [LICENSE](LICENSE).

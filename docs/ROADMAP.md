@@ -4,7 +4,7 @@
 
 ## v0.2.0
 
-Mock, LIF, Brian2 (numpy codegen), MaleCNS labels (Aso names, random weights), affect bridge, mood EMA, reconsolidation, dual-path attach, policy, launch gate, journal, `plot_journal` PNG, swarm, honesty, `learn()`, CI. `make demo` runs a loop that opens the gate then SKIPs after a crash.
+Mock, LIF, Brian2 (numpy codegen), MaleCNS labels (Aso names, random weights), affect bridge, mood EMA, reconsolidation, dual-path attach, policy, launch gate, journal, `plot_journal` PNG, swarm, honesty, `learn()`, CI. `make demo` runs a loop that opens the gate then SKIPs after a crash, plus SQLite reopen (`demo_persist.py`).
 
 ## Open
 
