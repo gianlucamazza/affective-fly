@@ -4,19 +4,18 @@
 
 ## v0.2.0
 
-Mock, LIF, Brian2 (numpy codegen), MaleCNS labels (Aso names, random weights), affect bridge, mood EMA, reconsolidation, dual-path attach, policy, launch gate, journal, `plot_journal` PNG, swarm, honesty, `learn()`, CI. `make demo` runs a loop that opens the gate then SKIPs after a crash, plus SQLite reopen (`demo_persist.py`).
+Mock, LIF, Brian2 (numpy codegen), MaleCNS labels (Aso names, random weights), affect bridge, mood EMA, reconsolidation, dual-path attach, policy, launch gate, journal, `plot_journal` PNG, swarm, honesty, `learn()`, CI. `make demo` includes gate/SKIP loop, SQLite reopen, delayed US (`demo_cs_us.py`), resonance links.
 
 ## Open
 
-Blocked on data or a network call:
+Needs data or a live network:
 
 - MaleCNS connectivity matrix from HDF5/JSON (`aso.py` already has published names).
-- Brian2 C++ codegen if 2000-KC latency matters (target on the order of 10 ms).
-- A concrete LLM behind `DualPathEncoder.from_llm` (the hook takes any callable).
-- Resonance graph on top of emotional-memory's existing layer (journal circumplex PNG is already in `viz.py`).
-- A multi-step task that uses `td_sequential=True`.
+- Brian2 C++ codegen if 2000-KC latency matters (on the order of 10 ms).
+- A production LLM behind `DualPathEncoder.from_llm` (hook + fake-callable tests exist).
+- `demo_embedder.py` (`--extra embed`) downloads MiniLM; not in `make demo`.
 
-Not blocked, not started: token-launch example (PnL can already be passed as `reward`); sex/mating ensembles; swarm N ≫ 8; sigmoid valence; learned time constants.
+Not in scope for this repo: token-launch product, sex/mating ensembles, swarm N ≫ 8.
 
 ## Questions
 

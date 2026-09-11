@@ -14,7 +14,7 @@ cd affective-fly
 uv sync --all-extras
 ```
 
-`numpy` is pinned below 2.x so Brian2 2.9 imports on 3.11. Equivalent: `pip install -e ".[dev,brian,viz]"`.
+`numpy` is pinned below 2.x so Brian2 2.9 imports on 3.11. Extras: `dev`, `brian`, `viz`, `embed` (sentence-transformers; MiniLM is not loaded by `make demo`). Equivalent: `pip install -e ".[dev,brian,viz]"`.
 
 ## Usage
 
@@ -57,7 +57,7 @@ print(decision.action, decision.mood_valence, decision.reason)
 
 `sentiment` is added to the sensory vector. `reward`, `outcome`, or `pnl` call `learn()` (PAM if positive, PPL1 if negative).
 
-To persist across processes, pass `SQLiteStore("affective_fly.db")` instead of `InMemoryStore`. Swap `FakeEmbedder` for `SentenceTransformerEmbedder` from emotional-memory when you want semantic retrieval (downloads a model). See `examples/demo_persist.py`.
+To persist across processes, pass `SQLiteStore("affective_fly.db")` instead of `InMemoryStore`. Swap `FakeEmbedder` for `SentenceTransformerEmbedder` (`uv sync --extra embed`; downloads a model). See `examples/demo_persist.py` and `examples/demo_embedder.py`.
 
 ## License
 

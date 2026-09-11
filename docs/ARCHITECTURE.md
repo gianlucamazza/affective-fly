@@ -36,6 +36,6 @@ SensoryFrame
 | `honesty.py` | Circumplex quadrant → string + disclaimer. |
 | `aso.py` | Aso et al. 2014 names. No invented body IDs. |
 
-Store, embed, retrieve, and optional resonance stay in `emotional-memory`. On-disk memories: `SQLiteStore` (`examples/demo_persist.py`). Semantic vectors: `SentenceTransformerEmbedder` (optional; downloads a model).
+Store, embed, retrieve, and optional resonance stay in `emotional-memory`. On-disk memories: `SQLiteStore` (`examples/demo_persist.py`). Semantic vectors: `SentenceTransformerEmbedder` (`examples/demo_embedder.py`, extra `embed`). Delayed US: `examples/demo_cs_us.py`. Resonance links: `examples/demo_resonance.py` (emotional-memory default).
 
 New circuits implement `step` and `reset` (`learn` optional). Policies override `decide`. Appraisal engines implement `appraise(text, context)`.
