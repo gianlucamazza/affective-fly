@@ -38,6 +38,7 @@ htmlcov/
 demo_journal.jsonl
 demo_viz.json
 demo_loop.png
+affective_fly.db
 swarm_journal.jsonl
 test_journal.jsonl
 

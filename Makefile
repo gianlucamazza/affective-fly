@@ -23,6 +23,8 @@ demo:
 	uv run python examples/demo_swarm.py
 	@echo "\nRunning three-factor learning demo..."
 	uv run python examples/demo_td.py
+	@echo "\nRunning SQLite persist demo..."
+	uv run python examples/demo_persist.py
 
 journal:
 	uv run python -m affective_fly.journal $(JOURNAL)
