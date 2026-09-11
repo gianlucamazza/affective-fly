@@ -11,6 +11,7 @@ from emotional_memory import EmotionalMemory, InMemoryStore
 
 from affective_fly import (
     ActionJournal,
+    FakeEmbedder,
     MockFlyCircuit,
     SensoryFrame,
     Swarm,
@@ -22,7 +23,8 @@ def main():
     
     # Shared memory and journal
     store = InMemoryStore()
-    emotional_memory = EmotionalMemory(store=store)
+    embedder = FakeEmbedder()
+    emotional_memory = EmotionalMemory(store=store, embedder=embedder)
     journal = ActionJournal(filepath="swarm_journal.jsonl")
     
     # Create swarm with N=8 agents

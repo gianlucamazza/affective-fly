@@ -111,16 +111,20 @@ def test_create_appraisal():
     appraisal = bridge.create_appraisal(
         state,
         novelty=0.5,
-        controllability=0.3,
         goal_relevance=0.7,
+        coping_potential=0.3,
+        norm_congruence=0.2,
+        self_relevance=0.8,
     )
     
+    # In v0.18, AppraisalVector contains cognitive dimensions only
+    # CoreAffect (valence/arousal) is set separately via set_affect()
     assert isinstance(appraisal, AppraisalVector)
     assert appraisal.novelty == 0.5
-    assert appraisal.controllability == 0.3
     assert appraisal.goal_relevance == 0.7
-    assert -1.0 <= appraisal.valence <= 1.0
-    assert -1.0 <= appraisal.arousal <= 1.0
+    assert appraisal.coping_potential == 0.3
+    assert appraisal.norm_congruence == 0.2
+    assert appraisal.self_relevance == 0.8
 
 
 def test_readout_to_tuple():

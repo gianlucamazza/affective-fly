@@ -87,7 +87,15 @@ uv run python examples/demo_swarm.py
 
 ### Run Tests
 
+**Important**: Tests require dev dependencies. Install with `uv sync --all-extras` or `make install` first.
+
 ```bash
+# Install all dependencies (required before first test run)
+uv sync --all-extras
+# Or:
+make install
+
+# Then run tests
 make test
 # Or:
 uv run pytest tests/ -v
@@ -98,6 +106,7 @@ uv run pytest tests/ -v
 ```python
 from emotional_memory import EmotionalMemory, InMemoryStore
 from affective_fly import (
+    FakeEmbedder,
     MockFlyCircuit,
     AffectiveLoop,
     SensoryFrame,
@@ -105,7 +114,8 @@ from affective_fly import (
 
 # Initialize components
 fly_circuit = MockFlyCircuit(seed=42)
-emotional_memory = EmotionalMemory(store=InMemoryStore())
+embedder = FakeEmbedder()  # For offline demos/tests
+emotional_memory = EmotionalMemory(store=InMemoryStore(), embedder=embedder)
 
 # Create affective loop
 loop = AffectiveLoop(

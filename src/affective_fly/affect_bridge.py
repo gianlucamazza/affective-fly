@@ -94,34 +94,41 @@ class AffectBridge:
         self,
         state: MBONDanState,
         novelty: float = 0.0,
-        controllability: float = 0.0,
         goal_relevance: float = 0.0,
+        coping_potential: float = 0.0,
+        norm_congruence: float = 0.0,
+        self_relevance: float = 0.0,
     ) -> AppraisalVector:
         """
         Create AppraisalVector for dual-path encoding.
         
-        Fast path: CoreAffect from circuit only (already computed above).
+        Fast path: CoreAffect from circuit only (set via set_affect()).
         Slow path: Optional cognitive appraisal dimensions.
         
         Args:
-            state: Current MBON/DAN state
+            state: Current MBON/DAN state (not used directly, CoreAffect set separately)
             novelty: Appraisal dimension (optional, from slow LLM path)
-            controllability: Appraisal dimension (optional)
             goal_relevance: Appraisal dimension (optional)
+            coping_potential: Appraisal dimension (optional)
+            norm_congruence: Appraisal dimension (optional)
+            self_relevance: Appraisal dimension (optional)
             
         Returns:
             AppraisalVector for emotional-memory encode()
+            
+        Note:
+            In emotional-memory v0.18, CoreAffect and AppraisalVector are separate.
+            CoreAffect (valence/arousal) should be set via EmotionalMemory.set_affect().
+            AppraisalVector contains cognitive appraisal dimensions only.
         """
-        core_affect = self.mbon_dan_to_core_affect(state)
-        
-        # Create appraisal vector with fast path (circuit-derived) core affect
-        # Slow path dimensions default to 0.0 unless provided
+        # Create appraisal vector with cognitive dimensions
+        # CoreAffect (valence/arousal) is set separately via set_affect()
         return AppraisalVector(
-            valence=core_affect.valence,
-            arousal=core_affect.arousal,
             novelty=novelty,
-            controllability=controllability,
             goal_relevance=goal_relevance,
+            coping_potential=coping_potential,
+            norm_congruence=norm_congruence,
+            self_relevance=self_relevance,
         )
     
     def readout_to_tuple(self, state: MBONDanState) -> tuple[float, float, float]:

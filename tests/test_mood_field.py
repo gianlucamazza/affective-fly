@@ -80,18 +80,22 @@ def test_mood_field_arousal_faster_decay():
         tau_arousal=60.0,  # 5x faster decay
     )
     
-    # Spike both
-    mood_field.update(current_valence=0.8, current_arousal=0.8, current_approach=0.5, dt=1.0)
+    # Build up both to high values first (many steps with high input)
+    for _ in range(20):
+        mood_field.update(current_valence=0.8, current_arousal=0.8, current_approach=0.5, dt=10.0)
     
-    # Decay for several steps
+    # Record the peak values (should both be close to 0.8)
+    peak_valence = mood_field.valence
+    peak_arousal = mood_field.arousal
+    
+    # Now decay both for several steps with zero input
     for _ in range(5):
         mood_field.update(current_valence=0.0, current_arousal=0.0, current_approach=0.0, dt=10.0)
     
     # Arousal should have decayed more than valence
-    # (both start from same initial spike toward 0.8)
-    # After decay, valence should be closer to 0.8 than arousal
-    valence_retention = abs(mood_field.valence) / 0.8
-    arousal_retention = abs(mood_field.arousal) / 0.8
+    # Measure retention as fraction of peak value remaining
+    valence_retention = abs(mood_field.valence) / abs(peak_valence)
+    arousal_retention = abs(mood_field.arousal) / abs(peak_arousal)
     
     assert valence_retention > arousal_retention
 
