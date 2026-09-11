@@ -95,7 +95,7 @@ def main():
     
     print("\n" + "="*60)
     print("\n=== Swarm Demo Complete ===")
-    print(f"Total memories encoded by swarm: {len(emotional_memory.store.memories)}")
+    print(f"Total memories encoded by swarm: {len(store.list_all())}")
     print("All agents share the same EmotionalMemory, creating collective 'culture'.")
     print("Individual moods diverge, but shared memories create resonance effects.")
     
