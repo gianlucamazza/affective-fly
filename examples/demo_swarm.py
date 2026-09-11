@@ -11,6 +11,7 @@ from emotional_memory import EmotionalMemory, InMemoryStore
 
 from affective_fly import (
     ActionJournal,
+    FakeEmbedder,
     MockFlyCircuit,
     SensoryFrame,
     Swarm,
@@ -22,7 +23,8 @@ def main():
     
     # Shared memory and journal
     store = InMemoryStore()
-    emotional_memory = EmotionalMemory(store=store)
+    embedder = FakeEmbedder()
+    emotional_memory = EmotionalMemory(store=store, embedder=embedder)
     journal = ActionJournal(filepath="swarm_journal.jsonl")
     
     # Create swarm with N=8 agents
@@ -93,7 +95,7 @@ def main():
     
     print("\n" + "="*60)
     print("\n=== Swarm Demo Complete ===")
-    print(f"Total memories encoded by swarm: {len(emotional_memory.store.memories)}")
+    print(f"Total memories encoded by swarm: {len(store.list_all())}")
     print("All agents share the same EmotionalMemory, creating collective 'culture'.")
     print("Individual moods diverge, but shared memories create resonance effects.")
     

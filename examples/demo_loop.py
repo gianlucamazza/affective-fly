@@ -17,6 +17,7 @@ from affective_fly import (
     AffectBridge,
     AffectiveLoop,
     ActionJournal,
+    FakeEmbedder,
     MockFlyCircuit,
     MoodField,
     Policy,
@@ -31,7 +32,8 @@ def main():
     # Initialize components
     fly_circuit = MockFlyCircuit(seed=42)
     store = InMemoryStore()
-    emotional_memory = EmotionalMemory(store=store)
+    embedder = FakeEmbedder()
+    emotional_memory = EmotionalMemory(store=store, embedder=embedder)
     affect_bridge = AffectBridge()
     mood_field = MoodField()
     policy = Policy()
