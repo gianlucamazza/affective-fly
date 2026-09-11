@@ -3,7 +3,7 @@ name = "affective-fly"
 version = "0.1.0"
 description = "Drosophila MB valence circuit bridged to Affective Field Theory for persistent mood agents"
 authors = [
-    {name = "Affective Fly Contributors"}
+    {name = "Gianluca Mazza"}
 ]
 readme = "README.md"
 requires-python = ">=3.11"
