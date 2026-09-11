@@ -19,7 +19,7 @@ uv sync --all-extras
 ## Usage
 
 ```bash
-make demo
+make demo    # writes demo_loop.png (circumplex + mood/gate; needs viz extra)
 make test
 ```
 

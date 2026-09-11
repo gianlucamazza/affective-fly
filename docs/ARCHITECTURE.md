@@ -31,6 +31,7 @@ SensoryFrame
 | `policy.py` | SKIP if approach < −0.3 or retrieved valence < −0.3; WAIT if arousal < −0.5; CLICK/TYPE if valence > 0 and approach > 0.2; else WAIT. |
 | `launch_gate.py` | Opens after N ticks with approach > 0.2 and valence > −0.1. |
 | `journal.py` | JSONL; `export_for_viz()`. |
+| `viz.py` | `plot_journal` → PNG (matplotlib extra). |
 | `swarm.py` | Independent circuits, shared store. Default N = 8. |
 | `honesty.py` | Circumplex quadrant → string + disclaimer. |
 | `aso.py` | Aso et al. 2014 names. No invented body IDs. |
