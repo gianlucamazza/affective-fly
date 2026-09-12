@@ -52,7 +52,7 @@ The `context` dict provides semantic information about the frame:
 #### Outcomes (triggers plasticity when present)
 - `reward`: float in [-1, 1] — Generic reward signal
 - `outcome`: float in [-1, 1] — Task outcome signal
-- `pnl`: float in [-1, 1] — Profit/loss signal (financial contexts)
+- `pnl`: float in [-1, 1] — Profit/loss or numeric outcome (any domain)
 
 **Important**: When any of `reward`, `outcome`, or `pnl` is present, the frame triggers three-factor KC→MBON plasticity (`learn()`). The host must provide honest outcome signals — no invented rewards.
 
@@ -68,7 +68,7 @@ The `context` dict provides semantic information about the frame:
 }
 ```
 
-- `visual_hash`: str — Deterministic hash of visual input (for stable replay)
+- `visual_hash`: str — Seed for deterministic visual vector generation when set by the host at frame creation. Used as the hash input to `to_sensory_frame()`. Important: `sensory_frame_to_host_frame()` stores a fingerprint of the actual visual vector and does NOT round-trip to the same visual via that fingerprint — exact replay requires logging the host-chosen `visual_hash` at frame creation (or logging context that seeds the vector).
 - `visual_data`: dict — Host-specific visual encoding (e.g., DOM structure, screenshot metadata)
 
 If neither `visual_hash` nor `visual_data` is provided, the visual vector is generated from the `context` dict hash.
@@ -100,21 +100,6 @@ If neither `visual_hash` nor `visual_data` is provided, the visual vector is gen
     "query": "replication failed validation",
     "sentiment": -0.9,
     "outcome": -0.8
-  }
-}
-```
-
-#### Financial Trade Outcome
-```json
-{
-  "schema_version": "1.0",
-  "timestamp": "2026-09-12T15:45:00",
-  "context": {
-    "context": "trading",
-    "ticker": "AAPL",
-    "query": "sold AAPL position",
-    "pnl": -0.6,
-    "sentiment": -0.5
   }
 }
 ```

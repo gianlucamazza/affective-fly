@@ -50,7 +50,7 @@ Open from the v0.2.5 calibration:
 
 - The `950 · n_kc^(−0.70)` gain law is a bisection fit to one target rate, not a measured relation — it should be replaced by a physical normalisation, or re-fitted, once a connectome export fixes the real KC→MBON fan-out. Whether `mbon_min_active = 5 Hz` is the right silence threshold is likewise unmeasured.
 - `approach_tendency` saturates at ±1 in ~70% of ticks once a circuit is trained, because net drive is referred to `2 × mbon_baseline` (20 Hz). Referring it to `mbon_max` removes the saturation but shifts what `threshold_act = 0.2` and `threshold_approach = 0.2` mean, and there is no data to re-tune them against. Deferred to Phase 6 with the τ questions rather than churned silently.
-- `MockFlyCircuit` has one degree of freedom, so valence and approach stay collinear there (r ≈ 0.997) even though the bridge separates them. Every demo uses Mock; the spiking backends show r ≈ 0.77–0.85.
+- `MockFlyCircuit` has one degree of freedom, so valence and approach stay collinear there (r ≈ 0.997) even though the bridge separates them. Mock-based demos remain collinear; host adapter and LIF-based demos show separated valence/approach axes (r ≈ 0.77–0.85 in spiking backends).
 
 ## Development Phases
 
