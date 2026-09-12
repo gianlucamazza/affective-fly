@@ -1,0 +1,14 @@
+{
+  "source": "Janelia MaleCNS v1.0 (Schlegel et al. 2023 / FlyEM 2026 release)",
+  "url": "https://storage.googleapis.com/flyem-male-cns/v1.0/connectome-data/flat-connectome/",
+  "license": "CC-BY 4.0",
+  "description": "All KC\u2192MBON edges filtered from MaleCNS v1.0 minconf-0.5 (published weights only)",
+  "weights_file": "connectome-weights-male-cns-v1.0-minconf-0.5.feather",
+  "annotations_file": "body-annotations-male-cns-v1.0-minconf-0.5.feather",
+  "n_edges": 61210,
+  "n_kc": 4063,
+  "n_mbon": 97,
+  "weight_min": 1.0,
+  "weight_max": 152.0,
+  "weight_mean": 7.574579317105048
+}

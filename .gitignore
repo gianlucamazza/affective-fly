@@ -68,3 +68,9 @@ brian2_benchmark_cpp/
 # Benchmark outputs (local only; committed reference lives in docs/BENCHMARKS.md)
 docs/benchmark_results.txt
 docs/benchmark_results.json
+
+# MaleCNS raw Janelia exports (rebuild filtered KC→MBON via docs/MALECNS_DATA.md)
+data/malecns/body-annotations-male-cns-*
+data/malecns/connectome-weights-male-cns-*
+data/malecns/body-stats-male-cns-*
+data/malecns/syn-*
