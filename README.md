@@ -2,7 +2,7 @@
 
 Reduced *Drosophila* mushroom-body circuit (Kenyon cells, DANs, MBONs) as the affect source for [emotional-memory](https://github.com/gianlucamazza/emotional-memory). Decisions use approach/avoid rates and a slow mood average, not embedding similarity.
 
-Python 3.11+. Mapping: linear, documented in [`docs/MAPPING_MBON_DAN.md`](docs/MAPPING_MBON_DAN.md). Loop and modules: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). Open work: [`docs/ROADMAP.md`](docs/ROADMAP.md).
+Python 3.11+. Mapping: linear, documented in [`docs/MAPPING_MBON_DAN.md`](docs/MAPPING_MBON_DAN.md). Loop and modules: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). Backend runtimes: [`docs/BENCHMARKS.md`](docs/BENCHMARKS.md). Open work: [`docs/ROADMAP.md`](docs/ROADMAP.md). Full index: [`docs/README.md`](docs/README.md).
 
 Human-emotion words from `honesty.py` are labels on the circumplex, not claims about fly experience.
 
@@ -25,7 +25,13 @@ make test
 python -m affective_fly version
 python -m affective_fly demo persist
 python -m affective_fly run --interval 2    # live ticks; Ctrl-C to stop
+make benchmark    # LIF vs Brian2 ms/step sweep (docs/BENCHMARKS.md)
+make figures      # regenerate docs/figures/ (needs viz extra)
 ```
+
+A demo episode: sustained approach opens the launch gate (shaded), then failed reviews pull valence down and memory-driven avoidance yields SKIP. Regenerate with `make figures`.
+
+![circumplex and mood over a demo episode](docs/figures/circumplex_mood.png)
 
 ### Recommended: HostFrame Integration
 

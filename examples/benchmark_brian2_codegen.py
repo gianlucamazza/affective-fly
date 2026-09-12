@@ -1,164 +1,189 @@
 #!/usr/bin/env python3
 """
-Brian2 micro-benchmark: LIFCircuit (pure Python) vs Brian2Circuit (Brian2 numpy).
+Circuit backend micro-benchmark: LIFCircuit (pure Python/numpy) vs Brian2Circuit.
 
-Compares runtime for fixed KC size. Brian2Circuit currently uses numpy backend;
+Sweeps Kenyon-cell population size to show how per-step runtime scales, comparing
+the two spiking backends. Brian2Circuit currently uses the Brian2 numpy backend;
 C++ standalone codegen is not yet implemented (would require device selection).
 
-Writes results to docs/benchmark_results.txt (not tracked in git, for local info only).
+By default the sweep is 500/1000/2000/5000 KC at 50 steps, dt=1 ms. Results are
+written to docs/benchmark_results.txt and docs/benchmark_results.json (both local,
+not tracked in git). Numbers are hardware-dependent; see docs/BENCHMARKS.md for a
+committed reference table and methodology.
+
+Usage:
+    uv run python examples/benchmark_brian2_codegen.py
+    uv run python examples/benchmark_brian2_codegen.py --kc 500 1000 --steps 30
 """
 
+from __future__ import annotations
+
+import argparse
+import json
+import platform
 import sys
 import time
 from pathlib import Path
 
 try:
     import brian2  # noqa: F401
+
+    HAVE_BRIAN2 = True
 except ImportError:
-    print("Brian2 not installed. Install with: uv sync --extra brian")
-    sys.exit(0)
+    HAVE_BRIAN2 = False
+
+DEFAULT_KC_SIZES = [500, 1000, 2000, 5000]
+DEFAULT_STEPS = 50
+N_DAN = 20
+N_MBON = 34
+SEED = 42
 
 
-def benchmark_lif_circuit(n_kc: int, n_steps: int = 100) -> float:
-    """
-    Benchmark pure Python LIFCircuit.
-
-    Returns:
-        Runtime in milliseconds per step
-    """
+def benchmark_lif_circuit(n_kc: int, n_steps: int) -> float:
+    """Return pure-Python LIFCircuit runtime in ms per step."""
     import numpy as np
 
     from affective_fly import LIFCircuit
 
-    circuit = LIFCircuit(
-        n_kc=n_kc,
-        n_dan=20,
-        n_mbon=34,
-        seed=42,
-    )
+    rng = np.random.default_rng(SEED)
+    circuit = LIFCircuit(n_kc=n_kc, n_dan=N_DAN, n_mbon=N_MBON, seed=SEED)
 
-    # Warm-up
-    sensory = np.random.randn(64)
     for _ in range(5):
-        circuit.step(sensory, dt=0.001)
+        circuit.step(rng.standard_normal(64), dt=0.001)
 
-    # Benchmark
     start = time.perf_counter()
     for _ in range(n_steps):
-        sensory = np.random.randn(64)
-        circuit.step(sensory, dt=0.001)
+        circuit.step(rng.standard_normal(64), dt=0.001)
     elapsed = time.perf_counter() - start
+    return (elapsed / n_steps) * 1000
 
-    return (elapsed / n_steps) * 1000  # ms per step
 
-
-def benchmark_brian2_circuit(n_kc: int, n_steps: int = 100) -> float:
-    """
-    Benchmark Brian2Circuit (uses Brian2 with numpy codegen).
-
-    Returns:
-        Runtime in milliseconds per step
-    """
+def benchmark_brian2_circuit(n_kc: int, n_steps: int) -> float:
+    """Return Brian2Circuit (numpy backend) runtime in ms per step."""
     import numpy as np
 
     from affective_fly.brian2_circuit import Brian2Circuit
 
-    circuit = Brian2Circuit(
-        n_kc=n_kc,
-        n_dan=20,
-        n_mbon=34,
-        seed=42,
-    )
+    rng = np.random.default_rng(SEED)
+    circuit = Brian2Circuit(n_kc=n_kc, n_dan=N_DAN, n_mbon=N_MBON, seed=SEED)
 
-    # Warm-up
-    sensory = np.random.randn(64)
     for _ in range(5):
-        circuit.step(sensory, dt=0.001)
+        circuit.step(rng.standard_normal(64), dt=0.001)
 
-    # Benchmark
     start = time.perf_counter()
     for _ in range(n_steps):
-        sensory = np.random.randn(64)
-        circuit.step(sensory, dt=0.001)
+        circuit.step(rng.standard_normal(64), dt=0.001)
     elapsed = time.perf_counter() - start
+    return (elapsed / n_steps) * 1000
 
-    return (elapsed / n_steps) * 1000  # ms per step
 
-
-def main() -> None:
-    print("=== Circuit Backend Benchmark ===")
-    print()
-
-    # Fixed KC size for benchmark (not the demo default)
-    n_kc = 2000
-    n_steps = 50
-
-    print(f"Configuration: {n_kc} KC, {n_steps} steps, dt=1ms")
-    print()
-
-    # Benchmark LIFCircuit (pure Python/numpy)
-    print("Benchmarking LIFCircuit (pure Python/numpy)...")
-    try:
+def run_sweep(kc_sizes: list[int], n_steps: int) -> list[dict[str, float | int | None]]:
+    """Benchmark both backends across KC sizes. Returns one row per size."""
+    rows: list[dict[str, float | int | None]] = []
+    for n_kc in kc_sizes:
+        print(f"n_kc={n_kc:>5}  ...", end="", flush=True)
         t_lif = benchmark_lif_circuit(n_kc, n_steps)
-        print(f"  LIFCircuit:     {t_lif:.2f} ms/step")
-    except Exception as e:
-        print(f"  LIFCircuit failed: {e}")
-        return
+        t_brian2: float | None = None
+        if HAVE_BRIAN2:
+            t_brian2 = benchmark_brian2_circuit(n_kc, n_steps)
+        speedup = (t_brian2 / t_lif) if t_brian2 else None
+        rows.append(
+            {
+                "n_kc": n_kc,
+                "lif_ms": round(t_lif, 3),
+                "brian2_ms": round(t_brian2, 3) if t_brian2 is not None else None,
+                "brian2_over_lif": round(speedup, 2) if speedup is not None else None,
+            }
+        )
+        if t_brian2 is not None:
+            print(f" LIF {t_lif:8.3f} ms/step   Brian2 {t_brian2:8.3f} ms/step")
+        else:
+            print(f" LIF {t_lif:8.3f} ms/step   Brian2 (not installed)")
+    return rows
 
-    print()
 
-    # Benchmark Brian2Circuit (Brian2 with numpy backend)
-    print("Benchmarking Brian2Circuit (Brian2 numpy backend)...")
-    try:
-        t_brian2 = benchmark_brian2_circuit(n_kc, n_steps)
-        print(f"  Brian2Circuit:  {t_brian2:.2f} ms/step")
-    except Exception as e:
-        print(f"  Brian2Circuit failed: {e}")
-        return
+def _format_table(rows: list[dict[str, float | int | None]]) -> str:
+    lines = [
+        "| KC | LIFCircuit (ms/step) | Brian2Circuit (ms/step) | Brian2 / LIF |",
+        "|---:|---:|---:|---:|",
+    ]
+    for r in rows:
+        brian2 = f"{r['brian2_ms']:.3f}" if r["brian2_ms"] is not None else "n/a"
+        ratio = f"{r['brian2_over_lif']:.2f}x" if r["brian2_over_lif"] is not None else "n/a"
+        lines.append(f"| {r['n_kc']} | {r['lif_ms']:.3f} | {brian2} | {ratio} |")
+    return "\n".join(lines)
 
-    print()
-    print("=== Results ===")
-    print(f"LIFCircuit:     {t_lif:.2f} ms/step")
-    print(f"Brian2Circuit:  {t_brian2:.2f} ms/step")
 
-    if t_lif < t_brian2:
-        ratio = t_brian2 / t_lif
-        print(f"LIFCircuit is {ratio:.2f}x faster (pure Python/numpy is lighter)")
-    else:
-        ratio = t_lif / t_brian2
-        print(f"Brian2Circuit is {ratio:.2f}x faster")
+def _env_note() -> str:
+    return (
+        f"Python {platform.python_version()} on {platform.system()} "
+        f"{platform.machine()} ({platform.processor() or 'unknown CPU'})"
+    )
 
-    print()
 
-    if t_lif < 10.0:
-        print(f"Note: At {n_kc} KC, both are fast (<10 ms/step).")
-        print("C++ codegen would help at larger scales (5000+ KC) if latency becomes critical.")
-
-    print()
-    print("C++ standalone codegen: NOT YET IMPLEMENTED")
-    print("  - Brian2Circuit currently hardcodes: b2.prefs.codegen.target = 'numpy'")
-    print("  - To add C++ support, would need to:")
-    print("    1. Make codegen target configurable")
-    print("    2. Use b2.set_device('cpp_standalone', ...) for C++ mode")
-    print("    3. Handle device.build() and device.run() lifecycle")
-
-    # Write results to docs/
-    results_path = Path("docs/benchmark_results.txt")
-    results_path.parent.mkdir(exist_ok=True)
-    with open(results_path, "w") as f:
+def write_results(
+    rows: list[dict[str, float | int | None]],
+    n_steps: int,
+    txt_path: Path,
+    json_path: Path,
+) -> None:
+    txt_path.parent.mkdir(exist_ok=True)
+    table = _format_table(rows)
+    with open(txt_path, "w") as f:
         f.write("Circuit Backend Benchmark\n")
         f.write("=========================\n\n")
-        f.write(f"Configuration: {n_kc} KC, {n_steps} steps, dt=1ms\n\n")
-        f.write(f"LIFCircuit:     {t_lif:.2f} ms/step (pure Python/numpy)\n")
-        f.write(f"Brian2Circuit:  {t_brian2:.2f} ms/step (Brian2 numpy backend)\n\n")
-        if t_lif < t_brian2:
-            f.write(f"LIFCircuit is {t_brian2/t_lif:.2f}x faster\n")
-        else:
-            f.write(f"Brian2Circuit is {t_lif/t_brian2:.2f}x faster\n")
-        f.write("\nNote: C++ standalone codegen not yet implemented.\n")
+        f.write(f"{_env_note()}\n")
+        f.write(f"Config: {n_steps} steps, dt=1 ms, {N_DAN} DAN, {N_MBON} MBON, seed {SEED}\n\n")
+        f.write(table + "\n\n")
+        f.write("Note: Brian2Circuit uses the numpy backend; C++ standalone codegen\n")
+        f.write("is not yet implemented (see docs/ROADMAP.md, Phase 5).\n")
+    with open(json_path, "w") as f:
+        json.dump(
+            {
+                "env": _env_note(),
+                "n_steps": n_steps,
+                "n_dan": N_DAN,
+                "n_mbon": N_MBON,
+                "seed": SEED,
+                "brian2": HAVE_BRIAN2,
+                "rows": rows,
+            },
+            f,
+            indent=2,
+        )
 
-    print(f"\nResults written to: {results_path}")
+
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    p = argparse.ArgumentParser(description=__doc__)
+    p.add_argument("--kc", type=int, nargs="+", default=DEFAULT_KC_SIZES, help="KC sizes to sweep")
+    p.add_argument("--steps", type=int, default=DEFAULT_STEPS, help="steps per measurement")
+    p.add_argument("--json", type=Path, default=Path("docs/benchmark_results.json"))
+    p.add_argument("--txt", type=Path, default=Path("docs/benchmark_results.txt"))
+    return p.parse_args(argv)
+
+
+def main(argv: list[str] | None = None) -> None:
+    args = parse_args(argv)
+
+    print("=== Circuit Backend Benchmark ===")
+    print(_env_note())
+    print(f"Sweep: KC {args.kc}, {args.steps} steps, dt=1 ms, seed {SEED}")
+    if not HAVE_BRIAN2:
+        print("Brian2 not installed (uv sync --extra brian); LIFCircuit only.")
+    print()
+
+    rows = run_sweep(args.kc, args.steps)
+
+    print()
+    print(_format_table(rows))
+    print()
+    print("C++ standalone codegen: NOT YET IMPLEMENTED (docs/ROADMAP.md, Phase 5).")
+    print("  Brian2Circuit hardcodes b2.prefs.codegen.target = 'numpy'; a C++ mode")
+    print("  would need set_device('cpp_standalone', ...) plus build()/run() lifecycle.")
+
+    write_results(rows, args.steps, args.txt, args.json)
+    print(f"\nResults written to {args.txt} and {args.json}")
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

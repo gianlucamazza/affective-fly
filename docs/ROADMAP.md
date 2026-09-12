@@ -1,6 +1,10 @@
 # Roadmap
 
-[ARCHITECTURE.md](ARCHITECTURE.md), [MAPPING_MBON_DAN.md](MAPPING_MBON_DAN.md).
+[ARCHITECTURE.md](ARCHITECTURE.md), [MAPPING_MBON_DAN.md](MAPPING_MBON_DAN.md), [BENCHMARKS.md](BENCHMARKS.md).
+
+## Unreleased
+
+Docs and tooling. `benchmark_brian2_codegen.py` now sweeps KC size (default 500/1000/2000/5000) instead of a single 2000-KC point, writes machine-readable JSON alongside the text results, and is driven by `make benchmark`; the committed reference table and methodology live in [BENCHMARKS.md](BENCHMARKS.md) (the raw `.txt`/`.json` stay git-ignored, local-only). `examples/make_figures.py` (`make figures`) regenerates two committed figures under `docs/figures/`: the demo circumplex/mood readout and the LIF-vs-Brian2 scaling plot. Added a documentation index ([docs/README.md](README.md)) cross-linking every doc. No library code changed.
 
 ## v0.2.5
 
@@ -64,6 +68,6 @@ See [ARCHITECTURE_COMPLETE.md](ARCHITECTURE_COMPLETE.md) for full system design.
 
 **Phase 4** (partial): MaleCNS connectivity - Loader implemented for JSON, Feather, and Parquet formats (`malecns_connectome.py`: `load_connectome()`, `map_to_aso_names()`). `MaleCNSCircuit(connectivity_path=...)` loads KC→MBON weights from user-provided local file. Feather/Parquet require optional `connectome` extra (`uv sync --extra connectome` installs pyarrow); missing pyarrow raises `ImportError` with clear install instructions. HDF5 loader stub documented (not yet implemented). Mapping to Aso catalog names is best-effort by instance name; mismatches are zero-filled. Missing file or bad format raises `ConnectomeLoadError`. Without `connectivity_path`, weights stay random (NOT connectome-backed; docstring warns). Test fixtures (`tests/fixtures/malecns_real_ids.{json,feather,parquet}`) use REAL body IDs from MaleCNS v1.0 dataset (KC: 11862, 13173, ...; MBON: 10013, 10079, ...) but connection weights are synthetic for test purposes; fixtures document provenance (https://male-cns.janelia.org/download/, CC-BY 4.0). Download script (`scripts/extract_malecns_sample.py`) and data guide (`docs/MALECNS_DATA.md`) document how to obtain real connectivity via neuPrint API or GCS. **Still blocked on full completion**: Real KC→MBON connectivity weights from published MaleCNS export; Phase 4 complete when production connectome file (real weights) tested end-to-end in research context.
 
-**Phase 5** (blocked): Brian2 C++ codegen - Device selection, standalone build lifecycle. Current Brian2Circuit hardcodes numpy.
+**Phase 5** (blocked): Brian2 C++ codegen - Device selection, standalone build lifecycle. Current Brian2Circuit hardcodes numpy; the ~40 ms/step numpy overhead this incurs is quantified in [BENCHMARKS.md](BENCHMARKS.md).
 
 **Phase 6** (empirical): τ parameter tuning - Real agent or user study to validate τ_valence=300s, labile window, etc.
