@@ -153,10 +153,10 @@ KC→MBON weights update on `learn()` when a reward (US) arrives:
 
 1. **`HeuristicAppraisalEngine`** (default): Offline keyword-based heuristics. No network, no LLM. Deterministic and fast.
    - Novelty: 0.8 on first encounter, decays with repetition.
-   - Goal relevance: sentiment + note_id/ticker/query presence ± positive/negative keywords.
-   - Coping potential: sentiment + control keywords (review, wallet, form) − negative keywords.
+   - Goal relevance: sentiment + note_id/query presence ± positive/negative keywords (research/journal paths). Also supports ticker/event/page identifiers.
+   - Coping potential: sentiment + control keywords (review, protocol, form, method) − negative keywords.
    - Norm congruence: sentiment ± keywords.
-   - Self-relevance: note_id/ticker presence or keywords (my, review, wallet, PnL).
+   - Self-relevance: note_id presence or keywords (my, experiment, observation, note, review). Also supports ticker (for other domains).
 
 2. **`DualPathEncoder.from_llm(...)`**: Hook for emotional-memory's `LLMAppraisalEngine`. Caller supplies the LLM client (e.g., OpenAI, Anthropic). **Blocked on** production API keys and secrets.
 
