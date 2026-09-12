@@ -302,6 +302,64 @@ def _load_arrow(path: Path) -> ConnectivityData:
     )
 
 
+def _normalize_mbon_name(name: str) -> str:
+    """
+    Normalize MaleCNS MBON instance names to Aso-style names.
+    
+    MaleCNS uses abbreviated lobe names in instance strings:
+        - y → gamma
+        - B → beta (uppercase to distinguish from lowercase 'b')
+        - a → alpha (only as a standalone segment, not within 'gamma')
+    
+    Examples:
+        - "MBON01(y5B'2a)_R" → "MBON-gamma5beta'2a"
+        - "MBON14(a3)_R" → "MBON-alpha3"
+        - "MBON11(y1pedc>a/B)_L" → "MBON-gamma1pedc>alpha/beta"
+    
+    Args:
+        name: Instance name from MaleCNS data (may include MBON##(...) wrapper)
+    
+    Returns:
+        Normalized name matching Aso catalog style
+    """
+    # Extract the part in parentheses if present (e.g., "MBON01(y5B'2a)_R" → "y5B'2a")
+    if "(" in name and ")" in name:
+        start = name.index("(") + 1
+        end = name.index(")")
+        core = name[start:end]
+    else:
+        core = name
+    
+    # Apply abbreviation expansions in order
+    # Start with less ambiguous replacements
+    normalized = core
+    
+    # Replace y with gamma (Greek gamma lobe)
+    # But be careful: 'y' can appear alone (y1, y2) or in sequences (y1y2)
+    # We want: y1 → gamma1, but not gamma → galphamma
+    normalized = normalized.replace("y", "gamma")
+    
+    # Replace B (uppercase) with beta
+    normalized = normalized.replace("B", "beta")
+    
+    # Replace 'a' with 'alpha' only in specific contexts:
+    # - At the start: a3 → alpha3
+    # - After '>' or '/': >a/B → >alpha/beta
+    # - But NOT in the middle of 'gamma' or at the end of lobe descriptors like '2a'
+    # Strategy: Only replace standalone 'a' followed by a digit or at boundaries
+    import re
+    # Match 'a' at start of string followed by digit
+    normalized = re.sub(r'^a(\d)', r'alpha\1', normalized)
+    # Match 'a' after '>' or '/' 
+    normalized = re.sub(r'([>/])a([/\d]|$)', r'\1alpha\2', normalized)
+    
+    # Add MBON- prefix if not present
+    if not normalized.startswith("MBON"):
+        normalized = "MBON-" + normalized
+    
+    return normalized
+
+
 def map_to_aso_names(
     connectivity: ConnectivityData,
     aso_names: list[str],
@@ -320,8 +378,9 @@ def map_to_aso_names(
 
     Note:
         MaleCNS body IDs and Aso catalog names do not have 1:1 correspondence.
-        This function matches by instance name when available; unmatched MBONs
-        are documented as mismatches.
+        This function matches by instance name when available, with normalization
+        to handle MaleCNS abbreviations (y→gamma, B→beta, a→alpha).
+        Unmatched MBONs are zero-filled.
     """
     n_kc = connectivity.kc_to_mbon.shape[0]
     n_aso = len(aso_names)
@@ -334,7 +393,16 @@ def map_to_aso_names(
         for mbon_idx, mbon_body_id in enumerate(connectivity.mbon_body_ids):
             meta = connectivity.neuron_metadata.get(mbon_body_id, {})
             instance_name = meta.get("instance", "")
+            
+            # Try exact match first
             if instance_name == aso_name:
+                mapped[:, j] = connectivity.kc_to_mbon[:, mbon_idx]
+                matched.append(aso_name)
+                break
+            
+            # Try normalized match (handle MaleCNS abbreviations)
+            normalized = _normalize_mbon_name(instance_name)
+            if normalized == aso_name:
                 mapped[:, j] = connectivity.kc_to_mbon[:, mbon_idx]
                 matched.append(aso_name)
                 break
