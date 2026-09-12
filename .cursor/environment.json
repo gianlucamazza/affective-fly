@@ -1,0 +1,7 @@
+{
+  "name": "affective-fly",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "install": "uv sync --extra dev --extra brian --extra viz"
+}
