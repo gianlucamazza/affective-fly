@@ -113,6 +113,7 @@ def main() -> None:
         emotional_memory=EmotionalMemory(store=store, embedder=embedder),
         store=store,
         embedder=embedder,
+        # Demo-compressed taus (not the 300/60/180 hypothesis defaults).
         mood_field=MoodField(tau_valence=10.0, tau_arousal=5.0, tau_approach=8.0),
     )
 

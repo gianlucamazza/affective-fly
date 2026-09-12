@@ -68,10 +68,16 @@ The `context` dict provides semantic information about the frame:
 }
 ```
 
-- `visual_hash`: str — Seed for deterministic visual vector generation when set by the host at frame creation. Used as the hash input to `to_sensory_frame()`. Important: `sensory_frame_to_host_frame()` stores a fingerprint of the actual visual vector and does NOT round-trip to the same visual via that fingerprint — exact replay requires logging the host-chosen `visual_hash` at frame creation (or logging context that seeds the vector).
+- `visual_hash`: str — Seed for deterministic visual vector generation when set by the host at frame creation. Used as the hash input to `to_sensory_frame()`.
 - `visual_data`: dict — Host-specific visual encoding (e.g., DOM structure, screenshot metadata)
 
 If neither `visual_hash` nor `visual_data` is provided, the visual vector is generated from the `context` dict hash.
+
+#### Visual replay is not a round-trip
+
+`sensory_frame_to_host_frame()` stores a SHA-256 fingerprint of the *vector bytes*. That fingerprint is **not** the seed `to_sensory_frame()` used, and it is **not** invertible. Replaying an exported frame seeds a *new* visual from the fingerprint string.
+
+Do not invent a seed from the fingerprint. For exact visual replay, the host must log the `visual_hash` it chose at frame creation (or rely on a context-only seed, which is stable only if `context` is unchanged).
 
 ### Example Frames
 

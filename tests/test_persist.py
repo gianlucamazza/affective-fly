@@ -2,7 +2,7 @@
 
 from emotional_memory import EmotionalMemory, SQLiteStore
 
-from affective_fly import AffectiveLoop, FakeEmbedder, MockFlyCircuit, MoodField, SensoryFrame
+from affective_fly import AffectiveLoop, FakeEmbedder, MockFlyCircuit, SensoryFrame, lab_mood_field
 from affective_fly.persist import load_mood, save_mood
 
 
@@ -36,7 +36,7 @@ def test_mood_survives_in_same_sqlite(tmp_path):
     db = tmp_path / "fly.db"
     store = SQLiteStore(db)
     embedder = FakeEmbedder()
-    mood = MoodField(tau_valence=8.0, tau_arousal=4.0, tau_approach=5.0)
+    mood = lab_mood_field()
     loop = AffectiveLoop(
         fly_circuit=MockFlyCircuit(seed=1),
         emotional_memory=EmotionalMemory(store=store, embedder=embedder),

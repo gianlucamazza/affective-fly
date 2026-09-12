@@ -1,7 +1,17 @@
 """Tests for mood field."""
 
 
-from affective_fly.mood_field import MoodField, MoodState
+from affective_fly.mood_field import (
+    HYPOTHESIS_TAU_APPROACH,
+    HYPOTHESIS_TAU_AROUSAL,
+    HYPOTHESIS_TAU_VALENCE,
+    LAB_TAU_APPROACH,
+    LAB_TAU_AROUSAL,
+    LAB_TAU_VALENCE,
+    MoodField,
+    MoodState,
+    lab_mood_field,
+)
 
 
 def test_mood_field_roundtrip():
@@ -36,6 +46,20 @@ def test_mood_field_initialization():
     assert mood_field.tau_valence == 300.0
     assert mood_field.tau_arousal == 60.0
     assert mood_field.valence == 0.2
+
+
+def test_mood_field_defaults_are_hypothesis_not_lab():
+    """MoodField() keeps 300/60/180 s. Lab runner uses lab_mood_field()."""
+    hypothesis = MoodField()
+    assert hypothesis.tau_valence == HYPOTHESIS_TAU_VALENCE == 300.0
+    assert hypothesis.tau_arousal == HYPOTHESIS_TAU_AROUSAL == 60.0
+    assert hypothesis.tau_approach == HYPOTHESIS_TAU_APPROACH == 180.0
+
+    lab = lab_mood_field()
+    assert lab.tau_valence == LAB_TAU_VALENCE == 8.0
+    assert lab.tau_arousal == LAB_TAU_AROUSAL == 4.0
+    assert lab.tau_approach == LAB_TAU_APPROACH == 5.0
+    assert lab.tau_valence != hypothesis.tau_valence
 
 
 def test_mood_field_update():

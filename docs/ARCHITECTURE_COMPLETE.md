@@ -122,11 +122,15 @@ See [MAPPING_MBON_DAN.md](MAPPING_MBON_DAN.md) for formulas and rationale.
 
 ## Mood Field: Slow EMA
 
-`MoodField` is an exponential moving average (EMA) of the current affect readout:
+`MoodField` is an exponential moving average (EMA) of the current affect readout.
+
+**Hypothesis defaults** (unvalidated; Phase 6):
 
 - **τ_valence = 300 s** (5 min): Slow mood persistence.
 - **τ_arousal = 60 s** (1 min): Faster arousal decay.
 - **τ_approach = 180 s** (3 min): Approach tendency for launch gate.
+
+**Lab / CLI** (`lab_mood_field()`, `python -m affective_fly run`, short demos): 8 / 4 / 5 s so mood moves in seconds. That runner is not measuring the hypothesis. Do not replace 300 / 60 / 180 without a host study.
 
 Update: `mood ← mood + (1 − e^(−dt/τ)) · (affect − mood)`.
 
@@ -281,10 +285,10 @@ Where the gap is, layer by layer. Today = v0.2.5.
 | Layer | Today | Complete |
 |---|---|---|
 | **L0 Sensing** | `HostFrame` v1.0 schema with stable JSON contract; `HostAdapter` for journal save/load/replay; `SensoryFrame.from_dict` remains for direct use; host supplies reward/outcome/pnl via context fields | Production embedders (screenshot → vector, DOM structure → vector); real-time event bus adapters; stable schema version across breaking changes |
-| **L1 Circuit** | Mock, LIF, Brian2 (numpy), MaleCNS (Aso names + published KC→MBON when `connectivity_path` is set); all backends calibrated to one rate band, `syn_gain` from `n_kc` and KC→MBON fan-in | Brian2 C++ path + latency budget; circuit registry |
+| **L1 Circuit** | Mock, LIF, Brian2 (numpy), MaleCNS (Aso names + published KC→MBON when `connectivity_path` is set); `get_circuit(name)` registry; all backends calibrated to one rate band, `syn_gain` from `n_kc` and KC→MBON fan-in | Brian2 C++ path + latency budget |
 | **L2 Plasticity** | Three-factor `learn`, delayed US (`td_sequential`), optional r−V | Eligibility τ calibrated from usage; online PE mode documented; no invented Hige identity |
 | **L3 Affect bridge** | Fixed MBON/DAN → CoreAffect map; valence (relative) and approach (absolute) are distinct axes; arousal on `[0, 1]` | Same map (frozen) + calibration notebook; approach saturation resolved; honesty labels unchanged |
-| **L4 Mood** | MoodField EMA + SQLite `fly_mood` | Cross-process reopen proven; τ_* treated as **hypotheses** until real agent data |
+| **L4 Mood** | MoodField EMA + SQLite `fly_mood`; hypothesis τ (300/60/180) vs lab τ (8/4/5) documented | Cross-process reopen proven; τ_* treated as **hypotheses** until real agent data |
 | **L5 Memory (EM)** | encode / reconsolidate / retrieve / resonance | Production store path; `retrieval_with_explanations` optional; resonance on by default when EM enables it |
 | **L6 Dual path** | HeuristicAppraisalEngine + `from_llm` hook | Real LLMAppraisalEngine behind env; skip-clean without keys |
 | **L7 Policy + Gate** | Fixed thresholds + LaunchGate; avoidance evaluated before the arousal gate | Host-pluggable Policy; gate metrics; no impulsive CLICK/TYPE |
@@ -307,7 +311,7 @@ Where the gap is, layer by layer. Today = v0.2.5.
 2. Appraisal is annotation, never replacement.
 3. No invented MaleCNS body IDs without an export file.
 4. Constants in MAPPING are **working**, not unique and not fitted to data — where one *is* fitted (the `syn_gain` gain law) it says so.
-5. τ_valence = 300 s and its siblings are open empirical questions, answerable only with a real host agent.
+5. τ_valence = 300 s and its siblings are open empirical questions, answerable only with a real host agent. Lab/CLI 8/4/5 s values are compressed for visibility, not a refit.
 
 ## Design Rationale
 

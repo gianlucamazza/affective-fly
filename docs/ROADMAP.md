@@ -46,7 +46,7 @@ Not in scope for this repo: token-launch product, sex/mating ensembles, swarm N 
 
 ## Questions
 
-Whether τ_valence = 300 s is appropriate; whether valence should stay linear; how long the labile window should be; how retrieval behaves as the store grows. These need a real agent or user study, not guesswork.
+Whether τ_valence = 300 s is appropriate; whether valence should stay linear; how long the labile window should be; how retrieval behaves as the store grows. These need a real agent or user study, not guesswork. The live runner and short demos use compressed lab taus (8 / 4 / 5 s) so mood moves in seconds — that is not evidence for or against the hypothesis defaults.
 
 Open from the v0.2.5 calibration:
 
@@ -70,4 +70,4 @@ See [ARCHITECTURE_COMPLETE.md](ARCHITECTURE_COMPLETE.md) for full system design.
 
 **Phase 5** (blocked): Brian2 C++ codegen - Device selection, standalone build lifecycle. Current Brian2Circuit hardcodes numpy; the ~40 ms/step numpy overhead this incurs is quantified in [BENCHMARKS.md](BENCHMARKS.md).
 
-**Phase 6** (empirical): τ parameter tuning - Real agent or user study to validate τ_valence=300s, labile window, etc.
+**Phase 6** (empirical): τ parameter tuning - Real agent or user study to validate τ_valence=300s (and 60 / 180), labile window, etc. Lab/CLI 8/4/5 s stays a visibility choice until that study.

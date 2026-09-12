@@ -147,6 +147,23 @@ def test_live_loop_uses_lif_circuit_by_default(tmp_path):
     assert isinstance(loop.fly_circuit, LIFCircuit)
 
 
+def test_live_loop_uses_lab_mood_taus(tmp_path):
+    """live_loop compresses τ so mood moves in seconds; not the 300/60/180 hypothesis."""
+    from affective_fly import LAB_TAU_APPROACH, LAB_TAU_AROUSAL, LAB_TAU_VALENCE
+
+    loop = live_loop(
+        db_path=tmp_path / "live.db",
+        host_journal_path=tmp_path / "host.jsonl",
+        interval=0.0,
+        ticks=1,
+        sleep=lambda _: None,
+    )
+
+    assert loop.mood_field.tau_valence == LAB_TAU_VALENCE
+    assert loop.mood_field.tau_arousal == LAB_TAU_AROUSAL
+    assert loop.mood_field.tau_approach == LAB_TAU_APPROACH
+
+
 def test_live_loop_accepts_custom_circuit(tmp_path):
     """live_loop accepts a custom fly_circuit argument."""
     from affective_fly import MockFlyCircuit
