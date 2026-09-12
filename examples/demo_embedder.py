@@ -27,8 +27,14 @@ def main() -> None:
 
     print("=== Semantic embedder with journal queries ===")
 
-    em = EmotionalMemory(store=InMemoryStore(), embedder=embedder)
-    loop = AffectiveLoop(fly_circuit=LIFCircuit(n_kc=500, n_dan=20, n_mbon=34, seed=42), emotional_memory=em)
+    store = InMemoryStore()
+    em = EmotionalMemory(store=store, embedder=embedder)
+    loop = AffectiveLoop(
+        fly_circuit=LIFCircuit(n_kc=500, n_dan=20, n_mbon=34, seed=42),
+        emotional_memory=em,
+        store=store,
+        embedder=embedder,
+    )
 
     frames = [
         SensoryFrame.from_dict({

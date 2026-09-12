@@ -41,11 +41,13 @@ Use `HostFrame` for structured host integration with versioned schema and journa
 from emotional_memory import EmotionalMemory, InMemoryStore
 from affective_fly import AffectiveLoop, FakeEmbedder, LIFCircuit, HostFrame
 
+store = InMemoryStore()
+embedder = FakeEmbedder()
 loop = AffectiveLoop(
     fly_circuit=LIFCircuit(n_kc=1000, n_dan=20, n_mbon=34, seed=42),
-    emotional_memory=EmotionalMemory(
-        store=InMemoryStore(), embedder=FakeEmbedder()
-    ),
+    emotional_memory=EmotionalMemory(store=store, embedder=embedder),
+    store=store,
+    embedder=embedder,
 )
 
 # Create a HostFrame from semantic events
@@ -77,11 +79,13 @@ Direct `SensoryFrame.from_dict()` usage remains supported:
 ```python
 from affective_fly import AffectiveLoop, FakeEmbedder, MockFlyCircuit, SensoryFrame
 
+store = InMemoryStore()
+embedder = FakeEmbedder()
 loop = AffectiveLoop(
     fly_circuit=MockFlyCircuit(seed=42),
-    emotional_memory=EmotionalMemory(
-        store=InMemoryStore(), embedder=FakeEmbedder()
-    ),
+    emotional_memory=EmotionalMemory(store=store, embedder=embedder),
+    store=store,
+    embedder=embedder,
 )
 
 decision = loop.step(

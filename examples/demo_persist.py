@@ -12,9 +12,12 @@ DB = Path("affective_fly.db")
 
 
 def session(store: SQLiteStore, mood: MoodField | None = None) -> AffectiveLoop:
+    embedder = FakeEmbedder()
     return AffectiveLoop(
         fly_circuit=MockFlyCircuit(seed=42),
-        emotional_memory=EmotionalMemory(store=store, embedder=FakeEmbedder()),
+        emotional_memory=EmotionalMemory(store=store, embedder=embedder),
+        store=store,
+        embedder=embedder,
         mood_field=mood or MoodField(tau_valence=8.0, tau_arousal=4.0, tau_approach=5.0),
     )
 

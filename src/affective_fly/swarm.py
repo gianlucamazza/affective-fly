@@ -5,7 +5,7 @@ Implements NeuroSwarm × AFT: N agents with independent circuits
 but shared affective memory. Resonances become swarm 'culture'.
 """
 
-from emotional_memory import EmotionalMemory
+from emotional_memory import Embedder, EmotionalMemory, MemoryStore
 
 from .affect_bridge import AffectBridge
 from .fly_circuit import FlyAffectReadout, MockFlyCircuit
@@ -29,6 +29,8 @@ class Swarm:
         self,
         n_agents: int,
         emotional_memory: EmotionalMemory,
+        store: MemoryStore,
+        embedder: Embedder,
         agent_circuits: list[FlyAffectReadout] | None = None,
         journal: ActionJournal | None = None,
     ):
@@ -38,11 +40,16 @@ class Swarm:
         Args:
             n_agents: Number of agents in swarm
             emotional_memory: Shared EmotionalMemory instance
+            store: The MemoryStore backing ``emotional_memory`` (same instance),
+                shared across agents for reconsolidation and appraisal attach.
+            embedder: The Embedder backing ``emotional_memory`` (same instance).
             agent_circuits: List of FlyAffectReadout (if None, creates mocks)
             journal: Shared ActionJournal (optional)
         """
         self.n_agents = n_agents
         self.emotional_memory = emotional_memory
+        self.store = store
+        self.embedder = embedder
 
         # Create agent circuits (independent)
         self.circuits: list[FlyAffectReadout]
@@ -58,6 +65,8 @@ class Swarm:
             loop = AffectiveLoop(
                 fly_circuit=circuit,
                 emotional_memory=self.emotional_memory,  # Shared!
+                store=self.store,
+                embedder=self.embedder,
                 affect_bridge=AffectBridge(),
                 mood_field=MoodField(),
                 policy=Policy(),

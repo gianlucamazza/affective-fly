@@ -161,10 +161,13 @@ def test_lif_sequential_writes_previous_eligibility():
 
 def test_loop_sequential_trains_previous_frame():
     store = InMemoryStore()
+    embedder = FakeEmbedder()
     circuit = MockFlyCircuit(seed=7, td_alpha=0.2)
     loop = AffectiveLoop(
         fly_circuit=circuit,
-        emotional_memory=EmotionalMemory(store=store, embedder=FakeEmbedder()),
+        emotional_memory=EmotionalMemory(store=store, embedder=embedder),
+        store=store,
+        embedder=embedder,
         td_sequential=True,
     )
     loop.step(SensoryFrame.from_dict({"ticker": "A", "sentiment": 0.4}))
@@ -177,10 +180,13 @@ def test_loop_sequential_trains_previous_frame():
 
 def test_loop_applies_learn_from_context_reward():
     store = InMemoryStore()
+    embedder = FakeEmbedder()
     circuit = MockFlyCircuit(seed=4, td_alpha=0.2)
     loop = AffectiveLoop(
         fly_circuit=circuit,
-        emotional_memory=EmotionalMemory(store=store, embedder=FakeEmbedder()),
+        emotional_memory=EmotionalMemory(store=store, embedder=embedder),
+        store=store,
+        embedder=embedder,
     )
     loop.step(SensoryFrame.from_dict({"note_id": "exp-001", "sentiment": 0.3}))
     assert loop.last_td is None

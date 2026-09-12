@@ -37,6 +37,12 @@ class MoodField:
     Provides temporal smoothing so that mood persists longer than
     individual sensory events. Analogous to AFT's slow MoodField layer.
 
+    Name collision, kept deliberate: this ``affective_fly.MoodField`` is a fast
+    EMA over the circuit valence/arousal/approach readout. It is a different
+    object from ``emotional_memory.MoodField`` (the AFT level-3 mood state
+    inside the engine). They are not interchangeable; do not pass one where the
+    other is expected.
+
     Decay time constants:
     - tau_valence: ~300 seconds (5 minutes) for valence
     - tau_arousal: ~60 seconds (1 minute) for arousal (faster decay)

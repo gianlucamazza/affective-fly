@@ -116,9 +116,13 @@ def _run(circuit, n=40, sentiment=0.8, reward=None):
     from affective_fly import AffectiveLoop, FakeEmbedder, SensoryFrame
     from affective_fly.mood_field import MoodField
 
+    store = InMemoryStore()
+    embedder = FakeEmbedder()
     loop = AffectiveLoop(
         fly_circuit=circuit,
-        emotional_memory=EmotionalMemory(store=InMemoryStore(), embedder=FakeEmbedder()),
+        emotional_memory=EmotionalMemory(store=store, embedder=embedder),
+        store=store,
+        embedder=embedder,
         mood_field=MoodField(tau_valence=8.0, tau_arousal=4.0, tau_approach=5.0),
     )
     actions = []

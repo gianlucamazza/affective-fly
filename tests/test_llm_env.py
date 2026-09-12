@@ -112,7 +112,8 @@ def test_live_llm_appraisal_with_key():
     assert llm_client is not None, "API key present but client build failed"
 
     encoder = DualPathEncoder.from_llm(llm_client, fallback_on_error=True)
-    em = EmotionalMemory(store=InMemoryStore(), embedder=FakeEmbedder())
+    store = InMemoryStore()
+    em = EmotionalMemory(store=store, embedder=FakeEmbedder())
 
     frame = SensoryFrame.from_dict({
         "context": "journal",
@@ -131,7 +132,7 @@ def test_live_llm_appraisal_with_key():
     mem = em.encode(event_text, metadata=frame.context)
 
     appraisal = encoder.appraise(event_text, frame.context)
-    updated = encoder.attach(em, mem, appraisal)
+    updated = encoder.attach(store, mem, appraisal)
 
     assert updated.tag.appraisal is not None
     assert -1.0 <= appraisal.novelty <= 1.0

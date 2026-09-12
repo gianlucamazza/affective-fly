@@ -9,9 +9,12 @@ from affective_fly.persist import load_mood, save_mood
 def test_sqlite_store_reopen(tmp_path):
     db = tmp_path / "fly.db"
     store = SQLiteStore(db)
+    embedder = FakeEmbedder()
     loop = AffectiveLoop(
         fly_circuit=MockFlyCircuit(seed=1),
-        emotional_memory=EmotionalMemory(store=store, embedder=FakeEmbedder()),
+        emotional_memory=EmotionalMemory(store=store, embedder=embedder),
+        store=store,
+        embedder=embedder,
     )
     loop.step(
         SensoryFrame.from_dict({"note_id": "exp-001", "query": "failed", "sentiment": -1.0}),
@@ -32,10 +35,13 @@ def test_sqlite_store_reopen(tmp_path):
 def test_mood_survives_in_same_sqlite(tmp_path):
     db = tmp_path / "fly.db"
     store = SQLiteStore(db)
+    embedder = FakeEmbedder()
     mood = MoodField(tau_valence=8.0, tau_arousal=4.0, tau_approach=5.0)
     loop = AffectiveLoop(
         fly_circuit=MockFlyCircuit(seed=1),
-        emotional_memory=EmotionalMemory(store=store, embedder=FakeEmbedder()),
+        emotional_memory=EmotionalMemory(store=store, embedder=embedder),
+        store=store,
+        embedder=embedder,
         mood_field=mood,
     )
     loop.step(

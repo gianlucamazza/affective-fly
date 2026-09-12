@@ -16,11 +16,14 @@ from affective_fly import AffectiveLoop, FakeEmbedder, LIFCircuit, SensoryFrame
 def main() -> None:
     fly_circuit = LIFCircuit(n_kc=200, n_dan=20, n_mbon=34, seed=42)
     store = InMemoryStore()
-    emotional_memory = EmotionalMemory(store=store, embedder=FakeEmbedder())
+    embedder = FakeEmbedder()
+    emotional_memory = EmotionalMemory(store=store, embedder=embedder)
 
     loop = AffectiveLoop(
         fly_circuit=fly_circuit,
         emotional_memory=emotional_memory,
+        store=store,
+        embedder=embedder,
     )
 
     print("=== Step 1: Encode positive memory for experiment session ===")

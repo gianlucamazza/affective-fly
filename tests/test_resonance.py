@@ -12,6 +12,6 @@ def test_resonance_links_after_related_encodes():
     em.set_affect(CoreAffect(valence=-0.4, arousal=0.2))
     em.encode("experiment poor results")
     em.retrieve("experiment", top_k=2)
-    linked = [m for m in em._store.list_all() if m.tag.resonance_links]
+    linked = [m for m in em.list_all() if m.tag.resonance_links]
     assert linked, "expected at least one resonance link"
     assert all(lk.strength > 0 for m in linked for lk in m.tag.resonance_links)

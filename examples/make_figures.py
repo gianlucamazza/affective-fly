@@ -51,9 +51,13 @@ SCENARIOS = [
 def make_circumplex_figure(output: Path) -> Path:
     """Run a deterministic demo episode and plot the two-panel journal figure."""
     journal = ActionJournal(filepath="demo_journal.jsonl")
+    store = InMemoryStore()
+    embedder = FakeEmbedder()
     loop = AffectiveLoop(
         fly_circuit=MockFlyCircuit(seed=42),
-        emotional_memory=EmotionalMemory(store=InMemoryStore(), embedder=FakeEmbedder()),
+        emotional_memory=EmotionalMemory(store=store, embedder=embedder),
+        store=store,
+        embedder=embedder,
         mood_field=MoodField(tau_valence=8.0, tau_arousal=4.0, tau_approach=5.0),
         launch_gate=LaunchGate(required_ticks=3),
         journal=journal,

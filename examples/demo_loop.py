@@ -24,9 +24,13 @@ SCENARIOS = [
 
 def main() -> None:
     journal = ActionJournal(filepath="demo_journal.jsonl")
+    store = InMemoryStore()
+    embedder = FakeEmbedder()
     loop = AffectiveLoop(
         fly_circuit=MockFlyCircuit(seed=42),
-        emotional_memory=EmotionalMemory(store=InMemoryStore(), embedder=FakeEmbedder()),
+        emotional_memory=EmotionalMemory(store=store, embedder=embedder),
+        store=store,
+        embedder=embedder,
         mood_field=MoodField(tau_valence=8.0, tau_arousal=4.0, tau_approach=5.0),
         launch_gate=LaunchGate(required_ticks=3),
         journal=journal,

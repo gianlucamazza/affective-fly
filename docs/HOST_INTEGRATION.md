@@ -158,13 +158,15 @@ from affective_fly import (
     HostAdapter,
 )
 
-# Set up loop
+# Set up loop (store/embedder are injected so reconsolidation and appraisal
+# attach persist through the same instances the engine uses)
+store = SQLiteStore("affective_fly.db")
+embedder = FakeEmbedder()
 loop = AffectiveLoop(
     fly_circuit=LIFCircuit(n_kc=2000, n_dan=20, n_mbon=34, seed=42),
-    emotional_memory=EmotionalMemory(
-        store=SQLiteStore("affective_fly.db"),
-        embedder=FakeEmbedder()
-    ),
+    emotional_memory=EmotionalMemory(store=store, embedder=embedder),
+    store=store,
+    embedder=embedder,
 )
 
 # Load and replay frames
@@ -301,6 +303,8 @@ To enable sequential learning (delayed US), set `td_sequential=True` when creati
 loop = AffectiveLoop(
     fly_circuit=circuit,
     emotional_memory=memory,
+    store=store,          # same instances backing `memory`
+    embedder=embedder,
     td_sequential=True,  # Delayed US writes onto previous frame's eligibility
 )
 ```
@@ -336,9 +340,13 @@ frames = [
 ]
 
 # Replay through real circuit
+store = InMemoryStore()
+embedder = FakeEmbedder()
 loop = AffectiveLoop(
     fly_circuit=LIFCircuit(n_kc=200, n_dan=10, n_mbon=20, seed=42),
-    emotional_memory=EmotionalMemory(store=InMemoryStore(), embedder=FakeEmbedder()),
+    emotional_memory=EmotionalMemory(store=store, embedder=embedder),
+    store=store,
+    embedder=embedder,
 )
 
 decisions = HostAdapter.replay(frames, loop, encode_memory=True)

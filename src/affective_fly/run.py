@@ -62,6 +62,7 @@ def live_loop(
     """
     db = Path(db_path)
     store = SQLiteStore(db)
+    embedder = FakeEmbedder()
     mood = load_mood(db) or MoodField(tau_valence=8.0, tau_arousal=4.0, tau_approach=5.0)
 
     # Default to LIFCircuit (honest spiking), fallback to Mock
@@ -74,7 +75,9 @@ def live_loop(
 
     loop = AffectiveLoop(
         fly_circuit=fly_circuit,
-        emotional_memory=EmotionalMemory(store=store, embedder=FakeEmbedder()),
+        emotional_memory=EmotionalMemory(store=store, embedder=embedder),
+        store=store,
+        embedder=embedder,
         mood_field=mood,
         launch_gate=LaunchGate(required_ticks=3),
         journal=ActionJournal(filepath=str(journal_path)),

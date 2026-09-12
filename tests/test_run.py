@@ -69,9 +69,13 @@ def test_live_loop_writes_host_journal(tmp_path):
 
     from affective_fly import AffectiveLoop, FakeEmbedder, MockFlyCircuit
 
+    store = InMemoryStore()
+    embedder = FakeEmbedder()
     replay_loop = AffectiveLoop(
         fly_circuit=MockFlyCircuit(seed=42),
-        emotional_memory=EmotionalMemory(store=InMemoryStore(), embedder=FakeEmbedder()),
+        emotional_memory=EmotionalMemory(store=store, embedder=embedder),
+        store=store,
+        embedder=embedder,
     )
 
     decisions = HostAdapter.replay(frames, replay_loop, encode_memory=True)

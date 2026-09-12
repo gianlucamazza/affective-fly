@@ -175,6 +175,13 @@ The slow-path appraisal is **attached** to the tag after encoding. Do **not** pa
 
 **Disable** reconsolidation by setting `labile_window_seconds ≤ 0`.
 
+**Two reconsolidation owners** touch `tag.reconsolidation_count`; keep them
+distinct. This module owns the *encode-side* labile-window match-or-encode,
+tracked separately in `metadata["reconsolidation_count"]`. `emotional-memory`
+owns an independent APE-gated reconsolidation during retrieval, which can also
+bump `tag.reconsolidation_count`. Hence `tag.reconsolidation_count ≥
+metadata["reconsolidation_count"]`.
+
 ## Policy
 
 `Policy.decide()` maps mood + retrieved memories to an action:
@@ -204,7 +211,8 @@ The gate always runs; the loop overwrites CLICK/TYPE with WAIT if the gate is cl
 - **`EmotionalMemory.set_affect(CoreAffect)`**: Set the current affect before encoding.
 - **`EmotionalMemory.encode(content, metadata=...)`**: Create a memory with the current affect.
 - **`EmotionalMemory.retrieve(query, top_k=...)`**: Retrieve memories weighted by current mood (affective resonance).
-- **`EmotionalMemory._store.update(memory)`**: Reconsolidate (update existing memory).
+- **`EmotionalMemory.list_all()`**: Read all stored memories (reconsolidation match scan, resonance inspection).
+- **Injected `store.update(memory)` + `embedder.embed(content)`**: Reconsolidate / attach appraisal. `emotional-memory` 0.18 exposes no public `store`/`embedder` accessor, so affective-fly holds the same `store`/`embedder` instances it handed to the engine and injects them into `Reconsolidator`/`DualPathEncoder` (`AffectiveLoop(store=, embedder=)`) rather than reaching into engine internals.
 
 **Never mock** `EmotionalMemory`, `store`, or `retrieve`. Use real `InMemoryStore` or `SQLiteStore` with `FakeEmbedder` (library test utility) or `SentenceTransformerEmbedder` (`--extra embed`).
 

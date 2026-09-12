@@ -14,7 +14,7 @@ def main() -> None:
     em.encode("experiment poor results")
     em.retrieve("experiment failed", top_k=2)
     print(f"{'id':<10}  {'n_links':>7}  links")
-    for mem in em._store.list_all():
+    for mem in em.list_all():
         links = mem.tag.resonance_links or []
         print(
             f"{mem.id[:8]:<10}  {len(links):7d}  {[(lk.link_type, round(lk.strength, 3)) for lk in links]}"
