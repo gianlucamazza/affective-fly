@@ -36,7 +36,7 @@ The circumplex/mood readout of a demo episode is shown under [Usage](#usage).
 
 ## Not in scope
 
-Token-launch product, sex/mating ensembles, and swarms of N ≫ 8 (see [`docs/ROADMAP.md`](docs/ROADMAP.md)). Brian2 C++ standalone codegen is planned but not yet implemented (Phase 5).
+Token-launch product, sex/mating ensembles, and swarms of N ≫ 8 (see [`docs/ROADMAP.md`](docs/ROADMAP.md)). Brian2 C++ standalone codegen is opt-in (`Brian2Circuit(codegen_target="cpp_standalone")`); the default remains numpy so CI needs no compiler.
 
 ## Installation
 

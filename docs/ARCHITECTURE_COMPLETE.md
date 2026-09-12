@@ -78,10 +78,11 @@ Deterministic leaky integrate-and-fire (LIF) neurons implemented in pure Python/
 Brian2-backed LIF with the same functional contract as `LIFCircuit`:
 
 - Uses `brian2.NeuronGroup` + `brian2.Synapses` for populations and connectivity.
-- Hardcoded to numpy backend (`b2.prefs.codegen.target = "numpy"`).
-- C++ standalone codegen is **not yet implemented** (would require device selection + build lifecycle).
+- Default `codegen_target="numpy"` (`b2.prefs.codegen.target = "numpy"`); no compiler required.
+- Opt-in `codegen_target="cpp_standalone"`: first `step()` builds a cached C++ binary (`clean=False`); later steps call `device.run(run_args=...)` with the current `I`, `v`, and KC weights. Run duration is baked at first step. CI without a toolchain skips these tests; constructing the C++ path without a compiler raises `CppStandaloneUnavailableError`.
+- `syn_gain` defaults to 1.0. The MBON/DAN band is held by `w_max=0.12`, not the LIF `n_kc` gain law.
 
-**Performance**: ~41 ms/step @ 2000 KC (Brian2 overhead for small networks; C++ would help at 5000+ KC if latency matters).
+**Performance**: ~41 ms/step @ 2000 KC on numpy (fixed runtime overhead). C++ is for hosts that need that overhead gone after a one-time compile; LIF remains the interactive default. Budget: after the cached build, a 2000-KC `step()` should sit inside a 50 ms simulated tick. First compile is outside the budget.
 
 **When to use**: Brian2 is preferable when you need:
 - Visual inspection of network dynamics (`SpikeMonitor`, `StateMonitor`).
@@ -272,7 +273,7 @@ See `examples/demo_persist.py` and `python -m affective_fly demo persist`.
 These require external data or production infrastructure and are **explicitly blocked**:
 
 1. **MaleCNS connectivity**: Published KC→MBON weights load from `data/malecns/kc_mbon_connectivity.feather`. Mapping is the curated Aso 2014 table onto the 7-name catalog; `n_kc` must match the file. Gain is refit from published fan-in (`default_syn_gain`). Types outside the catalog stay unmatched. Without `connectivity_path`, weights stay random.
-2. **Brian2 C++ codegen**: Requires device selection + build lifecycle. Current `Brian2Circuit` hardcodes numpy.
+2. **Brian2 C++ codegen**: Implemented as opt-in `codegen_target="cpp_standalone"`. Default remains numpy. Hosts without a compiler keep numpy; tests skip cleanly. First-step compile and a local `--cpp` benchmark are still required to quote a machine-specific latency number.
 3. **Production LLM**: `DualPathEncoder.from_llm()` hook exists; requires API keys and secrets. Do **not** add fake LLM stubs that pretend to call OpenAI/Anthropic.
 4. **Semantic embedder in CI**: `SentenceTransformerEmbedder` (`--extra embed`) downloads MiniLM. Kept optional to avoid network in default CI.
 
@@ -285,7 +286,7 @@ Where the gap is, layer by layer. Today = v0.2.5.
 | Layer | Today | Complete |
 |---|---|---|
 | **L0 Sensing** | `HostFrame` v1.0 schema with stable JSON contract; `HostAdapter` for journal save/load/replay; `SensoryFrame.from_dict` remains for direct use; host supplies reward/outcome/pnl via context fields | Production embedders (screenshot → vector, DOM structure → vector); real-time event bus adapters; stable schema version across breaking changes |
-| **L1 Circuit** | Mock, LIF, Brian2 (numpy), MaleCNS (Aso names + published KC→MBON when `connectivity_path` is set); `get_circuit(name)` registry; all backends calibrated to one rate band, `syn_gain` from `n_kc` and KC→MBON fan-in | Brian2 C++ path + latency budget |
+| **L1 Circuit** | Mock, LIF, Brian2 (numpy default, `cpp_standalone` opt-in), MaleCNS (Aso names + published KC→MBON when `connectivity_path` is set); `get_circuit(name)` registry; all backends calibrated to one rate band; LIF `syn_gain` from `n_kc` and KC→MBON fan-in, Brian2 band held by `w_max` | Host-measured C++ latency at large KC |
 | **L2 Plasticity** | Three-factor `learn`, delayed US (`td_sequential`), optional r−V | Eligibility τ calibrated from usage; online PE mode documented; no invented Hige identity |
 | **L3 Affect bridge** | Fixed MBON/DAN → CoreAffect map; valence (relative) and approach (absolute) are distinct axes; arousal on `[0, 1]` | Same map (frozen) + calibration notebook; approach saturation resolved; honesty labels unchanged |
 | **L4 Mood** | MoodField EMA + SQLite `fly_mood`; hypothesis τ (300/60/180) vs lab τ (8/4/5) documented | Cross-process reopen proven; τ_* treated as **hypotheses** until real agent data |

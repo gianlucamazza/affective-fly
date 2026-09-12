@@ -36,3 +36,15 @@ def test_brian2_same_seed_same_first_step():
     sb = b.step(sensory, dt=0.003)
     assert sa.mbon_approach_rate == pytest.approx(sb.mbon_approach_rate, rel=1e-6, abs=1e-9)
     assert sa.mbon_avoid_rate == pytest.approx(sb.mbon_avoid_rate, rel=1e-6, abs=1e-9)
+
+
+def test_brian2_default_target_is_numpy():
+    circuit = Brian2Circuit(n_kc=20, n_dan=4, n_mbon=6, seed=1)
+    assert circuit.codegen_target == "numpy"
+    assert circuit.syn_gain == 1.0
+    assert circuit.w_max == 0.12
+
+
+def test_brian2_unknown_target_rejected():
+    with pytest.raises(ValueError, match="codegen_target"):
+        Brian2Circuit(n_kc=10, n_dan=2, n_mbon=4, codegen_target="cython")

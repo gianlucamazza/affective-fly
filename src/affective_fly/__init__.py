@@ -62,12 +62,20 @@ from .td import (
 
 # Brian2 is an optional extra; the name stays importable either way.
 Brian2Circuit: type[FlyAffectReadout] | None
+CppStandaloneUnavailableError: type[Exception] | None
+has_cpp_compiler: object | None
 try:
     from .brian2_circuit import Brian2Circuit as _Brian2Circuit
+    from .brian2_circuit import CppStandaloneUnavailableError as _CppStandaloneUnavailableError
+    from .brian2_circuit import has_cpp_compiler as _has_cpp_compiler
 except ImportError:  # pragma: no cover
     Brian2Circuit = None
+    CppStandaloneUnavailableError = None
+    has_cpp_compiler = None
 else:
     Brian2Circuit = _Brian2Circuit
+    CppStandaloneUnavailableError = _CppStandaloneUnavailableError
+    has_cpp_compiler = _has_cpp_compiler
 
 __all__ = [
     "AffectBridge",
@@ -76,6 +84,8 @@ __all__ = [
     "FlyAffectReadout",
     "LIFCircuit",
     "Brian2Circuit",
+    "CppStandaloneUnavailableError",
+    "has_cpp_compiler",
     "MaleCNSCircuit",
     "get_circuit",
     "CIRCUIT_NAMES",
