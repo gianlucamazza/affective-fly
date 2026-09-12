@@ -7,7 +7,14 @@ from .aso import ASO_CATALOG, AsoCatalog, NamedCell
 from .circuit_registry import CIRCUIT_NAMES, get_circuit
 from .dual_path import DualPathEncoder, HeuristicAppraisalEngine
 from .fake_embedder import FakeEmbedder
-from .fly_circuit import FlyAffectReadout, LIFCircuit, MBONDanState, MockFlyCircuit
+from .fly_circuit import (
+    FlyAffectReadout,
+    LIFCircuit,
+    MBONDanState,
+    MockFlyCircuit,
+    default_syn_gain,
+    mean_column_fan_in,
+)
 from .honesty import HumanEmotionLabel, map_to_human_label
 from .host_adapter import (
     SCHEMA_VERSION,
@@ -72,6 +79,8 @@ __all__ = [
     "MaleCNSCircuit",
     "get_circuit",
     "CIRCUIT_NAMES",
+    "default_syn_gain",
+    "mean_column_fan_in",
     "ConnectivityData",
     "ConnectomeLoadError",
     "load_connectome",

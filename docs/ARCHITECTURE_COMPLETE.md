@@ -68,7 +68,7 @@ Deterministic leaky integrate-and-fire (LIF) neurons implemented in pure Python/
 - **Plasticity**: Three-factor KC→MBON weight updates (eligibility trace × DAN gates × learning rate). PAM raises approach weights and lowers avoid; PPL1 does the opposite (functional contrast, not Hige depression). Weights are excitatory, bounded to `[w_min, w_max]` with `w_min = 0`: depression drives a synapse to silence, it does not invert its sign.
 - **Integration**: Sub-stepped at `dt_sim` (default 1 ms) for the caller's `dt`. A single Euler step of the loop's 50 ms would both under-sample the 20 ms membrane and cap every rate at `1/dt`.
 - **Synapses**: A presynaptic spike is an instantaneous voltage jump, matching Brian2's `on_pre`, not a current held over the step.
-- **Gain**: `syn_gain` defaults to `950 · n_kc^(−0.70)`, so circuits of different KC counts share one rate band instead of being different models.
+- **Gain**: `syn_gain` defaults to `950 · n_kc^(−0.70)` scaled by actual KC→MBON column fan-in (`default_syn_gain`), so random circuits of different KC counts and a published MaleCNS load share one rate band. Pass `syn_gain` to override.
 - **Rates**: Mean firing rates over the span the retained spike events actually cover, not instantaneous spike/dt. Invariant in the caller's `dt`.
 
 **Performance**: ~24 ms/step @ 2000 KC and ~8.5 ms @ 200 KC, for `step(dt=0.05)` — that is 50 sub-steps. Sub-stepping costs roughly two orders of magnitude over the single-step integration used before v0.2.5, which was fast but produced rates an order of magnitude below the documented band. Still under real time (50 ms simulated per 24 ms wall). `dt_sim` is the knob if a host needs the latency back.
@@ -100,7 +100,7 @@ Named circuit using Aso et al. (2014) published MBON/DAN cell types. Connectome 
 - Loader maps edges onto Aso catalog names via the curated Aso 2014 short-name table (heuristic instance match is fallback). Several MaleCNS bodies of one type are summed. Unmatched MBONs are zero-filled. File KC count must match `n_kc` unless `allow_kc_mismatch=True`. `named_rates()` aliases population rates, not per-cell rates.
 - Missing/unreadable file raises `ConnectomeLoadError`.
 
-**Still open**: Gain-law refit on real KC→MBON fan-out. Published weights load from `data/malecns/kc_mbon_connectivity.feather`. Test fixtures (`malecns_real_ids.*`) still use real MaleCNS v1.0 body IDs with synthetic weights. Phase 4 remains partial. See [ROADMAP.md](ROADMAP.md).
+Published weights load from `data/malecns/kc_mbon_connectivity.feather`. After load, `LIFCircuit.refresh_default_syn_gain()` refits `syn_gain` from column fan-in so untrained MBON rates stay in band; DAN keeps the n_kc-scale gain. Test fixtures (`malecns_real_ids.*`) still use real MaleCNS v1.0 body IDs with synthetic weights. Phase 4 remains partial (7-name catalog, HDF5 stub). See [ROADMAP.md](ROADMAP.md).
 
 **Do not** invent body IDs or connectome weights. Always load from real data or document that weights are random placeholders.
 
@@ -271,7 +271,7 @@ See `examples/demo_persist.py` and `python -m affective_fly demo persist`.
 
 These require external data or production infrastructure and are **explicitly blocked**:
 
-1. **MaleCNS connectivity**: Published KC→MBON weights load from `data/malecns/kc_mbon_connectivity.feather`. Mapping is the curated Aso 2014 table onto the 7-name catalog; `n_kc` must match the file. Still partial: gain-law refit (1.3) and types outside the catalog are unmatched. Without `connectivity_path`, weights stay random.
+1. **MaleCNS connectivity**: Published KC→MBON weights load from `data/malecns/kc_mbon_connectivity.feather`. Mapping is the curated Aso 2014 table onto the 7-name catalog; `n_kc` must match the file. Gain is refit from published fan-in (`default_syn_gain`). Types outside the catalog stay unmatched. Without `connectivity_path`, weights stay random.
 2. **Brian2 C++ codegen**: Requires device selection + build lifecycle. Current `Brian2Circuit` hardcodes numpy.
 3. **Production LLM**: `DualPathEncoder.from_llm()` hook exists; requires API keys and secrets. Do **not** add fake LLM stubs that pretend to call OpenAI/Anthropic.
 4. **Semantic embedder in CI**: `SentenceTransformerEmbedder` (`--extra embed`) downloads MiniLM. Kept optional to avoid network in default CI.
@@ -285,7 +285,7 @@ Where the gap is, layer by layer. Today = v0.2.5.
 | Layer | Today | Complete |
 |---|---|---|
 | **L0 Sensing** | `HostFrame` v1.0 schema with stable JSON contract; `HostAdapter` for journal save/load/replay; `SensoryFrame.from_dict` remains for direct use; host supplies reward/outcome/pnl via context fields | Production embedders (screenshot → vector, DOM structure → vector); real-time event bus adapters; stable schema version across breaking changes |
-| **L1 Circuit** | Mock, LIF, Brian2 (numpy), MaleCNS (Aso names + published KC→MBON when `connectivity_path` is set); `get_circuit(name)` registry; all backends calibrated to one rate band, `syn_gain` derived from `n_kc` | Gain law replaced by a physical normalisation; Brian2 C++ path + latency budget |
+| **L1 Circuit** | Mock, LIF, Brian2 (numpy), MaleCNS (Aso names + published KC→MBON when `connectivity_path` is set); `get_circuit(name)` registry; all backends calibrated to one rate band, `syn_gain` from `n_kc` and KC→MBON fan-in | Brian2 C++ path + latency budget |
 | **L2 Plasticity** | Three-factor `learn`, delayed US (`td_sequential`), optional r−V | Eligibility τ calibrated from usage; online PE mode documented; no invented Hige identity |
 | **L3 Affect bridge** | Fixed MBON/DAN → CoreAffect map; valence (relative) and approach (absolute) are distinct axes; arousal on `[0, 1]` | Same map (frozen) + calibration notebook; approach saturation resolved; honesty labels unchanged |
 | **L4 Mood** | MoodField EMA + SQLite `fly_mood`; hypothesis τ (300/60/180) vs lab τ (8/4/5) documented | Cross-process reopen proven; τ_* treated as **hypotheses** until real agent data |
