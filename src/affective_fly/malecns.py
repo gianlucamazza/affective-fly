@@ -147,9 +147,8 @@ class MaleCNSCircuit(FlyAffectReadout):
                 else:
                     # Pad with zeros
                     pad_rows = n_kc_backend - mapped_weights.shape[0]
-                    mapped_weights = np.vstack([
-                        mapped_weights,
-                        np.zeros((pad_rows, mapped_weights.shape[1]))
-                    ])
+                    mapped_weights = np.vstack(
+                        [mapped_weights, np.zeros((pad_rows, mapped_weights.shape[1]))]
+                    )
             self.backend.w_kc_mbon = mapped_weights
             self.connectivity_loaded = True

@@ -18,7 +18,12 @@ from .mood_field import MoodField
 from .persist import load_mood, save_mood
 
 DEFAULT_EVENTS: tuple[dict, ...] = (
-    {"context": "journal", "note_id": "exp-001", "sentiment": 1.0, "query": "successful experiment"},
+    {
+        "context": "journal",
+        "note_id": "exp-001",
+        "sentiment": 1.0,
+        "query": "successful experiment",
+    },
     {"context": "journal", "note_id": "exp-001", "sentiment": 0.8, "query": "promising results"},
     {"context": "review", "note_id": "exp-001", "sentiment": -1.0, "query": "failed replication"},
     {"context": "review", "note_id": "exp-001", "sentiment": -0.4, "query": "revision required"},
