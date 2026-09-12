@@ -53,14 +53,14 @@ def main() -> None:
     appraisal = encoder.appraise(frame.event_text(), frame.context)
     updated = encoder.attach(em, mem, appraisal)
 
-    print(f"\nLLM Appraisal:")
+    print("\nLLM Appraisal:")
     print(f"  novelty:          {appraisal.novelty:+.3f}")
     print(f"  goal_relevance:   {appraisal.goal_relevance:+.3f}")
     print(f"  coping_potential: {appraisal.coping_potential:.3f}")
     print(f"  norm_congruence:  {appraisal.norm_congruence:+.3f}")
     print(f"  self_relevance:   {appraisal.self_relevance:.3f}")
 
-    print(f"\nCircuit CoreAffect (preserved):")
+    print("\nCircuit CoreAffect (preserved):")
     print(f"  valence: {updated.tag.core_affect.valence:+.3f}")
     print(f"  arousal: {updated.tag.core_affect.arousal:.3f}")
 

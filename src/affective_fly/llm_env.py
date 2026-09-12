@@ -13,7 +13,8 @@ Returns None if required keys are missing (skip-clean for demos/tests).
 from __future__ import annotations
 
 import os
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 
 def build_llm_client() -> Callable[[str, dict[str, Any]], str] | None:
@@ -67,7 +68,7 @@ def build_llm_client() -> Callable[[str, dict[str, Any]], str] | None:
                 },
             },
         )
-        content = response.choices[0].message.content
+        content: str | None = response.choices[0].message.content
         if content is None:
             raise ValueError("Empty response from LLM")
         return content
