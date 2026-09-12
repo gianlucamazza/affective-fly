@@ -1,0 +1,5 @@
+{
+  "source": "Generated from tests/fixtures/malecns_real_ids.json",
+  "license": "CC-BY 4.0 (body IDs from Janelia MaleCNS v1.0)",
+  "note": "REAL body IDs; SYNTHETIC weights for loader tests only"
+}

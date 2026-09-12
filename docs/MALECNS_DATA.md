@@ -41,9 +41,27 @@ uv sync --extra connectome
 pip install affective-fly[connectome]
 ```
 
-### Option 1: Use Provided Test Fixtures (Synthetic Weights)
+### Option 1: Committed published KC→MBON weights
 
-The repository includes test fixtures with **REAL body IDs** from MaleCNS v1.0 but **SYNTHETIC weights** for testing:
+`data/malecns/kc_mbon_connectivity.feather` is every KC→MBON edge from MaleCNS v1.0 minconf-0.5 (61,210 edges, 4,063 KCs, 97 MBONs, weights [1, 152], CC-BY 4.0). Requires `uv sync --extra connectome`.
+
+```python
+from affective_fly import MaleCNSCircuit, load_connectome
+
+path = "data/malecns/kc_mbon_connectivity.feather"
+n_kc = load_connectome(path).kc_to_mbon.shape[0]
+circuit = MaleCNSCircuit(backend="lif", n_kc=n_kc, connectivity_path=path)
+```
+
+`n_kc` must equal the file's KC count. A mismatch raises `ConnectomeLoadError` unless you pass `allow_kc_mismatch=True` (truncate extra rows or pad with zeros).
+
+Mapping onto the 7-name `ASO_CATALOG` uses the curated Aso 2014 (eLife e04580 Table 1) short-name table. Types outside that table, and `*-like` MaleCNS labels, stay unmatched — we do not invent Aso identities. `named_rates()` is a **population alias** (approach/avoid/DAN rate repeated per name), not a per-cell readout.
+
+### Option 2: Test fixtures (synthetic weights or top-200)
+
+`tests/fixtures/malecns_real_ids.{json,feather,parquet}` have **REAL body IDs** from MaleCNS v1.0 and **SYNTHETIC weights**.
+
+`tests/fixtures/malecns_kc_mbon_real_top200.json` has **REAL published weights** for the top 200 edges. Aso coverage there is **partial** (see `MALECNS_TOP200_MAPPING.md`). Use `n_kc=185`.
 
 ```python
 from affective_fly import MaleCNSCircuit
@@ -55,9 +73,7 @@ circuit = MaleCNSCircuit(
 )
 ```
 
-**Note**: These fixtures have real MaleCNS body IDs (e.g., KC: 11862, 13173; MBON: 10013, 10079) but connection weights are synthetic for test purposes only.
-
-### Option 2: Extract Real Connectivity (Recommended for Research)
+### Option 3: Extract Real Connectivity (rebuild from Janelia)
 
 #### Using neuPrint API
 
@@ -105,22 +121,17 @@ curl -O https://storage.googleapis.com/flyem-male-cns/v1.0/connectome-data/flat-
 # Download full connectivity (1.1 GB, takes ~5-10 minutes)
 curl -O https://storage.googleapis.com/flyem-male-cns/v1.0/connectome-data/flat-connectome/connectome-weights-male-cns-v1.0-minconf-0.5.feather
 
-# Filter to KC→MBON connections with Python
+# Filter to KC→MBON connections (expected: 61,210 edges)
 python scripts/filter_malecns_connectivity.py \
-    --input connectome-weights-male-cns-v1.0-minconf-0.5.feather \
-    --output kc_mbon_connectivity.feather \
-    --source-type KC \
-    --target-type MBON
+    --weights data/malecns/connectome-weights-male-cns-v1.0-minconf-0.5.feather \
+    --annotations data/malecns/body-annotations-male-cns-v1.0-minconf-0.5.feather \
+    --output data/malecns/kc_mbon_connectivity.feather \
+    --format feather
 ```
 
-### Option 3: CI/Development (No Download)
+### Option 4: CI / offline (no 1.1 GB download)
 
-For CI or offline development, tests automatically skip when fixtures are missing:
-
-```python
-# Tests with @pytest.mark.skipif will skip gracefully
-pytest tests/test_malecns_connectome.py
-```
+CI installs `--extra connectome` and loads the committed filtered feather plus JSON fixtures. Raw Janelia files are gitignored. Tests skip only if a named fixture file is absent or pyarrow is missing.
 
 ## File Formats
 
@@ -204,8 +215,6 @@ pip install pyarrow>=14.0.0
 
 ## Phase 4 Status
 
-**Current**: Loader implemented for JSON/Feather/Parquet; real body IDs documented; connection weights require user-provided connectome export.
+**Partial.** Published KC→MBON weights load end-to-end from `data/malecns/kc_mbon_connectivity.feather` (or a user rebuild). Mapping is the curated Aso 2014 short-name table onto the 7-name catalog. KC-count mismatch fails unless overridden. Gain-law refit after real fan-out is not done.
 
-**Complete Phase 4 requires**: Real KC→MBON connectivity matrix with published weights loaded into a `MaleCNSCircuit` for research use.
-
-See `ROADMAP.md` for development phases.
+See `ROADMAP.md` and `MALECNS_TOP200_MAPPING.md`.

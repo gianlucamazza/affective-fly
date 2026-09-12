@@ -67,10 +67,10 @@ def test_malecns_real_weights_committed_fixture():
     fixture_path = Path("tests/fixtures/malecns_kc_mbon_real_top200.json")
     assert fixture_path.exists(), f"Fixture missing: {fixture_path}"
 
-    # Create circuit with real weights from committed fixture
+    # Fixture has 185 unique KCs; n_kc must match unless allow_kc_mismatch
     circuit_real = MaleCNSCircuit(
         backend="lif",
-        n_kc=80,
+        n_kc=185,
         seed=42,
         connectivity_path=fixture_path,
     )
@@ -78,7 +78,7 @@ def test_malecns_real_weights_committed_fixture():
     # Create circuit with random weights (same seed)
     circuit_random = MaleCNSCircuit(
         backend="lif",
-        n_kc=80,
+        n_kc=185,
         seed=42,
         connectivity_path=None,  # Force random fallback
     )
@@ -88,7 +88,10 @@ def test_malecns_real_weights_committed_fixture():
     w_random = circuit_random.backend.w_kc_mbon
 
     assert w_real.shape == w_random.shape
-    assert w_real.shape == (80, ASO_CATALOG.n_mbon)
+    assert w_real.shape == (185, ASO_CATALOG.n_mbon)
+    # Top-200 covers MBON01/03/11 of the 7-name catalog (partial, not silent)
+    assert circuit_real.matched_mbon_count >= 3
+    assert "MBON-gamma5beta'2a" in circuit_real.matched_mbon_names
 
     # Real weights should differ from random initialization
     diff_norm = np.linalg.norm(w_real - w_random)
@@ -120,12 +123,23 @@ def test_malecns_real_weights_full_data():
     connectivity_path = _find_connectivity_file()
     assert connectivity_path is not None
 
+    from affective_fly import load_connectome
+
+    try:
+        n_kc = load_connectome(connectivity_path).kc_to_mbon.shape[0]
+    except ImportError as e:
+        pytest.skip(f"pyarrow not installed: {e}")
+
     circuit = MaleCNSCircuit(
         backend="lif",
-        n_kc=80,
+        n_kc=n_kc,
         seed=42,
         connectivity_path=connectivity_path,
     )
+    assert circuit.connectivity_loaded
+    assert circuit.kc_rows_in_file == n_kc
+    # Full MaleCNS export includes all 7 catalog types (Aso 2014 short names)
+    assert circuit.matched_mbon_count == ASO_CATALOG.n_mbon
 
     # Verify circuit can step with full real weights
     sensory = np.random.rand(16)

@@ -97,10 +97,10 @@ Named circuit using Aso et al. (2014) published MBON/DAN cell types. Connectome 
 **Usage**:
 - `MaleCNSCircuit(connectivity_path="/path/to/connectome.json")` loads KC→MBON weights from local file (JSON fully implemented).
 - Without `connectivity_path`, weights remain **random (NOT connectome-backed)**.
-- Loader maps edges to Aso catalog names by instance name; unmatched MBONs are zero-filled.
+- Loader maps edges onto Aso catalog names via the curated Aso 2014 short-name table (heuristic instance match is fallback). Several MaleCNS bodies of one type are summed. Unmatched MBONs are zero-filled. File KC count must match `n_kc` unless `allow_kc_mismatch=True`. `named_rates()` aliases population rates, not per-cell rates.
 - Missing/unreadable file raises `ConnectomeLoadError`.
 
-**Still blocked on**: Full integration requires published MaleCNS export from Janelia (https://male-cns.janelia.org/download/) or hemibrain papers. Test fixtures use real MaleCNS v1.0 body IDs with synthetic weights (`malecns_real_ids.*`); Phase 4 is **partial** until a production connectome file (real weights) is tested end-to-end. See [ROADMAP.md](ROADMAP.md).
+**Still open**: Gain-law refit on real KC→MBON fan-out. Published weights load from `data/malecns/kc_mbon_connectivity.feather`. Test fixtures (`malecns_real_ids.*`) still use real MaleCNS v1.0 body IDs with synthetic weights. Phase 4 remains partial. See [ROADMAP.md](ROADMAP.md).
 
 **Do not** invent body IDs or connectome weights. Always load from real data or document that weights are random placeholders.
 
@@ -267,7 +267,7 @@ See `examples/demo_persist.py` and `python -m affective_fly demo persist`.
 
 These require external data or production infrastructure and are **explicitly blocked**:
 
-1. **MaleCNS connectivity**: Loader implemented (`malecns_connectome.py`) but requires user-provided connectome file. `MaleCNSCircuit(connectivity_path=...)` loads KC→MBON weights from local JSON (Feather/Parquet/HDF5 stubs documented). Without path, weights stay random (NOT connectome-backed). Full integration blocked on published MaleCNS export from Janelia or hemibrain papers.
+1. **MaleCNS connectivity**: Published KC→MBON weights load from `data/malecns/kc_mbon_connectivity.feather`. Mapping is the curated Aso 2014 table onto the 7-name catalog; `n_kc` must match the file. Still partial: gain-law refit (1.3) and types outside the catalog are unmatched. Without `connectivity_path`, weights stay random.
 2. **Brian2 C++ codegen**: Requires device selection + build lifecycle. Current `Brian2Circuit` hardcodes numpy.
 3. **Production LLM**: `DualPathEncoder.from_llm()` hook exists; requires API keys and secrets. Do **not** add fake LLM stubs that pretend to call OpenAI/Anthropic.
 4. **Semantic embedder in CI**: `SentenceTransformerEmbedder` (`--extra embed`) downloads MiniLM. Kept optional to avoid network in default CI.
@@ -281,7 +281,7 @@ Where the gap is, layer by layer. Today = v0.2.5.
 | Layer | Today | Complete |
 |---|---|---|
 | **L0 Sensing** | `HostFrame` v1.0 schema with stable JSON contract; `HostAdapter` for journal save/load/replay; `SensoryFrame.from_dict` remains for direct use; host supplies reward/outcome/pnl via context fields | Production embedders (screenshot → vector, DOM structure → vector); real-time event bus adapters; stable schema version across breaking changes |
-| **L1 Circuit** | Mock, LIF, Brian2 (numpy), MaleCNS (Aso names, **random** weights); all backends calibrated to one rate band, `syn_gain` derived from `n_kc` | MaleCNS weights from a real export; Brian2 C++ path + latency budget; circuit registry; gain law replaced by a physical normalisation |
+| **L1 Circuit** | Mock, LIF, Brian2 (numpy), MaleCNS (Aso names + published KC→MBON when `connectivity_path` is set); all backends calibrated to one rate band, `syn_gain` derived from `n_kc` | Gain law replaced by a physical normalisation; Brian2 C++ path + latency budget; circuit registry |
 | **L2 Plasticity** | Three-factor `learn`, delayed US (`td_sequential`), optional r−V | Eligibility τ calibrated from usage; online PE mode documented; no invented Hige identity |
 | **L3 Affect bridge** | Fixed MBON/DAN → CoreAffect map; valence (relative) and approach (absolute) are distinct axes; arousal on `[0, 1]` | Same map (frozen) + calibration notebook; approach saturation resolved; honesty labels unchanged |
 | **L4 Mood** | MoodField EMA + SQLite `fly_mood` | Cross-process reopen proven; τ_* treated as **hypotheses** until real agent data |
@@ -355,7 +355,7 @@ The line between a legitimate test double and a stub that fakes completion:
 |---|---|
 | `FakeEmbedder` in unit tests that cannot download MiniLM | Demos or features that only work with `FakeEmbedder` |
 | Skipping when there is no C++ compiler or no LLM key | A fake LLM returning canned JSON while claiming the path is wired |
-| `HeuristicAppraisalEngine` (deterministic, offline) | Random MaleCNS weights (loader exists; requires user-provided connectome file) |
+| `HeuristicAppraisalEngine` (deterministic, offline) | Invented MaleCNS body IDs or Aso identities for types 23+ / `*-like` |
 
 A host integration must be a schema plus journal replay of real frames, not a null host inventing outcomes.
 

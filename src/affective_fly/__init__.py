@@ -19,10 +19,13 @@ from .launch_gate import LaunchGate
 from .loop import AffectiveLoop, SensoryFrame
 from .malecns import MaleCNSCircuit
 from .malecns_connectome import (
+    PUBLISHED_MBON_SHORT_TO_ASO,
     ConnectivityData,
     ConnectomeLoadError,
     load_connectome,
+    malecns_mbon_short_name,
     map_to_aso_names,
+    resolve_aso_name,
 )
 from .mood_field import MoodField
 from .persist import load_mood, save_mood
@@ -61,6 +64,9 @@ __all__ = [
     "ConnectomeLoadError",
     "load_connectome",
     "map_to_aso_names",
+    "PUBLISHED_MBON_SHORT_TO_ASO",
+    "malecns_mbon_short_name",
+    "resolve_aso_name",
     "ASO_CATALOG",
     "AsoCatalog",
     "NamedCell",
