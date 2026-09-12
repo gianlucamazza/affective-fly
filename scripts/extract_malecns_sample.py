@@ -56,7 +56,8 @@ def main():
 def extract_via_neuprint(output_path: Path, fmt: str, max_edges: int):
     """Extract real data via neuprint-python API."""
     try:
-        from neuprint import Client, NeuronCriteria as NC, fetch_adjacencies
+        from neuprint import Client, fetch_adjacencies
+        from neuprint import NeuronCriteria as NC
     except ImportError:
         raise ImportError(
             "neuprint-python is required. Install with: pip install neuprint-python"

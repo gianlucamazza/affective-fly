@@ -56,7 +56,13 @@ class HeuristicAppraisalEngine:
         blob = _blob(event_text, ctx)
         sentiment = float(ctx.get("sentiment") or 0.0)
 
-        key = str(ctx.get("note_id") or ctx.get("ticker") or ctx.get("event") or ctx.get("page") or event_text)
+        key = str(
+            ctx.get("note_id")
+            or ctx.get("ticker")
+            or ctx.get("event")
+            or ctx.get("page")
+            or event_text
+        )
         count = self._seen.get(key, 0)
         self._seen[key] = count + 1
         novelty = 0.8 if count == 0 else max(-0.5, 0.8 - 0.4 * count)

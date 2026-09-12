@@ -337,7 +337,6 @@ class LIFCircuit(FlyAffectReadout):
         n_sub = max(1, int(round(dt / self.dt_sim)))
         h = dt / n_sub
 
-
         n_approach_spikes = 0
         n_avoid_spikes = 0
         n_dan_spikes = 0

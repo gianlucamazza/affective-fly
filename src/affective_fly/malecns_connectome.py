@@ -83,23 +83,51 @@ def load_connectome(path: str | Path) -> ConnectivityData:
 
 
 def _load_json(path: Path) -> ConnectivityData:
-    """Load JSON connectivity export."""
+    """Load JSON connectivity export.
+    
+    Supports two formats:
+    1. {"edges": [...], "neurons": [...]} - full format
+    2. [{"bodyId_pre": ..., "bodyId_post": ..., "weight": ..., ...}, ...] - edge list
+    """
     try:
         with open(path) as f:
             data = json.load(f)
     except (OSError, json.JSONDecodeError) as e:
         raise ConnectomeLoadError(f"Failed to read JSON from {path}: {e}") from e
 
-    if "edges" not in data or "neurons" not in data:
-        raise ConnectomeLoadError(
-            f"JSON must contain 'edges' and 'neurons' keys. Found: {list(data.keys())}"
-        )
-
-    # Build neuron metadata map
-    neurons = {n["bodyId"]: n for n in data["neurons"]}
+    # Handle edge-list format (e.g., from filter_malecns_connectivity.py)
+    if isinstance(data, list):
+        edges_list = data
+        # Build neuron metadata from edge list
+        neurons = {}
+        for edge in edges_list:
+            pre_id = edge.get("bodyId_pre")
+            post_id = edge.get("bodyId_post")
+            if pre_id and pre_id not in neurons:
+                neurons[pre_id] = {
+                    "bodyId": pre_id,
+                    "type": edge.get("type_pre", "KC"),
+                    "instance": edge.get("instance_pre", ""),
+                }
+            if post_id and post_id not in neurons:
+                neurons[post_id] = {
+                    "bodyId": post_id,
+                    "type": edge.get("type_post", "MBON"),
+                    "instance": edge.get("instance_post", ""),
+                }
+    elif isinstance(data, dict):
+        if "edges" not in data or "neurons" not in data:
+            raise ConnectomeLoadError(
+                f"JSON dict must contain 'edges' and 'neurons' keys. Found: {list(data.keys())}"
+            )
+        edges_list = data["edges"]
+        # Build neuron metadata map
+        neurons = {n["bodyId"]: n for n in data["neurons"]}
+    else:
+        raise ConnectomeLoadError(f"JSON must be a list or dict, got: {type(data)}")
 
     # Collect KC and MBON body IDs
-    kc_ids = sorted([bid for bid, meta in neurons.items() if meta.get("type") == "KC"])
+    kc_ids = sorted([bid for bid, meta in neurons.items() if meta.get("type", "").startswith("KC")])
     mbon_ids = sorted([
         bid for bid, meta in neurons.items()
         if meta.get("type", "").startswith("MBON") or meta.get("type") == "MBON"
@@ -116,7 +144,7 @@ def _load_json(path: Path) -> ConnectivityData:
     weights = np.zeros((len(kc_ids), len(mbon_ids)), dtype=float)
 
     # Populate from edges
-    for edge in data["edges"]:
+    for edge in edges_list:
         pre_id = edge.get("bodyId_pre")
         post_id = edge.get("bodyId_post")
         weight = edge.get("weight", 1.0)
@@ -139,7 +167,7 @@ def _load_json(path: Path) -> ConnectivityData:
 
 
 def _load_arrow(path: Path) -> ConnectivityData:
-    """Load Feather or Parquet connectivity export using pyarrow."""
+    """Load Feather or Parquet connectivity export using pyarrow (no pandas)."""
     try:
         import pyarrow.feather as feather
         import pyarrow.parquet as parquet
@@ -160,47 +188,51 @@ def _load_arrow(path: Path) -> ConnectivityData:
     except Exception as e:
         raise ConnectomeLoadError(f"Failed to read {path.suffix} from {path}: {e}") from e
 
-    # Convert to pandas for easier manipulation
-    try:
-        df = table.to_pandas()
-    except Exception as e:
-        raise ConnectomeLoadError(f"Failed to convert arrow table to pandas: {e}") from e
-
-    # Expect columns: bodyId_pre, bodyId_post, weight, type (and optionally neuron metadata)
+    # Use pyarrow-native operations (no pandas)
     required_cols = {"bodyId_pre", "bodyId_post"}
-    if not required_cols.issubset(df.columns):
+    if not required_cols.issubset(table.column_names):
         raise ConnectomeLoadError(
-            f"Arrow file must contain columns {required_cols}. Found: {list(df.columns)}"
+            f"Arrow file must contain columns {required_cols}. Found: {list(table.column_names)}"
         )
+
+    # Convert columns to Python lists (noqa: N806 - matching column names)
+    bodyId_pre_list = table["bodyId_pre"].to_pylist()  # noqa: N806
+    bodyId_post_list = table["bodyId_post"].to_pylist()  # noqa: N806
 
     # If neuron metadata columns exist (type_pre, type_post, instance_pre, instance_post),
     # build the neurons dict. Otherwise, infer from the edge types.
     neurons: dict[int, dict[str, Any]] = {}
 
     # Collect unique pre and post body IDs
-    all_pre = df["bodyId_pre"].unique()
-    all_post = df["bodyId_post"].unique()
-    all_body_ids = set(all_pre) | set(all_post)
+    all_pre = set(bodyId_pre_list)
+    all_post = set(bodyId_post_list)
+    all_body_ids = all_pre | all_post
 
     # Build neuron metadata from columns if available
-    if "type_pre" in df.columns and "type_post" in df.columns:
-        for _, row in df.iterrows():
-            pre_id = row["bodyId_pre"]
-            post_id = row["bodyId_post"]
+    if "type_pre" in table.column_names and "type_post" in table.column_names:
+        type_pre_list = table["type_pre"].to_pylist()
+        type_post_list = table["type_post"].to_pylist()
+        instance_pre_list = table["instance_pre"].to_pylist() if "instance_pre" in table.column_names else [""] * len(bodyId_pre_list)
+        instance_post_list = table["instance_post"].to_pylist() if "instance_post" in table.column_names else [""] * len(bodyId_post_list)
+
+        for pre_id, post_id, type_pre, type_post, inst_pre, inst_post in zip(
+            bodyId_pre_list, bodyId_post_list, type_pre_list, type_post_list,
+            instance_pre_list, instance_post_list
+        ):
             if pre_id not in neurons:
                 neurons[pre_id] = {
                     "bodyId": int(pre_id),
-                    "type": row.get("type_pre", ""),
-                    "instance": row.get("instance_pre", ""),
+                    "type": type_pre or "",
+                    "instance": inst_pre or "",
                 }
             if post_id not in neurons:
                 neurons[post_id] = {
                     "bodyId": int(post_id),
-                    "type": row.get("type_post", ""),
-                    "instance": row.get("instance_post", ""),
+                    "type": type_post or "",
+                    "instance": inst_post or "",
                 }
     else:
-        # Infer types from connection patterns or explicit type column
+        # Infer types from connection patterns
         # Assume KC→MBON edges: pre are KC, post are MBON
         for body_id in all_body_ids:
             if body_id not in neurons:
@@ -230,12 +262,9 @@ def _load_arrow(path: Path) -> ConnectivityData:
     weights = np.zeros((len(kc_ids), len(mbon_ids)), dtype=float)
 
     # Populate from edges
-    weight_col = "weight" if "weight" in df.columns else None
-    for _, row in df.iterrows():
-        pre_id = int(row["bodyId_pre"])
-        post_id = int(row["bodyId_post"])
-        weight = float(row[weight_col]) if weight_col else 1.0
+    weight_list = table["weight"].to_pylist() if "weight" in table.column_names else [1.0] * len(bodyId_pre_list)
 
+    for pre_id, post_id, weight in zip(bodyId_pre_list, bodyId_post_list, weight_list):
         # Only process KC→MBON edges
         if pre_id in kc_idx and post_id in mbon_idx:
             i = kc_idx[pre_id]
