@@ -4,7 +4,7 @@ install:
 	uv sync --all-extras
 
 test:
-	uv run pytest tests/ -v
+	uv run pytest tests/ -v --cov=affective_fly --cov-report=term-missing
 
 lint:
 	uv run ruff check src/ tests/ examples/

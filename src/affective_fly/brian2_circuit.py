@@ -15,7 +15,7 @@ import numpy as np
 from .fly_circuit import FlyAffectReadout, MBONDanState
 
 if TYPE_CHECKING:
-    from .td import PlasticityTrace
+    from .td import PlasticityTrace, TDResult
 
 try:
     import brian2 as b2
@@ -34,7 +34,6 @@ class Brian2Circuit(FlyAffectReadout):
         seed: int = 42,
         sparse_frac: float = 0.05,
         kc_drive_scale: float = 2.5,
-        syn_w: float = 0.35,
         dan_mod_w: float = 0.4,
         spike_window: float = 0.1,
         n_approach: int | None = None,
@@ -42,6 +41,8 @@ class Brian2Circuit(FlyAffectReadout):
         tau_ms: float = 20.0,
         td_alpha: float = 0.05,
         elig_tau: float = 1.0,
+        w_min: float = 0.0,
+        w_max: float = 0.12,
         prediction_error: bool = False,
     ):
         b2.prefs.codegen.target = "numpy"
@@ -64,6 +65,10 @@ class Brian2Circuit(FlyAffectReadout):
         self.last_kc_driven_frac = 0.0
         self.td_alpha = td_alpha
         self.elig_tau = elig_tau
+        # Keep saturated weights inside the 100 Hz MBON ceiling of
+        # docs/MAPPING_MBON_DAN.md.
+        self.w_min = w_min
+        self.w_max = w_max
         self.prediction_error = prediction_error
         self.last_eligibility = np.zeros(n_kc)
         self.last_pam_frac = 0.0
@@ -113,8 +118,10 @@ class Brian2Circuit(FlyAffectReadout):
         self.dan.v = 0
         self.mbon.v = 0
 
-        w_kc_dan = np.abs(self.rng.randn(n_kc, n_dan)) * syn_w
-        self.w_kc_mbon = np.abs(self.rng.randn(n_kc, n_mbon)) * syn_w
+        # Uniform on [0, w_max] for the same reason as LIFCircuit: a
+        # half-normal tail above w_max would be clipped by the first learn().
+        w_kc_dan = self.rng.uniform(0.0, self.w_max, size=(n_kc, n_dan))
+        self.w_kc_mbon = self.rng.uniform(0.0, self.w_max, size=(n_kc, n_mbon))
 
         self.syn_kd = b2.Synapses(
             self.kc, self.dan, "w : 1", on_pre="v_post += w", name=f"syn_kd_{uid}"
@@ -213,7 +220,12 @@ class Brian2Circuit(FlyAffectReadout):
         self.mbon_spikes = [t for t in self.mbon_spikes if t > cutoff]
         self.dan_spikes = [t for t in self.dan_spikes if t > cutoff]
 
-        elapsed = max(min(self.time, self.spike_window), dt)
+        # Each retained event covers exactly dt of simulated time. Deriving the
+        # window from the event count instead of the nominal spike_window keeps
+        # the estimate exact: accumulated float time made the cutoff include an
+        # extra event at dt=0.05, inflating every rate by 1.5x at the dt the
+        # loop actually uses.
+        elapsed = max(len(self._spike_events) * dt, dt)
         approach_rate = self._mean_rate(
             [e[1] for e in self._spike_events], self.n_approach, elapsed
         )
@@ -247,7 +259,7 @@ class Brian2Circuit(FlyAffectReadout):
         v_next: float | None = None,
         sequential: bool = False,
         prediction_error: bool | None = None,
-    ):
+    ) -> TDResult | None:
         from .td import (
             TDResult,
             apply_three_factor,
@@ -275,8 +287,8 @@ class Brian2Circuit(FlyAffectReadout):
             ppl1,
             self.td_alpha,
             self.n_approach,
-            w_min=0.0,
-            w_max=2.0,
+            w_min=self.w_min,
+            w_max=self.w_max,
         )
         self.syn_km.w = self.w_kc_mbon.flatten()
         return TDResult(

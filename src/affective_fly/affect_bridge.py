@@ -29,16 +29,24 @@ class AffectBridge:
     Maps MBON/DAN firing rates to CoreAffect (valence, arousal).
 
     Mapping assumptions:
-    1. Valence = (approach - avoid) / (approach + avoid + epsilon)
+    1. Valence = relative contrast (approach - avoid) / (approach + avoid),
+       attenuated below ``mbon_min_active`` so a near-silent circuit reports
+       neutral instead of saturating on a single spike.
        - Pure approach → +1.0
        - Pure avoid → -1.0
-       - Balanced → 0.0
+       - Balanced or silent → 0.0
 
-    2. Arousal = normalized DAN + arousal rate
-       - Low DAN activity → -1.0 (calm)
-       - High DAN activity → +1.0 (activated)
+    2. Approach tendency = absolute net drive (approach - avoid) referred to
+       the MBON baseline. Same numerator as valence, different denominator:
+       valence says which sign the situation has, approach says how much net
+       push there is behind it. Equal ratios at different rates give equal
+       valence but different approach.
 
-    3. Firing rate ranges calibrated to typical fly MB recordings:
+    3. Arousal = DAN activity above baseline, in [0, 1] (calm → activated).
+       CoreAffect in emotional-memory defines arousal on [0, 1]; returning a
+       negative value here would be silently clamped.
+
+    4. Firing rate ranges calibrated to typical fly MB recordings:
        - MBON: 0-100 Hz (baseline ~10 Hz)
        - DAN: 0-80 Hz (baseline ~5 Hz)
 
@@ -51,6 +59,7 @@ class AffectBridge:
         dan_baseline: float = 5.0,
         mbon_max: float = 100.0,
         dan_max: float = 80.0,
+        mbon_min_active: float = 5.0,
     ):
         """
         Initialize bridge with calibration parameters.
@@ -60,11 +69,14 @@ class AffectBridge:
             dan_baseline: Typical baseline DAN firing rate (Hz)
             mbon_max: Maximum expected MBON rate (Hz)
             dan_max: Maximum expected DAN rate (Hz)
+            mbon_min_active: Total MBON rate (Hz) below which the readout is
+                treated as unreliable and valence is scaled toward neutral
         """
         self.mbon_baseline = mbon_baseline
         self.dan_baseline = dan_baseline
         self.mbon_max = mbon_max
         self.dan_max = dan_max
+        self.mbon_min_active = mbon_min_active
 
     def mbon_dan_to_core_affect(self, state: MBONDanState) -> CoreAffect:
         """
@@ -74,22 +86,35 @@ class AffectBridge:
             state: Current MBON/DAN firing rates
 
         Returns:
-            CoreAffect with valence and arousal in [-1, 1]
+            CoreAffect with valence in [-1, 1] and arousal in [0, 1]
         """
-        # Valence: approach-avoid contrast, normalized
-        approach = max(0, state.mbon_approach_rate)
-        avoid = max(0, state.mbon_avoid_rate)
-        total = approach + avoid + 1e-6  # Prevent division by zero
-        valence = (approach - avoid) / total
-        valence = max(-1.0, min(1.0, valence))
+        valence = self._valence(state)
 
-        # Arousal: DAN activity above baseline, normalized to [-1, 1]
-        # Low activity → -1 (calm), high activity → +1 (excited)
+        # Arousal: DAN activity above baseline, normalized to [0, 1].
+        # Low activity → 0 (calm), high activity → 1 (excited).
         dan_centered = state.dan_reinforcement_rate - self.dan_baseline
         arousal_norm = dan_centered / (self.dan_max - self.dan_baseline)
-        arousal = max(-1.0, min(1.0, arousal_norm))
+        arousal = max(0.0, min(1.0, arousal_norm))
 
         return CoreAffect(valence=valence, arousal=arousal)
+
+    def _valence(self, state: MBONDanState) -> float:
+        """Contrast-normalized valence, attenuated when the circuit is quiet."""
+        approach = max(0.0, float(state.mbon_approach_rate))
+        avoid = max(0.0, float(state.mbon_avoid_rate))
+        activity = approach + avoid
+        contrast = (approach - avoid) / (activity + 1e-6)
+        # Without this, one spike on an otherwise silent population reads as
+        # full-confidence avoidance (0 vs 0.59 Hz gave valence = -1.0).
+        confidence = min(1.0, activity / self.mbon_min_active) if self.mbon_min_active > 0 else 1.0
+        return max(-1.0, min(1.0, contrast * confidence))
+
+    def _approach_tendency(self, state: MBONDanState) -> float:
+        """Net approach drive in Hz, referred to the MBON baseline."""
+        approach = max(0.0, float(state.mbon_approach_rate))
+        avoid = max(0.0, float(state.mbon_avoid_rate))
+        net = (approach - avoid) / (2.0 * self.mbon_baseline)
+        return max(-1.0, min(1.0, net))
 
     def create_appraisal(
         self,
@@ -139,14 +164,8 @@ class AffectBridge:
         Useful for policy and journal logging.
 
         Returns:
-            (valence, arousal, approach_tendency) all in [-1, 1]
+            (valence, arousal, approach_tendency); valence and approach in
+            [-1, 1], arousal in [0, 1]
         """
         core = self.mbon_dan_to_core_affect(state)
-
-        # Approach tendency: ratio of approach to total activity
-        approach = max(0, state.mbon_approach_rate)
-        avoid = max(0, state.mbon_avoid_rate)
-        total = approach + avoid + 1e-6
-        approach_tendency = approach / total * 2 - 1  # Map [0,1] to [-1,1]
-
-        return (core.valence, core.arousal, approach_tendency)
+        return (core.valence, core.arousal, self._approach_tendency(state))

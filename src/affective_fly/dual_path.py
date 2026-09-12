@@ -16,7 +16,7 @@ from __future__ import annotations
 import hashlib
 import json
 from collections import OrderedDict
-from typing import Any, Protocol
+from typing import Any, Protocol, cast
 
 from emotional_memory import AppraisalVector, EmotionalMemory, Memory
 
@@ -107,7 +107,7 @@ class Appraiser(Protocol):
         self,
         event_text: str,
         context: dict[str, Any] | None = None,
-    ) -> AppraisalVector | Any: ...  # Allow GenericAppraisalVector from LLM
+    ) -> AppraisalVector: ...
 
 
 class DualPathEncoder:
@@ -133,7 +133,10 @@ class DualPathEncoder:
         from emotional_memory import LLMAppraisalConfig, LLMAppraisalEngine
 
         config = LLMAppraisalConfig(**config_kwargs) if config_kwargs else None
-        return cls(engine=LLMAppraisalEngine(llm=llm, config=config), cache_size=cache_size)
+        # LLMAppraisalEngine.appraise is typed as a union of the EM and generic
+        # AppraisalVector; both satisfy the Appraiser protocol at runtime.
+        engine = cast(Appraiser, LLMAppraisalEngine(llm=llm, config=config))
+        return cls(engine=engine, cache_size=cache_size)
 
     def _cache_key(self, event_text: str, context: dict[str, Any] | None) -> str:
         ctx = {k: v for k, v in (context or {}).items() if k != "step"}

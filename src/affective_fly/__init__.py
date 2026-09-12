@@ -1,6 +1,6 @@
 """Reduced mushroom-body circuit as the affect source for emotional-memory."""
 
-__version__ = "0.2.4"
+__version__ = "0.2.5"
 
 from .affect_bridge import AffectBridge, MBONDanReadout
 from .aso import ASO_CATALOG, AsoCatalog, NamedCell
@@ -28,10 +28,14 @@ from .td import (
     value_from_state,
 )
 
+# Brian2 is an optional extra; the name stays importable either way.
+Brian2Circuit: type[FlyAffectReadout] | None
 try:
-    from .brian2_circuit import Brian2Circuit
+    from .brian2_circuit import Brian2Circuit as _Brian2Circuit
 except ImportError:  # pragma: no cover
-    Brian2Circuit = None  # type: ignore[misc, assignment]
+    Brian2Circuit = None
+else:
+    Brian2Circuit = _Brian2Circuit
 
 __all__ = [
     "AffectBridge",

@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 if TYPE_CHECKING:
-    from .td import PlasticityTrace
+    from .td import PlasticityTrace, TDResult
 
 
 @dataclass
@@ -61,13 +61,14 @@ class FlyAffectReadout(ABC):
         *,
         v_next: float | None = None,
         sequential: bool = False,
-        prediction_error: bool | None = False,
-    ):
+        prediction_error: bool | None = None,
+    ) -> TDResult | None:
         """Optional three-factor update at KC→MBON. Default: no plasticity.
 
         Bandit: US writes onto the current odor's eligibility.
         Sequential: delayed US writes onto the previous odor's trace.
-        ``prediction_error=True`` uses r − V as the DAN drive.
+        ``prediction_error=True`` uses r − V as the DAN drive; ``None`` (the
+        default) defers to the implementation's own setting.
         """
         return None
 
@@ -148,7 +149,7 @@ class MockFlyCircuit(FlyAffectReadout):
         v_next: float | None = None,
         sequential: bool = False,
         prediction_error: bool | None = None,
-    ):
+    ) -> TDResult | None:
         from .td import TDResult, rescorla_wagner, teaching_signal, value_from_state
 
         if self.last_state is None:
@@ -211,13 +212,16 @@ class LIFCircuit(FlyAffectReadout):
         seed: int = 42,
         sparse_frac: float = 0.05,
         kc_drive_scale: float = 40.0,
-        syn_gain: float = 10.0,
+        syn_gain: float | None = None,
         dan_mod_gain: float = 1.0,
         spike_window: float = 0.1,
+        dt_sim: float = 0.001,
         n_approach: int | None = None,
         n_pam: int | None = None,
         td_alpha: float = 0.05,
         elig_tau: float = 1.0,
+        w_min: float = 0.0,
+        w_max: float = 0.15,
         prediction_error: bool = False,
     ):
         self.n_kc = n_kc
@@ -229,11 +233,24 @@ class LIFCircuit(FlyAffectReadout):
         self.seed = seed
         self.sparse_frac = sparse_frac
         self.kc_drive_scale = kc_drive_scale
-        self.syn_gain = syn_gain
+        # More Kenyon cells means more co-active KCs per odor, so a fixed gain
+        # would put a 80-KC and a 2000-KC circuit in different rate bands. The
+        # constants are an empirical fit, rounded: for each n_kc the gain that
+        # puts an untrained circuit at ~20 Hz total MBON rate was solved by
+        # bisection over several seeds, then log-log fitted (residuals within
+        # ~7%; see docs/MAPPING_MBON_DAN.md). Pass syn_gain to override.
+        self.syn_gain = 950.0 * float(n_kc) ** -0.70 if syn_gain is None else syn_gain
         self.dan_mod_gain = dan_mod_gain
         self.spike_window = spike_window
+        if dt_sim <= 0:
+            raise ValueError("dt_sim must be > 0")
+        self.dt_sim = dt_sim
         self.td_alpha = td_alpha
         self.elig_tau = elig_tau
+        # Bounds chosen so a saturated circuit tops out near the 100 Hz MBON
+        # ceiling documented in docs/MAPPING_MBON_DAN.md.
+        self.w_min = w_min
+        self.w_max = w_max
         self.prediction_error = prediction_error
         self.last_eligibility = np.zeros(n_kc)
         self.last_pam_frac = 0.0
@@ -251,8 +268,13 @@ class LIFCircuit(FlyAffectReadout):
             raise ValueError("n_pam must be in [0, n_dan]")
 
         self.rng = np.random.RandomState(seed)
-        self.w_kc_dan = self.rng.randn(n_kc, n_dan) * 0.1
-        self.w_kc_mbon = self.rng.randn(n_kc, n_mbon) * 0.1
+        # KC→MBON and KC→DAN are cholinergic (excitatory): weights start
+        # non-negative, matching Brian2Circuit. DAN-driven plasticity depresses
+        # them toward zero (Hige et al. 2015), it does not invert their sign.
+        # Uniform on [0, w_max]: a half-normal's tail would sit above w_max
+        # and the first learn() call would clip it down instead of potentiating.
+        self.w_kc_dan = self.rng.uniform(0.0, self.w_max, size=(n_kc, n_dan))
+        self.w_kc_mbon = self.rng.uniform(0.0, self.w_max, size=(n_kc, n_mbon))
         self.w_in_kc: np.ndarray | None = None
 
         self.v_kc = np.full(n_kc, v_rest)
@@ -309,36 +331,58 @@ class LIFCircuit(FlyAffectReadout):
         )
         kc_input = self._sparse_kc_drive(sensory)
 
-        dv_kc = (-(self.v_kc - self.v_rest) + kc_input) / self.tau_m * dt
-        self.v_kc += dv_kc
-        kc_spikes = self.v_kc >= self.v_thresh
-        self.v_kc[kc_spikes] = self.v_rest
-        kc_act = kc_spikes.astype(float)
+        # Integrate at dt_sim and report the aggregate over the requested dt.
+        # One Euler step of the caller's dt (50 ms) would both under-sample a
+        # 20 ms membrane and cap every rate at 1/dt; see docs/MAPPING_MBON_DAN.md.
+        n_sub = max(1, int(round(dt / self.dt_sim)))
+        h = dt / n_sub
 
-        dan_input = kc_act @ self.w_kc_dan * self.syn_gain
-        dv_dan = (-(self.v_dan - self.v_rest) + dan_input) / self.tau_m * dt
-        self.v_dan += dv_dan
-        dan_spikes = self.v_dan >= self.v_thresh
-        self.v_dan[dan_spikes] = self.v_rest
 
-        # PAM (first half) gain-modulates approach MBONs;
-        # PPL1 (second half) gain-modulates avoid MBONs.
-        # Plasticity of KC→MBON is in learn(), not here.
-        pam_frac = float(np.mean(dan_spikes[: self.n_pam])) if self.n_pam else 0.0
-        ppl_frac = float(np.mean(dan_spikes[self.n_pam :])) if self.n_ppl1 else 0.0
+        n_approach_spikes = 0
+        n_avoid_spikes = 0
+        n_dan_spikes = 0
+        kc_driven = np.zeros(self.n_kc)
+        pam_sum = 0.0
+        ppl_sum = 0.0
 
-        mbon_input = kc_act @ self.w_kc_mbon * self.syn_gain
-        mbon_input[: self.n_approach] *= 1.0 + self.dan_mod_gain * pam_frac
-        mbon_input[self.n_approach :] *= 1.0 + self.dan_mod_gain * ppl_frac
+        for _ in range(n_sub):
+            dv_kc = (-(self.v_kc - self.v_rest) + kc_input) / self.tau_m * h
+            self.v_kc += dv_kc
+            kc_spikes = self.v_kc >= self.v_thresh
+            self.v_kc[kc_spikes] = self.v_rest
+            kc_act = kc_spikes.astype(float)
+            kc_driven = np.maximum(kc_driven, kc_act)
 
-        dv_mbon = (-(self.v_mbon - self.v_rest) + mbon_input) / self.tau_m * dt
-        self.v_mbon += dv_mbon
-        mbon_spikes = self.v_mbon >= self.v_thresh
-        self.v_mbon[mbon_spikes] = self.v_rest
+            # Delta synapses: a presynaptic spike is an instantaneous voltage
+            # jump (Brian2's ``v_post += w``), not a current held over h.
+            dan_input = kc_act @ self.w_kc_dan * self.syn_gain
+            self.v_dan += -(self.v_dan - self.v_rest) / self.tau_m * h + dan_input
+            dan_spikes = self.v_dan >= self.v_thresh
+            self.v_dan[dan_spikes] = self.v_rest
 
-        n_approach_spikes = int(np.sum(mbon_spikes[: self.n_approach]))
-        n_avoid_spikes = int(np.sum(mbon_spikes[self.n_approach :]))
-        n_dan_spikes = int(np.sum(dan_spikes))
+            # PAM (first half) gain-modulates approach MBONs;
+            # PPL1 (second half) gain-modulates avoid MBONs.
+            # Plasticity of KC→MBON is in learn(), not here.
+            pam_frac = float(np.mean(dan_spikes[: self.n_pam])) if self.n_pam else 0.0
+            ppl_frac = float(np.mean(dan_spikes[self.n_pam :])) if self.n_ppl1 else 0.0
+            pam_sum += pam_frac
+            ppl_sum += ppl_frac
+
+            mbon_input = kc_act @ self.w_kc_mbon * self.syn_gain
+            mbon_input[: self.n_approach] *= 1.0 + self.dan_mod_gain * pam_frac
+            mbon_input[self.n_approach :] *= 1.0 + self.dan_mod_gain * ppl_frac
+
+            self.v_mbon += -(self.v_mbon - self.v_rest) / self.tau_m * h + mbon_input
+            mbon_spikes = self.v_mbon >= self.v_thresh
+            self.v_mbon[mbon_spikes] = self.v_rest
+
+            n_approach_spikes += int(np.sum(mbon_spikes[: self.n_approach]))
+            n_avoid_spikes += int(np.sum(mbon_spikes[self.n_approach :]))
+            n_dan_spikes += int(np.sum(dan_spikes))
+
+        kc_act = kc_driven
+        pam_frac = pam_sum / n_sub
+        ppl_frac = ppl_sum / n_sub
 
         self.time += dt
         self._spike_events.append((self.time, n_approach_spikes, n_avoid_spikes, n_dan_spikes))
@@ -352,7 +396,12 @@ class LIFCircuit(FlyAffectReadout):
         self.mbon_spikes = [t for t in self.mbon_spikes if t > cutoff]
         self.dan_spikes = [t for t in self.dan_spikes if t > cutoff]
 
-        elapsed = max(min(self.time, self.spike_window), dt)
+        # Each retained event covers exactly dt of simulated time. Deriving the
+        # window from the event count instead of the nominal spike_window keeps
+        # the estimate exact: accumulated float time made the cutoff include an
+        # extra event at dt=0.05, inflating every rate by 1.5x at the dt the
+        # loop actually uses.
+        elapsed = max(len(self._spike_events) * dt, dt)
         approach_counts = [e[1] for e in self._spike_events]
         avoid_counts = [e[2] for e in self._spike_events]
         dan_counts = [e[3] for e in self._spike_events]
@@ -389,7 +438,7 @@ class LIFCircuit(FlyAffectReadout):
         v_next: float | None = None,
         sequential: bool = False,
         prediction_error: bool | None = None,
-    ):
+    ) -> TDResult | None:
         from .td import (
             TDResult,
             apply_three_factor,
@@ -417,6 +466,8 @@ class LIFCircuit(FlyAffectReadout):
             ppl1,
             self.td_alpha,
             self.n_approach,
+            self.w_min,
+            self.w_max,
         )
         return TDResult(
             delta=rescorla_wagner(reward, value),
