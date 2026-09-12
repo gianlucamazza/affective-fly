@@ -85,56 +85,57 @@ def load_connectome(path: str | Path) -> ConnectivityData:
 def _load_json(path: Path) -> ConnectivityData:
     """Load JSON connectivity export.
 
-Supports two formats:
-1. {"edges": [...], "neurons": [...]} - full format
-2. [{"bodyId_pre": ..., "bodyId_post": ..., "weight": ..., ...}, ...] - edge list
-"""
+    Supports two formats:
+    1. Dict with 'edges' and 'neurons' keys
+    2. List of edge dicts (infer neuron metadata from edge metadata columns)
+    """
     try:
         with open(path) as f:
             data = json.load(f)
     except (OSError, json.JSONDecodeError) as e:
         raise ConnectomeLoadError(f"Failed to read JSON from {path}: {e}") from e
 
-    # Handle edge-list format (e.g., from filter_malecns_connectivity.py)
+    # Handle edge-list format (list of dicts)
     if isinstance(data, list):
         edges_list = data
-        # Build neuron metadata from edge list
-        neurons = {}
+        # Infer neuron metadata from edges
+        neurons: dict[int, dict[str, Any]] = {}
         for edge in edges_list:
-            pre_id = edge.get("bodyId_pre")
-            post_id = edge.get("bodyId_post")
-            if pre_id and pre_id not in neurons:
+            pre_id = edge["bodyId_pre"]
+            post_id = edge["bodyId_post"]
+            if pre_id not in neurons:
                 neurons[pre_id] = {
                     "bodyId": pre_id,
                     "type": edge.get("type_pre", "KC"),
                     "instance": edge.get("instance_pre", ""),
                 }
-            if post_id and post_id not in neurons:
+            if post_id not in neurons:
                 neurons[post_id] = {
                     "bodyId": post_id,
                     "type": edge.get("type_post", "MBON"),
                     "instance": edge.get("instance_post", ""),
                 }
+    # Handle dict format with 'edges' and 'neurons'
     elif isinstance(data, dict):
         if "edges" not in data or "neurons" not in data:
             raise ConnectomeLoadError(
                 f"JSON dict must contain 'edges' and 'neurons' keys. Found: {list(data.keys())}"
             )
         edges_list = data["edges"]
-        # Build neuron metadata map
         neurons = {n["bodyId"]: n for n in data["neurons"]}
     else:
-        raise ConnectomeLoadError(f"JSON must be a list or dict, got: {type(data)}")
+        raise ConnectomeLoadError(
+            f"JSON must be a dict (with 'edges'/'neurons') or a list of edges. Got: {type(data)}"
+        )
 
     # Collect KC and MBON body IDs
+    # KC types can be "KC", "KCab-s", "KCg-s2", etc.
+    # MBON types can be "MBON", "MBON01", "MBON05", etc.
     kc_ids = sorted([bid for bid, meta in neurons.items() if meta.get("type", "").startswith("KC")])
-    mbon_ids = sorted(
-        [
-            bid
-            for bid, meta in neurons.items()
-            if meta.get("type", "").startswith("MBON") or meta.get("type") == "MBON"
-        ]
-    )
+    mbon_ids = sorted([
+        bid for bid, meta in neurons.items()
+        if meta.get("type", "").startswith("MBON")
+    ])
 
     if not kc_ids or not mbon_ids:
         raise ConnectomeLoadError("No KC or MBON neurons found in connectivity data.")
@@ -170,7 +171,7 @@ Supports two formats:
 
 
 def _load_arrow(path: Path) -> ConnectivityData:
-    """Load Feather or Parquet connectivity export using pyarrow (no pandas)."""
+    """Load Feather or Parquet connectivity export using pyarrow (pandas-free)."""
     try:
         import pyarrow.feather as feather
         import pyarrow.parquet as parquet
@@ -191,83 +192,65 @@ def _load_arrow(path: Path) -> ConnectivityData:
     except Exception as e:
         raise ConnectomeLoadError(f"Failed to read {path.suffix} from {path}: {e}") from e
 
-    # Use pyarrow-native operations (no pandas)
+    # Expect columns: bodyId_pre, bodyId_post, weight (and optionally neuron metadata)
     required_cols = {"bodyId_pre", "bodyId_post"}
     if not required_cols.issubset(table.column_names):
         raise ConnectomeLoadError(
             f"Arrow file must contain columns {required_cols}. Found: {list(table.column_names)}"
         )
 
-    # Convert columns to Python lists (noqa: N806 - matching column names)
-    bodyId_pre_list = table["bodyId_pre"].to_pylist()  # noqa: N806
-    bodyId_post_list = table["bodyId_post"].to_pylist()  # noqa: N806
+    # Access columns directly via pyarrow (no pandas conversion)
+    body_id_pre_col = table.column("bodyId_pre")
+    body_id_post_col = table.column("bodyId_post")
+    weight_col = table.column("weight") if "weight" in table.column_names else None
+    type_pre_col = table.column("type_pre") if "type_pre" in table.column_names else None
+    type_post_col = table.column("type_post") if "type_post" in table.column_names else None
+    instance_pre_col = table.column("instance_pre") if "instance_pre" in table.column_names else None
+    instance_post_col = table.column("instance_post") if "instance_post" in table.column_names else None
 
-    # If neuron metadata columns exist (type_pre, type_post, instance_pre, instance_post),
-    # build the neurons dict. Otherwise, infer from the edge types.
+    # Build neuron metadata from edge metadata columns
     neurons: dict[int, dict[str, Any]] = {}
+    all_pre = set()
+    all_post = set()
 
-    # Collect unique pre and post body IDs
-    all_pre = set(bodyId_pre_list)
-    all_post = set(bodyId_post_list)
-    all_body_ids = all_pre | all_post
+    for i in range(table.num_rows):
+        pre_id = int(body_id_pre_col[i].as_py())
+        post_id = int(body_id_post_col[i].as_py())
+        all_pre.add(pre_id)
+        all_post.add(post_id)
 
-    # Build neuron metadata from columns if available
-    if "type_pre" in table.column_names and "type_post" in table.column_names:
-        type_pre_list = table["type_pre"].to_pylist()
-        type_post_list = table["type_post"].to_pylist()
-        instance_pre_list = (
-            table["instance_pre"].to_pylist()
-            if "instance_pre" in table.column_names
-            else [""] * len(bodyId_pre_list)
-        )
-        instance_post_list = (
-            table["instance_post"].to_pylist()
-            if "instance_post" in table.column_names
-            else [""] * len(bodyId_post_list)
-        )
+        if type_pre_col and pre_id not in neurons:
+            neurons[pre_id] = {
+                "bodyId": pre_id,
+                "type": type_pre_col[i].as_py() if type_pre_col else "",
+                "instance": instance_pre_col[i].as_py() if instance_pre_col else "",
+            }
+        if type_post_col and post_id not in neurons:
+            neurons[post_id] = {
+                "bodyId": post_id,
+                "type": type_post_col[i].as_py() if type_post_col else "",
+                "instance": instance_post_col[i].as_py() if instance_post_col else "",
+            }
 
-        for pre_id, post_id, type_pre, type_post, inst_pre, inst_post in zip(
-            bodyId_pre_list,
-            bodyId_post_list,
-            type_pre_list,
-            type_post_list,
-            instance_pre_list,
-            instance_post_list,
-        ):
-            if pre_id not in neurons:
-                neurons[pre_id] = {
-                    "bodyId": int(pre_id),
-                    "type": type_pre or "",
-                    "instance": inst_pre or "",
-                }
-            if post_id not in neurons:
-                neurons[post_id] = {
-                    "bodyId": int(post_id),
-                    "type": type_post or "",
-                    "instance": inst_post or "",
-                }
-    else:
-        # Infer types from connection patterns
-        # Assume KC→MBON edges: pre are KC, post are MBON
-        for body_id in all_body_ids:
+    # If no type columns, infer from connection patterns
+    if not type_pre_col:
+        for body_id in all_pre | all_post:
             if body_id not in neurons:
-                # Heuristic: if it appears as pre more often, likely KC; as post, likely MBON
                 inferred_type = "KC" if body_id in all_pre and body_id not in all_post else "MBON"
-                neurons[int(body_id)] = {
-                    "bodyId": int(body_id),
+                neurons[body_id] = {
+                    "bodyId": body_id,
                     "type": inferred_type,
                     "instance": "",
                 }
 
     # Collect KC and MBON body IDs
-    kc_ids = sorted([bid for bid, meta in neurons.items() if meta.get("type") == "KC"])
-    mbon_ids = sorted(
-        [
-            bid
-            for bid, meta in neurons.items()
-            if meta.get("type", "").startswith("MBON") or meta.get("type") == "MBON"
-        ]
-    )
+    # KC types can be "KC", "KCab-s", "KCg-s2", etc.
+    # MBON types can be "MBON", "MBON01", "MBON05", etc.
+    kc_ids = sorted([bid for bid, meta in neurons.items() if meta.get("type", "").startswith("KC")])
+    mbon_ids = sorted([
+        bid for bid, meta in neurons.items()
+        if meta.get("type", "").startswith("MBON")
+    ])
 
     if not kc_ids or not mbon_ids:
         raise ConnectomeLoadError("No KC or MBON neurons found in arrow connectivity data.")
@@ -279,19 +262,17 @@ def _load_arrow(path: Path) -> ConnectivityData:
     # Initialize weight matrix
     weights = np.zeros((len(kc_ids), len(mbon_ids)), dtype=float)
 
-    # Populate from edges
-    weight_list = (
-        table["weight"].to_pylist()
-        if "weight" in table.column_names
-        else [1.0] * len(bodyId_pre_list)
-    )
+    # Populate from edges (process all rows)
+    for i in range(table.num_rows):
+        pre_id = int(body_id_pre_col[i].as_py())
+        post_id = int(body_id_post_col[i].as_py())
+        weight = float(weight_col[i].as_py()) if weight_col else 1.0
 
-    for pre_id, post_id, weight in zip(bodyId_pre_list, bodyId_post_list, weight_list):
         # Only process KC→MBON edges
         if pre_id in kc_idx and post_id in mbon_idx:
-            i = kc_idx[pre_id]
-            j = mbon_idx[post_id]
-            weights[i, j] += weight
+            row_i = kc_idx[pre_id]
+            col_j = mbon_idx[post_id]
+            weights[row_i, col_j] += weight
 
     return ConnectivityData(
         kc_to_mbon=weights,
@@ -300,6 +281,64 @@ def _load_arrow(path: Path) -> ConnectivityData:
         mbon_body_ids=mbon_ids,
         kc_body_ids=kc_ids,
     )
+
+
+def _normalize_mbon_name(name: str) -> str:
+    """
+    Normalize MaleCNS MBON instance names to Aso-style names.
+
+    MaleCNS uses abbreviated lobe names in instance strings:
+        - y → gamma
+        - B → beta (uppercase to distinguish from lowercase 'b')
+        - a → alpha (only as a standalone segment, not within 'gamma')
+
+    Examples:
+        - "MBON01(y5B'2a)_R" → "MBON-gamma5beta'2a"
+        - "MBON14(a3)_R" → "MBON-alpha3"
+        - "MBON11(y1pedc>a/B)_L" → "MBON-gamma1pedc>alpha/beta"
+
+    Args:
+        name: Instance name from MaleCNS data (may include MBON##(...) wrapper)
+
+    Returns:
+        Normalized name matching Aso catalog style
+    """
+    # Extract the part in parentheses if present (e.g., "MBON01(y5B'2a)_R" → "y5B'2a")
+    if "(" in name and ")" in name:
+        start = name.index("(") + 1
+        end = name.index(")")
+        core = name[start:end]
+    else:
+        core = name
+
+    # Apply abbreviation expansions in order
+    # Start with less ambiguous replacements
+    normalized = core
+
+    # Replace y with gamma (Greek gamma lobe)
+    # But be careful: 'y' can appear alone (y1, y2) or in sequences (y1y2)
+    # We want: y1 → gamma1, but not gamma → galphamma
+    normalized = normalized.replace("y", "gamma")
+
+    # Replace B (uppercase) with beta
+    normalized = normalized.replace("B", "beta")
+
+    # Replace 'a' with 'alpha' only in specific contexts:
+    # - At the start: a3 → alpha3
+    # - After '>' or '/': >a/B → >alpha/beta
+    # - But NOT in the middle of 'gamma' or at the end of lobe descriptors like '2a'
+    # Strategy: Only replace standalone 'a' followed by a digit or at boundaries
+    import re
+    # Match 'a' at start of string followed by digit
+    normalized = re.sub(r'^a(\d)', r'alpha\1', normalized)
+    # Match 'a' after '>' or '/'
+    normalized = re.sub(r'([>/])a([/\d]|$)', r'\1alpha\2', normalized)
+
+    # Add MBON- prefix if not present
+    if not normalized.startswith("MBON"):
+        normalized = "MBON-" + normalized
+
+    return normalized
 
 
 def map_to_aso_names(
@@ -320,8 +359,9 @@ def map_to_aso_names(
 
     Note:
         MaleCNS body IDs and Aso catalog names do not have 1:1 correspondence.
-        This function matches by instance name when available; unmatched MBONs
-        are documented as mismatches.
+        This function matches by instance name when available, with normalization
+        to handle MaleCNS abbreviations (y→gamma, B→beta, a→alpha).
+        Unmatched MBONs are zero-filled.
     """
     n_kc = connectivity.kc_to_mbon.shape[0]
     n_aso = len(aso_names)
@@ -334,7 +374,16 @@ def map_to_aso_names(
         for mbon_idx, mbon_body_id in enumerate(connectivity.mbon_body_ids):
             meta = connectivity.neuron_metadata.get(mbon_body_id, {})
             instance_name = meta.get("instance", "")
+
+            # Try exact match first
             if instance_name == aso_name:
+                mapped[:, j] = connectivity.kc_to_mbon[:, mbon_idx]
+                matched.append(aso_name)
+                break
+
+            # Try normalized match (handle MaleCNS abbreviations)
+            normalized = _normalize_mbon_name(instance_name)
+            if normalized == aso_name:
                 mapped[:, j] = connectivity.kc_to_mbon[:, mbon_idx]
                 matched.append(aso_name)
                 break

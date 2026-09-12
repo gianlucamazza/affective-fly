@@ -49,6 +49,7 @@ class MaleCNSCircuit(FlyAffectReadout):
         self.last_state: MBONDanState | None = None
         self.connectivity_path = connectivity_path
         self.connectivity_loaded = False
+        self.matched_mbon_count = 0  # Number of MBONs matched during mapping
 
         if isinstance(backend, FlyAffectReadout):
             self.backend = backend
@@ -129,6 +130,28 @@ class MaleCNSCircuit(FlyAffectReadout):
 
         connectivity = load_connectome(self.connectivity_path)
         mapped_weights, matched = map_to_aso_names(connectivity, list(self.mbon_names))
+
+        # Track how many MBONs were matched
+        self.matched_mbon_count = len(matched)
+
+        # Warn if mapping matched few or no MBONs
+        if self.matched_mbon_count == 0:
+            import warnings
+            warnings.warn(
+                f"map_to_aso_names matched 0 MBONs from {len(connectivity.mbon_body_ids)} loaded. "
+                f"Weights will be all zeros. Check instance name compatibility.",
+                UserWarning,
+                stacklevel=2,
+            )
+        elif self.matched_mbon_count < len(self.mbon_names) // 2:
+            import warnings
+            warnings.warn(
+                f"map_to_aso_names matched only {self.matched_mbon_count}/{len(self.mbon_names)} "
+                f"MBONs. Coverage is partial. Unmatched MBONs: "
+                f"{set(self.mbon_names) - set(matched)}",
+                UserWarning,
+                stacklevel=2,
+            )
 
         # Update backend weights if it has w_kc_mbon
         if hasattr(self.backend, "w_kc_mbon"):

@@ -95,6 +95,13 @@ def test_malecns_circuit_with_connectivity_path_loads_weights():
     # Check that some weights match fixture values (fixture has weights 12, 8, 15, 5)
     assert weights.shape == (3, 7)  # 3 KCs, 7 MBONs from Aso catalog
 
+    # HONEST TEST: Verify matched MBON count > 0 and weights are non-zero
+    assert circuit.matched_mbon_count > 0, (
+        f"Expected at least 1 matched MBON, got {circuit.matched_mbon_count}. "
+        "If 0 MBONs match, all weights are zeros (not proof of real weights)."
+    )
+    assert np.any(weights > 0), "Loaded weights must contain non-zero values"
+
 
 def test_malecns_circuit_connectivity_path_not_found_raises():
     """MaleCNSCircuit with missing connectivity_path raises."""
@@ -116,8 +123,17 @@ def test_loaded_weights_differ_from_random():
         seed=42,  # Same seed, different weights
         connectivity_path=FIXTURE_PATH,
     )
+
+    # HONEST TEST: Verify connectivity actually loaded
+    assert circuit_loaded.connectivity_loaded, "connectivity_loaded flag must be True"
+
     w_random = circuit_random.backend.w_kc_mbon
     w_loaded = circuit_loaded.backend.w_kc_mbon
+
+    # HONEST TEST: Verify loaded weights are not all zeros
+    assert np.any(w_loaded > 0), "Loaded weights must contain non-zero values (proof real weights installed)"
+    assert (w_loaded > 0).sum() > 0, f"Expected non-zero weights, got nnz={(w_loaded > 0).sum()}"
+
     # Weights should differ
     assert not np.allclose(w_random, w_loaded)
 
