@@ -168,8 +168,8 @@ def _load_arrow(path: Path) -> ConnectivityData:
         )
 
     # Access columns directly via pyarrow (no pandas conversion)
-    bodyId_pre_col = table.column("bodyId_pre")
-    bodyId_post_col = table.column("bodyId_post")
+    body_id_pre_col = table.column("bodyId_pre")
+    body_id_post_col = table.column("bodyId_post")
     weight_col = table.column("weight") if "weight" in table.column_names else None
     type_pre_col = table.column("type_pre") if "type_pre" in table.column_names else None
     type_post_col = table.column("type_post") if "type_post" in table.column_names else None
@@ -182,8 +182,8 @@ def _load_arrow(path: Path) -> ConnectivityData:
     all_post = set()
 
     for i in range(table.num_rows):
-        pre_id = int(bodyId_pre_col[i].as_py())
-        post_id = int(bodyId_post_col[i].as_py())
+        pre_id = int(body_id_pre_col[i].as_py())
+        post_id = int(body_id_post_col[i].as_py())
         all_pre.add(pre_id)
         all_post.add(post_id)
 
@@ -230,8 +230,8 @@ def _load_arrow(path: Path) -> ConnectivityData:
 
     # Populate from edges (process all rows)
     for i in range(table.num_rows):
-        pre_id = int(bodyId_pre_col[i].as_py())
-        post_id = int(bodyId_post_col[i].as_py())
+        pre_id = int(body_id_pre_col[i].as_py())
+        post_id = int(body_id_post_col[i].as_py())
         weight = float(weight_col[i].as_py()) if weight_col else 1.0
 
         # Only process KC→MBON edges
