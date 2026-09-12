@@ -48,7 +48,7 @@ def default_syn_gain(
     ``[0, w_max]`` recovers the original law. Pass ``syn_gain`` on the
     circuit to override.
     """
-    g0 = SYN_GAIN_PREFACTOR * float(n_kc) ** SYN_GAIN_EXPONENT
+    g0 = float(SYN_GAIN_PREFACTOR * float(n_kc) ** SYN_GAIN_EXPONENT)
     if weights is None:
         return g0
     actual = mean_column_fan_in(weights)
@@ -57,7 +57,7 @@ def default_syn_gain(
     expected = float(n_kc) * float(w_max) / 2.0
     if expected <= 0.0:
         return g0
-    return g0 * expected / actual
+    return float(g0 * expected / actual)
 
 
 @dataclass

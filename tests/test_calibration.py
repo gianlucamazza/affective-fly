@@ -5,10 +5,10 @@ LIFCircuit ran an order of magnitude below the band and Brian2Circuit an order
 above it, so Policy and LaunchGate were only ever exercised by MockFlyCircuit.
 """
 
+from pathlib import Path
+
 import numpy as np
 import pytest
-
-from pathlib import Path
 
 from affective_fly import AffectBridge, MaleCNSCircuit, MockFlyCircuit
 from affective_fly.fly_circuit import (
