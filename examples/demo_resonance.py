@@ -9,10 +9,10 @@ from affective_fly import FakeEmbedder
 def main() -> None:
     em = EmotionalMemory(store=InMemoryStore(), embedder=FakeEmbedder())
     em.set_affect(CoreAffect(valence=-0.6, arousal=0.4))
-    em.encode("chart MEME crash")
+    em.encode("experiment failed replication")
     em.set_affect(CoreAffect(valence=-0.5, arousal=0.3))
-    em.encode("chart MEME dump")
-    em.retrieve("MEME crash", top_k=2)
+    em.encode("experiment poor results")
+    em.retrieve("experiment failed", top_k=2)
     print(f"{'id':<10}  {'n_links':>7}  links")
     for mem in em._store.list_all():
         links = mem.tag.resonance_links or []

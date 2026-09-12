@@ -27,7 +27,7 @@ SensoryFrame
 | `affect_bridge.py` | Rates → `CoreAffect`. Spec in MAPPING. |
 | `mood_field.py` | EMA, τ_valence = 300 s, τ_arousal = 60 s, τ_approach = 180 s. |
 | `dual_path.py` | Scherer vector on the tag only. |
-| `reconsolidate.py` | Match on ticker, else event/page; 600 s window; lerp α = 0.4. Disable with window ≤ 0. |
+| `reconsolidate.py` | Match on note_id, else ticker/event/page; 600 s window; lerp α = 0.4. Disable with window ≤ 0. |
 | `policy.py` | SKIP if approach < −0.3 or retrieved valence < −0.3; WAIT if arousal < −0.5; CLICK/TYPE if valence > 0 and approach > 0.2; else WAIT. |
 | `launch_gate.py` | Opens after N ticks with approach > 0.2 and valence > −0.1. |
 | `journal.py` | JSONL; `export_for_viz()`. |

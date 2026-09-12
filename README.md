@@ -40,18 +40,18 @@ loop = AffectiveLoop(
 
 decision = loop.step(
     SensoryFrame.from_dict({
-        "page": "launchpad",
-        "ticker": "MEME",
+        "context": "journal",
+        "note_id": "debugging-session-001",
         "sentiment": 0.8,
-        "query": "launch token",
+        "query": "successful debugging session notes",
     }),
     encode_memory=True,
 )
 
 decision = loop.step(
     SensoryFrame.from_dict({
-        "page": "chart",
-        "ticker": "MEME",
+        "context": "journal",
+        "note_id": "debugging-session-001",
         "sentiment": -0.6,
         "reward": -0.8,
     }),

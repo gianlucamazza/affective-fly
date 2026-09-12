@@ -145,10 +145,10 @@ KC→MBON weights update on `learn()` when a reward (US) arrives:
 
 1. **`HeuristicAppraisalEngine`** (default): Offline keyword-based heuristics. No network, no LLM. Deterministic and fast.
    - Novelty: 0.8 on first encounter, decays with repetition.
-   - Goal relevance: sentiment + ticker/query presence ± positive/negative keywords.
-   - Coping potential: sentiment + control keywords (wallet, form) − negative keywords.
+   - Goal relevance: sentiment + note_id/ticker/query presence ± positive/negative keywords.
+   - Coping potential: sentiment + control keywords (review, wallet, form) − negative keywords.
    - Norm congruence: sentiment ± keywords.
-   - Self-relevance: ticker/PnL/wallet presence.
+   - Self-relevance: note_id/ticker presence or keywords (my, review, wallet, PnL).
 
 2. **`DualPathEncoder.from_llm(...)`**: Hook for emotional-memory's `LLMAppraisalEngine`. Caller supplies the LLM client (e.g., OpenAI, Anthropic). **Blocked on** production API keys and secrets.
 
@@ -160,7 +160,7 @@ The slow-path appraisal is **attached** to the tag after encoding. Do **not** pa
 
 ## Reconsolidation
 
-`Reconsolidator.find_match()` searches for a labile memory (same ticker/event/page within 10 min by default) and `update()` blends the new affect with the old (α = 0.4 lerp):
+`Reconsolidator.find_match()` searches for a labile memory (same note_id/ticker/event/page within 10 min by default) and `update()` blends the new affect with the old (α = 0.4 lerp):
 
 - `tag.core_affect ← lerp(old, new, α)`
 - Increments `tag.reconsolidation_count` and `metadata["reconsolidation_count"]`.

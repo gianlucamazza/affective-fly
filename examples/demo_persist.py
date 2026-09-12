@@ -27,7 +27,7 @@ def main() -> None:
     loop = session(store)
     loop.step(
         SensoryFrame.from_dict(
-            {"page": "chart", "ticker": "MEME", "sentiment": -1.0, "query": "crash"}
+            {"context": "review", "note_id": "exp-001", "sentiment": -1.0, "query": "failed"}
         ),
         encode_memory=True,
     )

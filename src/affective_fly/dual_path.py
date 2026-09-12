@@ -22,8 +22,8 @@ from emotional_memory import AppraisalVector, EmotionalMemory, Memory
 
 _NEGATIVE = ("crash", "dump", "loss", "fail", "decline", "punish", "shock")
 _POSITIVE = ("launch", "surge", "peak", "recover", "success", "reward", "hype")
-_CONTROL = ("wallet", "holdings", "form", "type", "confirm")
-_SELF = ("wallet", "pnl", "loss", "holdings", "self")
+_CONTROL = ("wallet", "holdings", "form", "type", "confirm", "review")
+_SELF = ("wallet", "pnl", "loss", "holdings", "self", "my", "review")
 
 
 def _blob(event_text: str, context: dict[str, Any] | None) -> str:
@@ -56,13 +56,13 @@ class HeuristicAppraisalEngine:
         blob = _blob(event_text, ctx)
         sentiment = float(ctx.get("sentiment") or 0.0)
 
-        key = str(ctx.get("ticker") or ctx.get("event") or ctx.get("page") or event_text)
+        key = str(ctx.get("note_id") or ctx.get("ticker") or ctx.get("event") or ctx.get("page") or event_text)
         count = self._seen.get(key, 0)
         self._seen[key] = count + 1
         novelty = 0.8 if count == 0 else max(-0.5, 0.8 - 0.4 * count)
 
         goal_relevance = 0.0
-        if ctx.get("ticker") or ctx.get("query") or ctx.get("target"):
+        if ctx.get("note_id") or ctx.get("ticker") or ctx.get("query") or ctx.get("target"):
             goal_relevance += 0.4
         goal_relevance += 0.5 * sentiment
         if any(w in blob for w in _NEGATIVE):
@@ -83,7 +83,7 @@ class HeuristicAppraisalEngine:
             norm += 0.3
 
         self_relevance = 0.2
-        if ctx.get("ticker"):
+        if ctx.get("note_id") or ctx.get("ticker"):
             self_relevance += 0.2
         if any(w in blob for w in _SELF):
             self_relevance += 0.4

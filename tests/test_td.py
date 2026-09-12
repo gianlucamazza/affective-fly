@@ -182,9 +182,9 @@ def test_loop_applies_learn_from_context_reward():
         fly_circuit=circuit,
         emotional_memory=EmotionalMemory(store=store, embedder=FakeEmbedder()),
     )
-    loop.step(SensoryFrame.from_dict({"ticker": "MEME", "sentiment": 0.3}))
+    loop.step(SensoryFrame.from_dict({"note_id": "exp-001", "sentiment": 0.3}))
     assert loop.last_td is None
-    loop.step(SensoryFrame.from_dict({"ticker": "MEME", "sentiment": 0.3, "reward": 1.0}))
+    loop.step(SensoryFrame.from_dict({"note_id": "exp-001", "sentiment": 0.3, "reward": 1.0}))
     assert loop.last_td is not None
     assert loop.last_td.reward == 1.0
     assert loop.journal.entries[-1].td_delta is not None

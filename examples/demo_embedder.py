@@ -15,7 +15,7 @@ def main() -> None:
     em = EmotionalMemory(store=InMemoryStore(), embedder=SentenceTransformerEmbedder())
     loop = AffectiveLoop(fly_circuit=MockFlyCircuit(seed=0), emotional_memory=em)
     loop.step(
-        SensoryFrame.from_dict({"ticker": "MEME", "query": "crash", "sentiment": -0.8}),
+        SensoryFrame.from_dict({"note_id": "exp-001", "query": "failed", "sentiment": -0.8}),
         encode_memory=True,
     )
     hits = em.retrieve("price dump", top_k=1)
