@@ -5,6 +5,17 @@ If the same stimulus (note_id, ticker, event, or page) is re-encoded inside
 the labile window, blend the new circuit affect into the stored tag.
 This is a computational analogue of retrieval-induced updating, not a
 claim about molecular reconsolidation in flies.
+
+Two distinct mechanisms touch ``tag.reconsolidation_count``; keep them apart:
+- This module owns the *encode-side* labile-window match-or-encode. It is
+  driven by ``AffectiveLoop`` and tracked separately in
+  ``metadata["reconsolidation_count"]``.
+- ``emotional-memory`` owns an independent APE-gated reconsolidation during
+  retrieval, which may also bump ``tag.reconsolidation_count``.
+So ``tag.reconsolidation_count >= metadata["reconsolidation_count"]``.
+
+The store and embedder are injected (not read from ``EmotionalMemory``
+internals): affective-fly owns the same instances it handed to the engine.
 """
 
 from __future__ import annotations
@@ -12,7 +23,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Any
 
-from emotional_memory import CoreAffect, EmotionalMemory, Memory
+from emotional_memory import CoreAffect, Embedder, Memory, MemoryStore
 
 
 def stimulus_key(context: dict[str, Any]) -> str | None:
@@ -54,7 +65,7 @@ class Reconsolidator:
 
     def find_match(
         self,
-        emotional_memory: EmotionalMemory,
+        store: MemoryStore,
         context: dict[str, Any],
         now: datetime | None = None,
     ) -> Memory | None:
@@ -64,7 +75,7 @@ class Reconsolidator:
         if key is None:
             return None
         now = now or datetime.now(tz=UTC)
-        for mem in emotional_memory._store.list_all():
+        for mem in store.list_all():
             md = mem.metadata or {}
             stored_key = md.get("_stimulus_key") or stimulus_key(md)
             if stored_key != key:
@@ -78,7 +89,8 @@ class Reconsolidator:
 
     def update(
         self,
-        emotional_memory: EmotionalMemory,
+        store: MemoryStore,
+        embedder: Embedder,
         memory: Memory,
         content: str,
         metadata: dict[str, Any],
@@ -114,7 +126,7 @@ class Reconsolidator:
                 "timestamp": datetime.now(tz=UTC),
             }
         )
-        embedding = emotional_memory._embedder.embed(content)
+        embedding = embedder.embed(content)
         updated = memory.model_copy(
             update={
                 "content": content,
@@ -123,5 +135,5 @@ class Reconsolidator:
                 "embedding": embedding,
             }
         )
-        emotional_memory._store.update(updated)
+        store.update(updated)
         return updated

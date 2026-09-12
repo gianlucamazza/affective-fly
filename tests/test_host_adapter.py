@@ -145,11 +145,13 @@ def test_host_adapter_replay_with_mock_circuit():
         HostFrame(context={"note_id": "exp-001", "sentiment": -0.8, "reward": -0.9}),
     ]
 
+    store = InMemoryStore()
+    embedder = FakeEmbedder()
     loop = AffectiveLoop(
         fly_circuit=MockFlyCircuit(seed=42),
-        emotional_memory=EmotionalMemory(
-            store=InMemoryStore(), embedder=FakeEmbedder()
-        ),
+        emotional_memory=EmotionalMemory(store=store, embedder=embedder),
+        store=store,
+        embedder=embedder,
     )
 
     decisions = HostAdapter.replay(frames, loop, encode_memory=True)
@@ -166,11 +168,13 @@ def test_host_adapter_replay_with_lif_circuit():
         HostFrame(context={"note_id": "exp-042", "sentiment": -0.5, "outcome": -0.6}),
     ]
 
+    store = InMemoryStore()
+    embedder = FakeEmbedder()
     loop = AffectiveLoop(
         fly_circuit=LIFCircuit(n_kc=80, n_dan=8, n_mbon=16, seed=42),
-        emotional_memory=EmotionalMemory(
-            store=InMemoryStore(), embedder=FakeEmbedder()
-        ),
+        emotional_memory=EmotionalMemory(store=store, embedder=embedder),
+        store=store,
+        embedder=embedder,
     )
 
     decisions = HostAdapter.replay(frames, loop, encode_memory=True)
@@ -187,11 +191,13 @@ def test_host_adapter_replay_outcome_triggers_learn():
         HostFrame(context={"note_id": "trade-001", "pnl": 0.8}),
     ]
 
+    store = InMemoryStore()
+    embedder = FakeEmbedder()
     loop = AffectiveLoop(
         fly_circuit=LIFCircuit(n_kc=100, n_dan=10, n_mbon=20, seed=1),
-        emotional_memory=EmotionalMemory(
-            store=InMemoryStore(), embedder=FakeEmbedder()
-        ),
+        emotional_memory=EmotionalMemory(store=store, embedder=embedder),
+        store=store,
+        embedder=embedder,
     )
 
     decisions = HostAdapter.replay(frames, loop)
@@ -216,9 +222,12 @@ def test_host_adapter_replay_journal_to_loop(tmp_path):
     assert len(loaded_frames) == 2
 
     store = InMemoryStore()
+    embedder = FakeEmbedder()
     loop = AffectiveLoop(
         fly_circuit=LIFCircuit(n_kc=80, n_dan=8, n_mbon=16, seed=42),
-        emotional_memory=EmotionalMemory(store=store, embedder=FakeEmbedder()),
+        emotional_memory=EmotionalMemory(store=store, embedder=embedder),
+        store=store,
+        embedder=embedder,
     )
 
     decisions = HostAdapter.replay(loaded_frames, loop, encode_memory=True)
@@ -273,9 +282,12 @@ def test_host_adapter_replay_without_encoding():
     ]
 
     store = InMemoryStore()
+    embedder = FakeEmbedder()
     loop = AffectiveLoop(
         fly_circuit=MockFlyCircuit(seed=42),
-        emotional_memory=EmotionalMemory(store=store, embedder=FakeEmbedder()),
+        emotional_memory=EmotionalMemory(store=store, embedder=embedder),
+        store=store,
+        embedder=embedder,
     )
 
     decisions = HostAdapter.replay(frames, loop, encode_memory=False)
@@ -290,11 +302,13 @@ def test_host_frame_outcome_extracted_by_loop():
     frame = HostFrame(context={"note_id": "test", "outcome": -0.7})
     sf = frame.to_sensory_frame()
 
+    store = InMemoryStore()
+    embedder = FakeEmbedder()
     loop = AffectiveLoop(
         fly_circuit=MockFlyCircuit(seed=42),
-        emotional_memory=EmotionalMemory(
-            store=InMemoryStore(), embedder=FakeEmbedder()
-        ),
+        emotional_memory=EmotionalMemory(store=store, embedder=embedder),
+        store=store,
+        embedder=embedder,
     )
 
     loop.step(sf)
@@ -315,11 +329,13 @@ def test_host_adapter_replay_policy_influenced_by_outcome():
         HostFrame(context={"note_id": "exp-001", "sentiment": 0.1, "query": "repeat experiment?"}),
     ]
 
+    store = InMemoryStore()
+    embedder = FakeEmbedder()
     loop = AffectiveLoop(
         fly_circuit=LIFCircuit(n_kc=100, n_dan=10, n_mbon=20, seed=42),
-        emotional_memory=EmotionalMemory(
-            store=InMemoryStore(), embedder=FakeEmbedder()
-        ),
+        emotional_memory=EmotionalMemory(store=store, embedder=embedder),
+        store=store,
+        embedder=embedder,
     )
 
     decisions = HostAdapter.replay(frames, loop, encode_memory=True)

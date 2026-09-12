@@ -40,9 +40,13 @@ def test_loop_delayed_us_cs_plus_over_cs_minus():
     visual_b = rng.randn(32) * 0.3 - 0.8
     blank = np.zeros(32)
     circuit = LIFCircuit(n_kc=80, n_dan=8, n_mbon=16, seed=7, td_alpha=0.35, elig_tau=2.0)
+    store = InMemoryStore()
+    embedder = FakeEmbedder()
     loop = AffectiveLoop(
         fly_circuit=circuit,
-        emotional_memory=EmotionalMemory(store=InMemoryStore(), embedder=FakeEmbedder()),
+        emotional_memory=EmotionalMemory(store=store, embedder=embedder),
+        store=store,
+        embedder=embedder,
         td_sequential=True,
     )
 

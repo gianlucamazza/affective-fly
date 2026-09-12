@@ -31,6 +31,8 @@ def main():
     swarm = Swarm(
         n_agents=n_agents,
         emotional_memory=emotional_memory,
+        store=store,
+        embedder=embedder,
         journal=journal,
     )
 

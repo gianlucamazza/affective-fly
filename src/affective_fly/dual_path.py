@@ -18,7 +18,7 @@ import json
 from collections import OrderedDict
 from typing import Any, Protocol, cast
 
-from emotional_memory import AppraisalVector, EmotionalMemory, Memory
+from emotional_memory import AppraisalVector, Memory, MemoryStore
 
 _NEGATIVE = ("fail", "failed", "failure", "error", "reject", "decline", "punish", "shock")
 _POSITIVE = ("success", "successful", "breakthrough", "replicate", "confirm", "reward", "novel")
@@ -167,11 +167,15 @@ class DualPathEncoder:
 
     def attach(
         self,
-        emotional_memory: EmotionalMemory,
+        store: MemoryStore,
         memory: Memory,
         appraisal: AppraisalVector,
     ) -> Memory:
-        """Write appraisal onto the tag without changing circuit CoreAffect."""
+        """Write appraisal onto the tag without changing circuit CoreAffect.
+
+        ``store`` is injected by the caller (the same store backing the
+        engine), not read from ``EmotionalMemory`` internals.
+        """
         circuit_affect = memory.tag.core_affect
         updated_tag = memory.tag.model_copy(
             update={
@@ -181,7 +185,7 @@ class DualPathEncoder:
             }
         )
         updated = memory.model_copy(update={"tag": updated_tag})
-        emotional_memory._store.update(updated)
+        store.update(updated)
         return updated
 
     def reset(self) -> None:

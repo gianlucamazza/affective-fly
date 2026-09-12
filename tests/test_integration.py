@@ -28,6 +28,8 @@ def test_full_loop_execution():
     loop = AffectiveLoop(
         fly_circuit=fly_circuit,
         emotional_memory=emotional_memory,
+        store=store,
+        embedder=embedder,
     )
 
     # Execute loop
@@ -50,6 +52,8 @@ def test_loop_memory_encoding():
     loop = AffectiveLoop(
         fly_circuit=fly_circuit,
         emotional_memory=emotional_memory,
+        store=store,
+        embedder=embedder,
     )
 
     # No memories initially
@@ -75,6 +79,8 @@ def test_loop_mood_persistence():
     loop = AffectiveLoop(
         fly_circuit=fly_circuit,
         emotional_memory=emotional_memory,
+        store=store,
+        embedder=embedder,
         mood_field=mood_field,
     )
 
@@ -109,7 +115,7 @@ def test_swarm_shared_memory():
     embedder = FakeEmbedder()
     emotional_memory = EmotionalMemory(store=store, embedder=embedder)
 
-    swarm = Swarm(n_agents=4, emotional_memory=emotional_memory)
+    swarm = Swarm(n_agents=4, emotional_memory=emotional_memory, store=store, embedder=embedder)
 
     # All agents step with different frames
     frames = [SensoryFrame.from_dict({"agent": i, "value": i * 0.1}) for i in range(4)]
@@ -126,7 +132,7 @@ def test_swarm_independent_moods():
     embedder = FakeEmbedder()
     emotional_memory = EmotionalMemory(store=store, embedder=embedder)
 
-    swarm = Swarm(n_agents=3, emotional_memory=emotional_memory)
+    swarm = Swarm(n_agents=3, emotional_memory=emotional_memory, store=store, embedder=embedder)
 
     # Different sentiment per agent
     frames = [
@@ -157,6 +163,8 @@ def test_journal_logging():
     loop = AffectiveLoop(
         fly_circuit=fly_circuit,
         emotional_memory=emotional_memory,
+        store=store,
+        embedder=embedder,
         journal=journal,
     )
 
@@ -181,6 +189,8 @@ def test_loop_reset():
     loop = AffectiveLoop(
         fly_circuit=fly_circuit,
         emotional_memory=emotional_memory,
+        store=store,
+        embedder=embedder,
     )
 
     # Run several steps
@@ -219,13 +229,16 @@ def test_loop_launch_gate_blocks_impulsive_action():
     """CLICK/TYPE wait until mood criteria hold for N ticks."""
     fly_circuit = MockFlyCircuit(seed=42)
     store = InMemoryStore()
-    emotional_memory = EmotionalMemory(store=store, embedder=FakeEmbedder())
+    embedder = FakeEmbedder()
+    emotional_memory = EmotionalMemory(store=store, embedder=embedder)
     mood_field = MoodField(tau_valence=0.01, tau_arousal=0.01, tau_approach=0.01)
     gate = LaunchGate(threshold_approach=0.2, threshold_valence=-0.1, required_ticks=3)
 
     loop = AffectiveLoop(
         fly_circuit=fly_circuit,
         emotional_memory=emotional_memory,
+        store=store,
+        embedder=embedder,
         mood_field=mood_field,
         launch_gate=gate,
     )
@@ -247,9 +260,12 @@ def test_loop_launch_gate_blocks_impulsive_action():
 
 def test_loop_attaches_appraisal_without_new_memory():
     store = InMemoryStore()
+    embedder = FakeEmbedder()
     loop = AffectiveLoop(
         fly_circuit=MockFlyCircuit(seed=42),
-        emotional_memory=EmotionalMemory(store=store, embedder=FakeEmbedder()),
+        emotional_memory=EmotionalMemory(store=store, embedder=embedder),
+        store=store,
+        embedder=embedder,
     )
     loop.step(SensoryFrame.from_dict({"note_id": "exp-001", "sentiment": 0.7, "query": "success"}))
     memories = store.list_all()
@@ -262,9 +278,12 @@ def test_loop_attaches_appraisal_without_new_memory():
 
 def test_loop_reconsolidates_same_ticker():
     store = InMemoryStore()
+    embedder = FakeEmbedder()
     loop = AffectiveLoop(
         fly_circuit=MockFlyCircuit(seed=42),
-        emotional_memory=EmotionalMemory(store=store, embedder=FakeEmbedder()),
+        emotional_memory=EmotionalMemory(store=store, embedder=embedder),
+        store=store,
+        embedder=embedder,
     )
     loop.step(SensoryFrame.from_dict({"note_id": "exp-001", "sentiment": 0.8, "query": "success"}))
     loop.step(SensoryFrame.from_dict({"note_id": "exp-001", "sentiment": -0.7, "query": "failed"}))
@@ -278,9 +297,12 @@ def test_loop_reconsolidates_same_ticker():
 
 def test_loop_with_lif_circuit():
     store = InMemoryStore()
+    embedder = FakeEmbedder()
     loop = AffectiveLoop(
         fly_circuit=LIFCircuit(n_kc=80, n_dan=8, n_mbon=16, seed=1),
-        emotional_memory=EmotionalMemory(store=store, embedder=FakeEmbedder()),
+        emotional_memory=EmotionalMemory(store=store, embedder=embedder),
+        store=store,
+        embedder=embedder,
     )
     frame = SensoryFrame.from_dict({"page": "test", "sentiment": 0.4})
     decision = loop.step(frame)
@@ -307,6 +329,8 @@ def test_full_emotional_memory_integration_path():
     loop = AffectiveLoop(
         fly_circuit=fly_circuit,
         emotional_memory=emotional_memory,
+        store=store,
+        embedder=embedder,
     )
 
     # 1. Start with empty memory

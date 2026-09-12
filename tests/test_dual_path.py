@@ -11,7 +11,7 @@ def _memory_with_circuit_affect(valence: float = 0.8, arousal: float = 0.2):
     em = EmotionalMemory(store=store, embedder=FakeEmbedder())
     em.set_affect(CoreAffect(valence=valence, arousal=arousal))
     mem = em.encode("frame: successful experiment", metadata={"note_id": "exp-001", "sentiment": 1.0})
-    return em, mem
+    return store, mem
 
 
 def test_heuristic_crash_is_aversive():
@@ -41,9 +41,9 @@ def test_heuristic_wallet_is_self_relevant():
 
 def test_attach_preserves_circuit_core_affect():
     encoder = DualPathEncoder()
-    em, mem = _memory_with_circuit_affect(valence=0.8, arousal=0.2)
+    store, mem = _memory_with_circuit_affect(valence=0.8, arousal=0.2)
     appraisal = encoder.appraise("successful experiment", {"note_id": "exp-001", "sentiment": 1.0})
-    updated = encoder.attach(em, mem, appraisal)
+    updated = encoder.attach(store, mem, appraisal)
     assert updated.tag.core_affect.valence == 0.8
     assert updated.tag.core_affect.arousal == 0.2
     assert updated.tag.appraisal is not None

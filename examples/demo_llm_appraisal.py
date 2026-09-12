@@ -31,11 +31,14 @@ def main() -> None:
     encoder = DualPathEncoder.from_llm(llm_client, fallback_on_error=True)
 
     store = InMemoryStore()
-    em = EmotionalMemory(store=store, embedder=FakeEmbedder())
+    embedder = FakeEmbedder()
+    em = EmotionalMemory(store=store, embedder=embedder)
 
     loop = AffectiveLoop(
         fly_circuit=LIFCircuit(n_kc=500, n_dan=20, n_mbon=34, seed=42),
         emotional_memory=em,
+        store=store,
+        embedder=embedder,
     )
 
     frame = SensoryFrame.from_dict({
@@ -56,7 +59,7 @@ def main() -> None:
     print(f"Context: {frame.context}")
 
     appraisal = encoder.appraise(event_text, frame.context)
-    updated = encoder.attach(em, mem, appraisal)
+    updated = encoder.attach(store, mem, appraisal)
 
     print("\nLLM Appraisal:")
     print(f"  novelty:          {appraisal.novelty:+.3f}")

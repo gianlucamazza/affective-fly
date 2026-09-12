@@ -8,7 +8,7 @@ import hashlib
 from dataclasses import dataclass
 
 import numpy as np
-from emotional_memory import AppraisalVector, EmotionalMemory
+from emotional_memory import AppraisalVector, Embedder, EmotionalMemory, MemoryStore
 
 from .affect_bridge import AffectBridge
 from .dual_path import DualPathEncoder
@@ -75,6 +75,8 @@ class AffectiveLoop:
         self,
         fly_circuit: FlyAffectReadout,
         emotional_memory: EmotionalMemory,
+        store: MemoryStore,
+        embedder: Embedder,
         affect_bridge: AffectBridge | None = None,
         mood_field: MoodField | None = None,
         policy: Policy | None = None,
@@ -91,6 +93,12 @@ class AffectiveLoop:
         Args:
             fly_circuit: FlyAffectReadout implementation
             emotional_memory: EmotionalMemory instance
+            store: The MemoryStore backing ``emotional_memory``. Injected so
+                reconsolidation and dual-path attach persist through the same
+                store the engine uses, without reaching engine internals. Must
+                be the identical instance passed to ``EmotionalMemory``.
+            embedder: The Embedder backing ``emotional_memory`` (same instance).
+                Used to re-embed content on reconsolidation.
             affect_bridge: AffectBridge (default created if None)
             mood_field: MoodField (default created if None)
             policy: Policy (default created if None)
@@ -107,6 +115,8 @@ class AffectiveLoop:
         """
         self.fly_circuit = fly_circuit
         self.emotional_memory = emotional_memory
+        self.store = store
+        self.embedder = embedder
         self.affect_bridge = affect_bridge or AffectBridge()
         self.mood_field = mood_field or MoodField()
         self.policy = policy or Policy()
@@ -177,10 +187,11 @@ class AffectiveLoop:
                 **sensory_frame.context,
                 "_stimulus_key": stimulus_key(sensory_frame.context),
             }
-            match = self.reconsolidator.find_match(self.emotional_memory, sensory_frame.context)
+            match = self.reconsolidator.find_match(self.store, sensory_frame.context)
             if match is not None:
                 memory = self.reconsolidator.update(
-                    self.emotional_memory,
+                    self.store,
+                    self.embedder,
                     match,
                     content,
                     metadata,
@@ -196,7 +207,7 @@ class AffectiveLoop:
                 sensory_frame.context.get("query") or sensory_frame.context.get("event") or content
             )
             appraisal = self.dual_path.appraise(event_text, sensory_frame.context)
-            self.dual_path.attach(self.emotional_memory, memory, appraisal)
+            self.dual_path.attach(self.store, memory, appraisal)
             self.last_appraisal = appraisal
 
         # 6. Retrieve memories weighted by current mood

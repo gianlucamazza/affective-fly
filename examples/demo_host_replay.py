@@ -106,12 +106,13 @@ def main() -> None:
     print(f"Saved {len(frames)} frames to {journal_path}")
 
     # 3. Set up AffectiveLoop with real LIFCircuit
+    store = InMemoryStore()
+    embedder = FakeEmbedder()
     loop = AffectiveLoop(
         fly_circuit=LIFCircuit(n_kc=2000, n_dan=20, n_mbon=34, seed=42),
-        emotional_memory=EmotionalMemory(
-            store=InMemoryStore(),
-            embedder=FakeEmbedder(),
-        ),
+        emotional_memory=EmotionalMemory(store=store, embedder=embedder),
+        store=store,
+        embedder=embedder,
         mood_field=MoodField(tau_valence=10.0, tau_arousal=5.0, tau_approach=8.0),
     )
 
@@ -148,7 +149,7 @@ def main() -> None:
     print(f"Approach tendency: {final_decision.approach_tendency:+.2f}")
 
     # Memory check
-    memories = loop.emotional_memory._store.list_all()
+    memories = loop.emotional_memory.list_all()
     print(f"\nMemories stored: {len(memories)}")
     if memories:
         last_mem = memories[-1]
