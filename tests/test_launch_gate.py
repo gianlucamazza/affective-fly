@@ -87,7 +87,7 @@ def test_launch_gate_resets_on_failure():
 
 
 def test_launch_gate_stays_open():
-    """Test gate stays open once criteria met."""
+    """Test gate stays open while mood continues to meet criteria."""
     gate = LaunchGate(required_ticks=2)
     good_mood = MoodState(valence=0.5, arousal=0.3, approach_tendency=0.6)
 
@@ -99,6 +99,23 @@ def test_launch_gate_stays_open():
     # Continue with good mood
     state = gate.update(good_mood)
     assert state.is_open is True
+
+
+def test_launch_gate_closes_on_bad_mood_after_open():
+    """Open → bad mood → closed. The gate does not latch open."""
+    gate = LaunchGate(required_ticks=2)
+    good_mood = MoodState(valence=0.5, arousal=0.3, approach_tendency=0.6)
+    bad_mood = MoodState(valence=-0.5, arousal=0.3, approach_tendency=-0.3)
+
+    gate.update(good_mood)
+    gate.update(good_mood)
+    assert gate.is_open is True
+
+    state = gate.update(bad_mood)
+    assert state.is_open is False
+    assert state.consecutive_ticks == 0
+    assert "CLOSED" in state.reason
+    assert gate.can_launch() is False
 
 
 def test_launch_gate_can_launch():

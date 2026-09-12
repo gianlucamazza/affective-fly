@@ -23,11 +23,14 @@ class LaunchGate:
     """
     Gate that only opens when mood criteria are met for N consecutive ticks.
 
-    Criteria:
-    - approach_tendency > threshold_approach (default 0.2)
-    - valence > threshold_valence (default -0.1)
+    Criteria (inclusive, matching the comparisons in ``update``):
+    - approach_tendency >= threshold_approach (default 0.2)
+    - valence >= threshold_valence (default -0.1)
 
-    Must hold for N ticks (default 3) before gate opens.
+    Must hold for N consecutive ticks (default 3) before the gate opens.
+    A later tick that fails the criteria resets the counter and closes the
+    gate. ``reset()`` also returns the gate to closed. The gate does not
+    latch open.
     """
 
     def __init__(

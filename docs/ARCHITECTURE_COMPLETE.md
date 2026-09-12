@@ -100,7 +100,7 @@ Named circuit using Aso et al. (2014) published MBON/DAN cell types. Connectome 
 - Loader maps edges onto Aso catalog names via the curated Aso 2014 short-name table (heuristic instance match is fallback). Several MaleCNS bodies of one type are summed. Unmatched MBONs are zero-filled. File KC count must match `n_kc` unless `allow_kc_mismatch=True`. `named_rates()` aliases population rates, not per-cell rates.
 - Missing/unreadable file raises `ConnectomeLoadError`.
 
-**Still open**: Gain-law refit on real KC→MBON fan-out. Published weights load from `data/malecns/kc_mbon_connectivity.feather`. Phase 4 remains partial.
+**Still open**: Gain-law refit on real KC→MBON fan-out. Published weights load from `data/malecns/kc_mbon_connectivity.feather`. Test fixtures (`malecns_real_ids.*`) still use real MaleCNS v1.0 body IDs with synthetic weights. Phase 4 remains partial. See [ROADMAP.md](ROADMAP.md).
 
 **Do not** invent body IDs or connectome weights. Always load from real data or document that weights are random placeholders.
 
@@ -199,8 +199,8 @@ Order matters: avoidance is decided before the arousal gate. Being too calm to a
 `LaunchGate` blocks impulsive CLICK/TYPE until mood criteria hold for N ticks (default 3):
 
 - **Open** after `required_ticks` consecutive ticks with approach ≥ 0.2 and valence ≥ −0.1.
-- **Closed** if criteria fail; counter resets.
-- **Stays open** once opened (until `reset()`).
+- **Closed** if a tick fails the criteria: the consecutive-tick counter resets and the gate closes even after it has already opened.
+- ``reset()`` also returns the gate to closed. The gate does not latch open.
 
 The gate always runs; the loop overwrites CLICK/TYPE with WAIT if the gate is closed (reason: "Launch gate blocked").
 
