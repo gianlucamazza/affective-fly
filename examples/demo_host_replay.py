@@ -26,7 +26,7 @@ from affective_fly import (
 def create_experiment_journal() -> list[HostFrame]:
     """
     Simulate a research journal with experiment entries.
-    
+
     Episode: Initial success → failed replication → decision about retry.
     """
     return [
@@ -99,12 +99,12 @@ def create_experiment_journal() -> list[HostFrame]:
 def main() -> None:
     # 1. Create journal frames
     frames = create_experiment_journal()
-    
+
     # 2. Save to JSONL
     journal_path = Path("host_journal_demo.jsonl")
     HostAdapter.save_journal(frames, journal_path)
     print(f"Saved {len(frames)} frames to {journal_path}")
-    
+
     # 3. Set up AffectiveLoop with real LIFCircuit
     loop = AffectiveLoop(
         fly_circuit=LIFCircuit(n_kc=2000, n_dan=20, n_mbon=34, seed=42),
@@ -114,39 +114,39 @@ def main() -> None:
         ),
         mood_field=MoodField(tau_valence=10.0, tau_arousal=5.0, tau_approach=8.0),
     )
-    
+
     # 4. Replay frames through loop
     print("\n=== Replaying journal ===")
     loaded_frames = HostAdapter.load_journal(journal_path)
     decisions = HostAdapter.replay(loaded_frames, loop, encode_memory=True)
-    
+
     # 5. Display results
     print(f"\n{'Step':<6} {'Context':<10} {'Note ID':<20} {'Action':<6} {'V':>6} {'A':>6} {'App':>6} {'Outcome':<8}")
     print("-" * 80)
-    
+
     for i, (frame, decision) in enumerate(zip(loaded_frames, decisions)):
         ctx = frame.context.get("context", "?")[:10]
         note = frame.context.get("note_id", "?")[:20]
         outcome = frame.context.get("outcome") or frame.context.get("reward") or "-"
         if outcome != "-":
             outcome = f"{outcome:+.1f}"
-        
+
         print(
             f"{i:<6} {ctx:<10} {note:<20} {decision.action.value:<6} "
             f"{decision.mood_valence:+6.2f} {decision.mood_arousal:+6.2f} "
             f"{decision.approach_tendency:+6.2f} {outcome:<8}"
         )
-    
+
     # 6. Analyze outcome
     print("\n=== Analysis ===")
     final_decision = decisions[-1]
-    
-    print(f"Final frame: 'considering third replication attempt'")
+
+    print("Final frame: 'considering third replication attempt'")
     print(f"Decision: {final_decision.action.value}")
     print(f"Reason: {final_decision.reason}")
     print(f"Mood valence: {final_decision.mood_valence:+.2f}")
     print(f"Approach tendency: {final_decision.approach_tendency:+.2f}")
-    
+
     # Memory check
     memories = loop.emotional_memory._store.list_all()
     print(f"\nMemories stored: {len(memories)}")
@@ -156,13 +156,13 @@ def main() -> None:
         reconsolidated = last_mem.metadata.get("reconsolidation_count", 0)
         print(f"Last memory valence: {v:+.2f}")
         print(f"Reconsolidation count: {reconsolidated}")
-    
+
     # TD learning check
     if loop.last_td is not None:
-        print(f"\nLast TD result:")
+        print("\nLast TD result:")
         print(f"  Reward: {loop.last_td.reward:+.2f}")
         print(f"  Delta: {loop.last_td.delta:+.2f}")
-    
+
     print(f"\n✓ Replay complete. Journal saved to {journal_path}")
     print("✓ Outcomes triggered three-factor plasticity (KC→MBON weights)")
     print("✓ Negative memories + learned avoidance influenced final policy")
