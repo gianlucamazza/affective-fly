@@ -6,6 +6,38 @@ Python 3.11+. Mapping: linear, documented in [`docs/MAPPING_MBON_DAN.md`](docs/M
 
 Human-emotion words from `honesty.py` are labels on the circumplex, not claims about fly experience.
 
+## What it does
+
+`affective-fly` turns a stream of host events into an **affective state** — valence, arousal, and an approach/avoid tendency on Russell's circumplex — and a discrete decision (wait, act, or skip). That state comes from a reduced *Drosophila* mushroom-body circuit (Kenyon cells → dopaminergic DANs → MBON output neurons), not from text embeddings.
+
+It is the *affect source* for [emotional-memory](https://github.com/gianlucamazza/emotional-memory): the current affect is written onto encoded memories, and retrieved memories feed back into the next decision. Where a similarity-only memory reacts to *what* an event resembles, this reacts to *how the accumulated experience feels* — a slow mood (`MoodField`, τ in seconds) that carries across ticks and across processes.
+
+## How it works
+
+Each tick (`AffectiveLoop.step`; full flow in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)):
+
+```
+SensoryFrame → fly circuit (KC→DAN→MBON) → CoreAffect (valence/arousal + approach)
+            → MoodField (slow EMA) → Policy + LaunchGate → Decision
+```
+
+- **Encode**: the current affect is attached to the memory via `EmotionalMemory.set_affect` / `encode`.
+- **Retrieve**: past memories are recalled and can veto a decision (strongly negative recalled valence → SKIP).
+- **Learn**: a reported reward/outcome triggers three-factor plasticity on KC→MBON weights (PAM if positive, PPL1 if negative).
+
+The circumplex/mood readout of a demo episode is shown under [Usage](#usage).
+
+## Objectives
+
+- Provide a stable, interpretable valence/arousal signal as input to `emotional-memory`.
+- Keep a documented, calibrated mapping from spiking rates to the MBON/DAN bands ([`docs/MAPPING_MBON_DAN.md`](docs/MAPPING_MBON_DAN.md)), so real circuits — not only `MockFlyCircuit` — drive Policy and LaunchGate.
+- Support three-factor learning and versioned host integration (`HostFrame`, journal replay).
+- Stay honest and reproducible: `ruff`/`mypy` clean, tests green, benchmarks committed, and no claim beyond what the code does (without a real connectome the KC→MBON weights are random, and the code says so).
+
+## Not in scope
+
+Token-launch product, sex/mating ensembles, and swarms of N ≫ 8 (see [`docs/ROADMAP.md`](docs/ROADMAP.md)). Brian2 C++ standalone codegen is planned but not yet implemented (Phase 5).
+
 ## Installation
 
 ```bash
