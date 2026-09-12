@@ -18,7 +18,7 @@ class MoodState:
     """Current mood state (slow-varying)."""
 
     valence: float  # [-1, 1]
-    arousal: float  # [-1, 1]
+    arousal: float  # [0, 1] — matches CoreAffect in emotional-memory
     approach_tendency: float  # [-1, 1]
 
     def as_dict(self) -> dict:
@@ -60,7 +60,7 @@ class MoodField:
             tau_arousal: Time constant for arousal decay (seconds)
             tau_approach: Time constant for approach tendency decay (seconds)
             initial_valence: Starting valence [-1, 1]
-            initial_arousal: Starting arousal [-1, 1]
+            initial_arousal: Starting arousal [0, 1]
             initial_approach: Starting approach tendency [-1, 1]
         """
         self.tau_valence = tau_valence

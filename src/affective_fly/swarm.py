@@ -46,13 +46,12 @@ class Swarm:
         self.emotional_memory = emotional_memory
 
         # Create agent circuits (independent)
+        self.circuits: list[FlyAffectReadout]
         if agent_circuits is None:
-            self.circuits: list[FlyAffectReadout] = [
-                MockFlyCircuit(seed=42 + i) for i in range(n_agents)
-            ]
+            self.circuits = [MockFlyCircuit(seed=42 + i) for i in range(n_agents)]
         else:
             assert len(agent_circuits) == n_agents
-            self.circuits = agent_circuits
+            self.circuits = list(agent_circuits)
 
         # Create independent affect loops for each agent, sharing memory
         self.agents: list[AffectiveLoop] = []

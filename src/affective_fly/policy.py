@@ -37,18 +37,22 @@ class Policy:
     """
     Affect-driven policy for action selection.
 
-    Rules:
+    Rules, in order:
     1. If approach_tendency < threshold_avoid → SKIP (avoidance dominates)
-    2. If arousal < threshold_calm → WAIT (too calm to act)
-    3. If valence > 0 and approach > threshold_act → CLICK or TYPE
-    4. Otherwise → WAIT or SKIP based on memory retrieval
+    2. If the top retrieved memory is strongly negative → SKIP
+    3. If arousal <= threshold_calm → WAIT (too calm to act)
+    4. If valence > 0 and approach > threshold_act → CLICK or TYPE
+    5. Otherwise → WAIT
+
+    Avoidance is decided before the arousal gate: being too calm to act is a
+    reason not to act, never a reason to ignore evidence against acting.
     """
 
     def __init__(
         self,
         threshold_avoid: float = -0.3,  # Below this → skip
         threshold_act: float = 0.2,  # Above this + positive valence → act
-        threshold_calm: float = -0.5,  # Below this → wait
+        threshold_calm: float = 0.0,  # At or below this → wait (arousal is [0, 1])
     ):
         """
         Initialize policy thresholds.
@@ -56,7 +60,10 @@ class Policy:
         Args:
             threshold_avoid: Approach tendency below this triggers avoidance
             threshold_act: Approach tendency above this enables action
-            threshold_calm: Arousal below this suppresses action
+            threshold_calm: Arousal at or below this suppresses action.
+                Arousal is on [0, 1] (CoreAffect's range), so a negative value
+                here could never fire. 0.0 means "DAN not above its baseline",
+                which is the documented constant rather than a tuned number.
         """
         self.threshold_avoid = threshold_avoid
         self.threshold_act = threshold_act
@@ -94,18 +101,32 @@ class Policy:
                 reason=f"Avoidance dominant (approach={approach:.2f} < {self.threshold_avoid})",
             )
 
-        # Rule 2: Very low arousal → wait
-        if arousal < self.threshold_calm:
+        # Rule 2: Memory evidence of a bad outcome → skip
+        if retrieved_memories:
+            top_memory = retrieved_memories[0]
+            mem_valence = top_memory.get("valence", 0.0)
+            if mem_valence < -0.3:
+                return PolicyDecision(
+                    action=Action.SKIP,
+                    confidence=0.6,
+                    mood_valence=valence,
+                    mood_arousal=arousal,
+                    approach_tendency=approach,
+                    reason=f"Memory suggests avoidance (mem_valence={mem_valence:.2f})",
+                )
+
+        # Rule 3: Very low arousal → wait
+        if arousal <= self.threshold_calm:
             return PolicyDecision(
                 action=Action.WAIT,
                 confidence=abs(arousal),
                 mood_valence=valence,
                 mood_arousal=arousal,
                 approach_tendency=approach,
-                reason=f"Low arousal (arousal={arousal:.2f} < {self.threshold_calm})",
+                reason=f"Low arousal (arousal={arousal:.2f} <= {self.threshold_calm})",
             )
 
-        # Rule 3: Positive valence + sufficient approach → act
+        # Rule 4: Positive valence + sufficient approach → act
         if valence > 0 and approach > self.threshold_act:
             # Check if we have a specific target from context
             target = sensory_context.get("note_id") or sensory_context.get("target")
@@ -129,22 +150,7 @@ class Policy:
                 reason=f"Approach + positive valence (v={valence:.2f}, a={approach:.2f})",
             )
 
-        # Rule 4: Check retrieved memories for guidance
-        if retrieved_memories:
-            # If top memory suggests avoidance, skip
-            top_memory = retrieved_memories[0]
-            mem_valence = top_memory.get("valence", 0.0)
-            if mem_valence < -0.3:
-                return PolicyDecision(
-                    action=Action.SKIP,
-                    confidence=0.6,
-                    mood_valence=valence,
-                    mood_arousal=arousal,
-                    approach_tendency=approach,
-                    reason=f"Memory suggests avoidance (mem_valence={mem_valence:.2f})",
-                )
-
-        # Default: wait
+        # Rule 5: default
         return PolicyDecision(
             action=Action.WAIT,
             confidence=0.3,

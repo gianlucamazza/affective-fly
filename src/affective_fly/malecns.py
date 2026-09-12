@@ -8,12 +8,15 @@ until an HDF5/JSON export is available.
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 
 from .aso import ASO_CATALOG, AsoCatalog
 from .fly_circuit import FlyAffectReadout, LIFCircuit, MBONDanState
+
+if TYPE_CHECKING:
+    from .td import TDResult
 
 
 class MaleCNSCircuit(FlyAffectReadout):
@@ -71,7 +74,7 @@ class MaleCNSCircuit(FlyAffectReadout):
         v_next: float | None = None,
         sequential: bool = False,
         prediction_error: bool | None = None,
-    ):
+    ) -> TDResult | None:
         return self.backend.learn(
             reward,
             v_next=v_next,

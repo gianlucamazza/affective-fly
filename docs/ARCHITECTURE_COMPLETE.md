@@ -6,6 +6,56 @@ This document provides a comprehensive view of the `affective-fly` architecture,
 
 `affective-fly` implements a reduced *Drosophila* mushroom-body (MB) circuit as the affect source for [emotional-memory](https://github.com/gianlucamazza/emotional-memory). The circuit provides valence, arousal, and approach/avoid signals derived from spiking Kenyon cells (KC), dopaminergic neurons (DAN), and mushroom-body output neurons (MBON). Decisions use these rates and a slow mood average, not embedding similarity.
 
+## Context Diagram
+
+```
+                    ┌──────────────────────────────┐
+                    │  Host agent / product (out)  │
+                    │  events → SensoryFrame       │
+                    │  rewards → context.reward    │
+                    │  actions ← PolicyDecision    │
+                    └──────────────┬───────────────┘
+                                   │
+                    ┌──────────────▼───────────────┐
+                    │        AffectiveLoop         │
+                    │   (affective-fly package)    │
+                    └──────┬─────────────┬─────────┘
+           circuit affect  │             │  encode / set_affect /
+           + TD learn      │             │  retrieve / attach appraisal
+                    ┌──────▼──────┐ ┌────▼─────────────────────┐
+                    │ FlyAffect   │ │ emotional-memory         │
+                    │ Readout     │ │ EmotionalMemory          │
+                    │ Mock|LIF|   │ │ Store + Embedder + Mood  │
+                    │ Brian2|     │ │ Resonance (optional)     │
+                    │ MaleCNS     │ └──────────────────────────┘
+                    └─────────────┘
+```
+
+| Library | Owns | Does not own |
+|---|---|---|
+| `emotional-memory` ≥ 0.18 | Store, embed, retrieve, resonance, MoodField type, CoreAffect, AppraisalVector, decay, elaborate | Fly anatomy, MBON/DAN plasticity, launch gate, host product |
+| `affective-fly` | Circuit, TD learning, AffectBridge, loop policy/gate, journal, CLI live runner | Generic semantic memory, the PyPI product surface of EM |
+
+## Control Plane: One Tick
+
+`AffectiveLoop.step` runs this order. The invariant is **fast path = circuit CoreAffect, slow path = Scherer appraisal on the tag only**: never blend the appraisal into circuit affect, and never pass `appraisal=` into `encode()` (see the section below on why).
+
+```
+SensoryFrame(visual, context)
+  │
+  ├─1─ fly_circuit.step(visual) → MBONDanState
+  ├─1b if reward|outcome|pnl → fly_circuit.learn(…, sequential?, prediction_error?)
+  ├─2─ AffectBridge → CoreAffect + (valence, arousal, approach)
+  ├─3─ MoodField.update (EMA; τ_v=300s, τ_a=60s, τ_app=180s)
+  ├─4─ emotional_memory.set_affect(core_affect)
+  ├─5─ reconsolidate if labile match else encode(content, metadata)
+  │      then DualPath.appraise → DualPath.attach(tag)   # slow path
+  ├─6─ emotional_memory.retrieve(query, top_k)
+  ├─7─ Policy.decide(mood, retrieved, context)
+  ├─8─ LaunchGate.update(mood); maybe demote CLICK/TYPE → WAIT
+  └─9─ Journal.log(…) → PolicyDecision
+```
+
 ## Circuit Implementations
 
 ### 1. `LIFCircuit` (Pure Python)
@@ -15,10 +65,13 @@ Deterministic leaky integrate-and-fire (LIF) neurons implemented in pure Python/
 - **Kenyon Cells (KC)**: Sparse coding (~5% driven per step). Random projection from sensory input with k-WTA selection.
 - **DANs (Dopaminergic)**: First half = PAM (reward-like), second half = PPL1 (punishment-like). Driven by KC spikes via fixed random weights.
 - **MBONs (Output)**: First half = approach-promoting, second half = avoid-promoting. Driven by KC spikes, modulated by DAN activity (PAM gain-modulates approach MBONs, PPL1 gain-modulates avoid MBONs).
-- **Plasticity**: Three-factor KC→MBON weight updates (eligibility trace × DAN gates × learning rate). PAM raises approach weights and lowers avoid; PPL1 does the opposite (functional contrast, not Hige depression).
-- **Rates**: Mean firing rates over a sliding window (default 100 ms), not instantaneous spike/dt.
+- **Plasticity**: Three-factor KC→MBON weight updates (eligibility trace × DAN gates × learning rate). PAM raises approach weights and lowers avoid; PPL1 does the opposite (functional contrast, not Hige depression). Weights are excitatory, bounded to `[w_min, w_max]` with `w_min = 0`: depression drives a synapse to silence, it does not invert its sign.
+- **Integration**: Sub-stepped at `dt_sim` (default 1 ms) for the caller's `dt`. A single Euler step of the loop's 50 ms would both under-sample the 20 ms membrane and cap every rate at `1/dt`.
+- **Synapses**: A presynaptic spike is an instantaneous voltage jump, matching Brian2's `on_pre`, not a current held over the step.
+- **Gain**: `syn_gain` defaults to `950 · n_kc^(−0.70)`, so circuits of different KC counts share one rate band instead of being different models.
+- **Rates**: Mean firing rates over the span the retained spike events actually cover, not instantaneous spike/dt. Invariant in the caller's `dt`.
 
-**Performance**: ~0.12 ms/step @ 2000 KC (pure numpy is fast for this scale).
+**Performance**: ~24 ms/step @ 2000 KC and ~8.5 ms @ 200 KC, for `step(dt=0.05)` — that is 50 sub-steps. Sub-stepping costs roughly two orders of magnitude over the single-step integration used before v0.2.5, which was fast but produced rates an order of magnitude below the documented band. Still under real time (50 ms simulated per 24 ms wall). `dt_sim` is the knob if a host needs the latency back.
 
 ### 2. `Brian2Circuit`
 
@@ -53,9 +106,9 @@ Deterministic mock for unit tests. Linear mapping: positive input → approach >
 
 `AffectBridge.mbon_dan_to_core_affect()` maps MBON/DAN firing rates to emotional-memory's `CoreAffect`:
 
-- **Valence**: `(approach − avoid) / (approach + avoid + ε)` (functional contrast, bounded to [−1, 1]).
-- **Arousal**: `dan / 80` (DAN rate as arousal proxy; 80 Hz is the typical ceiling).
-- **Approach tendency** (journal only): `(approach − avoid) / 100` (same contrast as valence, different scale for mood tracking).
+- **Valence** — *relative* contrast, in [−1, 1]: `(approach − avoid) / (approach + avoid + ε)`, scaled toward neutral when total MBON activity falls below `mbon_min_active` (5 Hz). Without that guard, one spike on an otherwise silent population reads as full-confidence avoidance.
+- **Approach tendency** — *absolute* net drive, in [−1, 1]: `clip((approach − avoid) / (2 · mbon_baseline), −1, 1)`. Same numerator as valence, different denominator: valence says which sign the situation has, approach says how much net push is behind it. Read by both `Policy` and `LaunchGate`, not journal-only.
+- **Arousal** — in **[0, 1]**, not [−1, 1]: `clip((dan − dan_baseline) / (dan_max − dan_baseline), 0, 1)`. `CoreAffect` defines arousal on [0, 1] and clamps silently, so a negative value would never survive `set_affect()`.
 
 See [MAPPING_MBON_DAN.md](MAPPING_MBON_DAN.md) for formulas and rationale.
 
@@ -118,16 +171,19 @@ The slow-path appraisal is **attached** to the tag after encoding. Do **not** pa
 
 `Policy.decide()` maps mood + retrieved memories to an action:
 
-- **SKIP** if approach < −0.3 or retrieved valence < −0.3 (avoidance).
-- **WAIT** if arousal < −0.5 (too calm).
-- **CLICK** or **TYPE** if valence > 0 and approach > 0.2 (action thresholds).
-- Otherwise **WAIT**.
+1. **SKIP** if approach < −0.3 (avoidance dominates).
+2. **SKIP** if the top retrieved memory has valence < −0.3.
+3. **WAIT** if arousal <= 0.0, i.e. DAN is not above its baseline (too calm to act).
+4. **CLICK** or **TYPE** if valence > 0 and approach > 0.2.
+5. Otherwise **WAIT**.
+
+Order matters: avoidance is decided before the arousal gate. Being too calm to act is a reason not to act, never a reason to ignore evidence against acting. The arousal threshold is anchored to the DAN baseline rather than tuned; before v0.2.5 it was −0.5, which `CoreAffect`'s [0, 1] range made unreachable.
 
 ## Launch Gate
 
 `LaunchGate` blocks impulsive CLICK/TYPE until mood criteria hold for N ticks (default 3):
 
-- **Open** after `required_ticks` consecutive ticks with approach > 0.2 and valence > −0.1.
+- **Open** after `required_ticks` consecutive ticks with approach ≥ 0.2 and valence ≥ −0.1.
 - **Closed** if criteria fail; counter resets.
 - **Stays open** once opened (until `reset()`).
 
@@ -202,6 +258,41 @@ These require external data or production infrastructure and are **explicitly bl
 
 See [ROADMAP.md](ROADMAP.md) Open section for full list.
 
+## Layer Map: Today vs Complete
+
+Where the gap is, layer by layer. Today = v0.2.5.
+
+| Layer | Today | Complete |
+|---|---|---|
+| **L0 Sensing** | `SensoryFrame.from_dict` hash→vector | Host adapters: browser DOM hash, screenshot embed, API event bus → Frame; stable schema version |
+| **L1 Circuit** | Mock, LIF, Brian2 (numpy), MaleCNS (Aso names, **random** weights); all backends calibrated to one rate band, `syn_gain` derived from `n_kc` | MaleCNS weights from a real export; Brian2 C++ path + latency budget; circuit registry; gain law replaced by a physical normalisation |
+| **L2 Plasticity** | Three-factor `learn`, delayed US (`td_sequential`), optional r−V | Eligibility τ calibrated from usage; online PE mode documented; no invented Hige identity |
+| **L3 Affect bridge** | Fixed MBON/DAN → CoreAffect map; valence (relative) and approach (absolute) are distinct axes; arousal on `[0, 1]` | Same map (frozen) + calibration notebook; approach saturation resolved; honesty labels unchanged |
+| **L4 Mood** | MoodField EMA + SQLite `fly_mood` | Cross-process reopen proven; τ_* treated as **hypotheses** until real agent data |
+| **L5 Memory (EM)** | encode / reconsolidate / retrieve / resonance | Production store path; `retrieval_with_explanations` optional; resonance on by default when EM enables it |
+| **L6 Dual path** | HeuristicAppraisalEngine + `from_llm` hook | Real LLMAppraisalEngine behind env; skip-clean without keys |
+| **L7 Policy + Gate** | Fixed thresholds + LaunchGate; avoidance evaluated before the arousal gate | Host-pluggable Policy; gate metrics; no impulsive CLICK/TYPE |
+| **L8 Observability** | JSONL journal + viz PNG | Structured metrics (gate blocks, TD delta, reconsolidate rate); optional OTEL via EM telemetry |
+| **L9 Runtime** | CLI `run` / `journal` / `demo` | Long-lived service optional; host owns the process; package stays library-first |
+
+## Deployment Topologies
+
+**A. Library-in-process (default)** — the host constructs `AffectiveLoop(circuit, EmotionalMemory(...))` and calls `step` per event.
+
+**B. CLI lab runner** — `python -m affective_fly run --interval N` for synthetic ticks.
+
+**C. Swarm** — N independent circuits over a shared EM store (`swarm.py`, N≈8). Not a distributed system.
+
+**D. Out of scope** — SaaS, trading or token-launch bots, mating ensembles, swarm N≫8 as a product.
+
+## Trust & Scientific Boundaries
+
+1. Circuit CoreAffect is the source of truth for valence and arousal in the loop.
+2. Appraisal is annotation, never replacement.
+3. No invented MaleCNS body IDs without an export file.
+4. Constants in MAPPING are **working**, not unique and not fitted to data — where one *is* fitted (the `syn_gain` gain law) it says so.
+5. τ_valence = 300 s and its siblings are open empirical questions, answerable only with a real host agent.
+
 ## Design Rationale
 
 ### Why a Fly Circuit?
@@ -242,6 +333,16 @@ Semantic embeddings (BERT, MiniLM) are useful for content retrieval but don't pr
 - **Demos**: Must use real circuits and real memory. No stub LLM callables. See `demo_emotional_memory_integration.py` (updated in v0.2.4).
 - **CI**: Runs without `--extra embed` (no network downloads). `FakeEmbedder` is OK as a library test utility.
 
+The line between a legitimate test double and a stub that fakes completion:
+
+| Allowed as a test double | Not a deliverable |
+|---|---|
+| `FakeEmbedder` in unit tests that cannot download MiniLM | Demos or features that only work with `FakeEmbedder` |
+| Skipping when there is no C++ compiler or no LLM key | A fake LLM returning canned JSON while claiming the path is wired |
+| `HeuristicAppraisalEngine` (deterministic, offline) | Invented MaleCNS weights standing in for a connectome |
+
+A host integration must be a schema plus journal replay of real frames, not a null host inventing outcomes.
+
 ## References
 
 - Aso, Y., Sitaraman, D., Ichinose, T., et al. (2014). Mushroom body output neurons encode valence and guide memory-based action selection in Drosophila. *eLife*, 3:e04577. [doi:10.7554/eLife.04577](https://doi.org/10.7554/eLife.04577)
@@ -251,6 +352,7 @@ Semantic embeddings (BERT, MiniLM) are useful for content retrieval but don't pr
 
 ## Version History
 
+- **v0.2.5**: Every circuit backend calibrated into the documented rate band (LIF sub-stepping, delta synapses, excitatory weights, `n_kc`-derived gain, exact rate window); valence and approach separated into distinct axes; arousal aligned to `CoreAffect`'s `[0, 1]`; `mypy src/` clean with no `type: ignore`.
 - **v0.2.4**: Emotional-memory integration test + demo with `LIFCircuit`; `benchmark_brian2_codegen.py` (LIF vs Brian2); `make lint` includes mypy. Removed fake LLM demo (stub logic).
 - **v0.2.3**: Live tick runner (`python -m affective_fly run`); SQLite + journal persistence.
 - **v0.2.2**: CLI, mood in SQLite, CI without embed extra.

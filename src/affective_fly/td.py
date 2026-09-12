@@ -101,9 +101,9 @@ def decay_eligibility(
     e = np.asarray(eligibility, dtype=float)
     k = np.asarray(kc, dtype=float)
     if tau <= 0 or dt < 0:
-        return np.clip(k, 0.0, 1.0)  # type: ignore[no-any-return]
+        return np.asarray(np.clip(k, 0.0, 1.0), dtype=float)
     lam = float(np.exp(-float(dt) / float(tau)))
-    return np.clip(lam * e + k, 0.0, 1.0)  # type: ignore[no-any-return]
+    return np.asarray(np.clip(lam * e + k, 0.0, 1.0), dtype=float)
 
 
 def apply_three_factor(
@@ -113,11 +113,16 @@ def apply_three_factor(
     ppl1: float,
     alpha: float,
     n_approach: int,
-    w_min: float = -2.0,
+    w_min: float = 0.0,
     w_max: float = 2.0,
 ) -> np.ndarray:
     """
     Functional contrast: Δw_app = α e (PAM − PPL1), Δw_av = α e (PPL1 − PAM).
+
+    Weights are clipped to [w_min, w_max]. KC→MBON is excitatory, so w_min
+    defaults to 0: depression drives a synapse to silence (Hige et al. 2015),
+    it does not invert its sign. Callers pass the bounds that keep their own
+    circuit inside the rate band of docs/MAPPING_MBON_DAN.md.
 
     No update if both DAN gates are 0 or eligibility is empty.
     """
@@ -136,5 +141,4 @@ def apply_three_factor(
     dw = np.zeros_like(weights, dtype=float)
     dw[:, :n_app] = alpha * e * (pam_f - ppl_f)
     dw[:, n_app:] = alpha * e * (ppl_f - pam_f)
-    w_new = np.clip(weights + dw, w_min, w_max)
-    return w_new  # type: ignore[no-any-return]
+    return np.asarray(np.clip(weights + dw, w_min, w_max), dtype=float)

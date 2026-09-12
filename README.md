@@ -11,7 +11,7 @@ Human-emotion words from `honesty.py` are labels on the circumplex, not claims a
 ```bash
 git clone https://github.com/gianlucamazza/affective-fly.git
 cd affective-fly
-git checkout v0.2.4
+git checkout v0.2.5
 uv sync --extra dev --extra brian --extra viz
 ```
 
