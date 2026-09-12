@@ -32,7 +32,7 @@ HostFrame (JSON)
 | `affect_bridge.py` | Rates → `CoreAffect`. Spec in MAPPING. |
 | `mood_field.py` | EMA, τ_valence = 300 s, τ_arousal = 60 s, τ_approach = 180 s. |
 | `dual_path.py` | Scherer vector on the tag only. |
-| `reconsolidate.py` | Match on note_id, else ticker/event/page; 600 s window; lerp α = 0.4. Disable with window ≤ 0. |
+| `reconsolidate.py` | Match on note_id, else ticker/event/page; 600 s window; lerp α = 0.4. Disable with window ≤ 0. Owns the *encode-side* labile-window reconsolidation, tracked in `metadata["reconsolidation_count"]`; distinct from emotional-memory's APE-gated reconsolidation in `retrieve()`, which also bumps `tag.reconsolidation_count` (so `tag.reconsolidation_count ≥ metadata["reconsolidation_count"]`). |
 | `policy.py` | SKIP if approach < −0.3 or retrieved valence < −0.3 (avoidance evaluated before arousal gate); WAIT if arousal ≤ 0.0 (DAN baseline); CLICK/TYPE if valence > 0 and approach > 0.2; else WAIT. |
 | `launch_gate.py` | Opens after N ticks with approach > 0.2 and valence > −0.1. |
 | `host_adapter.py` | `HostFrame` v1.0 schema (JSON contract), `HostAdapter` journal replay (save/load JSONL), outcome reporting via context fields. |
@@ -43,6 +43,6 @@ HostFrame (JSON)
 | `aso.py` | Aso et al. 2014 names. No invented body IDs. |
 | `run.py` | `live_loop`: interval ticks, SQLite + journal. CLI `run`. |
 
-Store, embed, retrieve, and optional resonance stay in `emotional-memory`. On-disk memories: `SQLiteStore`. Mood in the same file: `save_mood` / `load_mood` (`persist.py`, `examples/demo_persist.py`). CLI: `python -m affective_fly`. Semantic vectors: `SentenceTransformerEmbedder` (`examples/demo_embedder.py`, extra `embed`). Delayed US: `examples/demo_cs_us.py` and `AffectiveLoop(td_sequential=True)`. Resonance links: `examples/demo_resonance.py` (emotional-memory default).
+Store, embed, retrieve, and optional resonance stay in `emotional-memory`. The engine exposes no public `store`/`embedder` accessor, so affective-fly injects the same instances it handed to `EmotionalMemory` into `AffectiveLoop(store=, embedder=)` (and `Swarm`), which forward them to `Reconsolidator`/`DualPathEncoder` instead of reaching into engine internals. On-disk memories: `SQLiteStore`. Mood in the same file: `save_mood` / `load_mood` (`persist.py`, `examples/demo_persist.py`). CLI: `python -m affective_fly`. Semantic vectors: `SentenceTransformerEmbedder` (`examples/demo_embedder.py`, extra `embed`). Delayed US: `examples/demo_cs_us.py` and `AffectiveLoop(td_sequential=True)`. Resonance links: `examples/demo_resonance.py` (emotional-memory default).
 
 New circuits implement `step` and `reset` (`learn` optional). Policies override `decide`. Appraisal engines implement `appraise(text, context)`.
