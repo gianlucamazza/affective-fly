@@ -1,4 +1,4 @@
-.PHONY: install test lint format demo journal clean
+.PHONY: install test lint format demo benchmark figures journal clean
 
 install:
 	uv sync --all-extras
@@ -29,6 +29,15 @@ demo:
 	uv run python examples/demo_cs_us.py
 	@echo "\nRunning resonance demo..."
 	uv run python examples/demo_resonance.py
+
+benchmark:
+	@echo "Running circuit backend benchmark sweep (needs brian extra for Brian2)..."
+	uv run python examples/benchmark_brian2_codegen.py
+
+figures:
+	@echo "Regenerating docs/figures/ (runs benchmark first; needs viz extra)..."
+	uv run python examples/benchmark_brian2_codegen.py
+	uv run python examples/make_figures.py
 
 journal:
 	uv run python -m affective_fly journal $(JOURNAL)
