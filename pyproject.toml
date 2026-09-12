@@ -39,6 +39,9 @@ viz = [
 embed = [
     "sentence-transformers>=2.2.0",
 ]
+connectome = [
+    "pyarrow>=14.0.0",
+]
 
 [build-system]
 requires = ["hatchling"]
