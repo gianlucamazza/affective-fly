@@ -312,7 +312,7 @@ def test_full_emotional_memory_integration_path():
     # 1. Start with empty memory
     assert len(store.list_all()) == 0
 
-    # 2. Encode positive memory for experiment session  
+    # 2. Encode positive memory for experiment session
     positive_frame = SensoryFrame.from_dict({
         "note_id": "exp-session-042",
         "context": "journal",
