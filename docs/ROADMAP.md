@@ -13,6 +13,7 @@ Calibration pass. Every circuit backend now lands in the MBON 10–100 Hz / DAN 
 - `valence` and `approach_tendency` are no longer the same number: relative contrast vs absolute net drive. A near-silent population no longer reads as full-confidence avoidance.
 - `arousal` is `[0, 1]` everywhere, matching `CoreAffect`. `Policy(threshold_calm=-0.5)` was dead code; the default is now 0.0, anchored to the DAN baseline. Memory-driven avoidance is evaluated before the arousal gate.
 - The numpy `Any`-return suppressions added in v0.2.4 are replaced by explicit `np.asarray(..., dtype=float)`, and the `Appraiser` protocol no longer widens to `Any`. `mypy src/` is clean without any `type: ignore`.
+- Demo scene changed from token-launch (ticker MEME, page launchpad) to research-journal episode (context: journal, note_id for research episodes). Tests, examples, and README now use the journal context. Token-launch product stays out of scope.
 
 ## v0.2.4
 
