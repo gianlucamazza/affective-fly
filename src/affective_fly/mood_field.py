@@ -2,7 +2,7 @@
 MoodField: slow EMA (exponential moving average) over MBON outputs.
 
 Implements persistent mood that outlasts individual stimulus presentations.
-A market dump or failed form leaves mood depressed for tens of minutes,
+A failed review or aversive note leaves mood depressed for tens of minutes,
 not just a spike-and-gone response.
 """
 
@@ -92,7 +92,7 @@ class MoodField:
 
         Args:
             current_valence: Current valence from circuit [-1, 1]
-            current_arousal: Current arousal from circuit [-1, 1]
+            current_arousal: Current arousal from circuit [0, 1]
             current_approach: Current approach tendency [-1, 1]
             dt: Time step (seconds)
 

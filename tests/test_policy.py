@@ -33,14 +33,21 @@ def test_policy_avoidance():
 
 
 def test_policy_low_arousal():
-    """Test policy waits when arousal too low."""
-    policy = Policy(threshold_calm=-0.5)
-    mood = MoodState(valence=0.5, arousal=-0.7, approach_tendency=0.3)
+    """WAIT when arousal is at or below the default calm threshold (0.0).
+
+    Arousal is on [0, 1] (CoreAffect). The pre-v0.2.5 values
+    ``threshold_calm=-0.5`` and ``arousal=-0.7`` were unreachable after
+    ``set_affect()`` and are not used here.
+    """
+    policy = Policy()  # default threshold_calm=0.0
+    # Favorable valence/approach so only the arousal gate fires.
+    mood = MoodState(valence=0.5, arousal=0.0, approach_tendency=0.3)
 
     decision = policy.decide(mood, [], {})
 
     assert decision.action == Action.WAIT
     assert "arousal" in decision.reason.lower()
+    assert policy.threshold_calm == 0.0
 
 
 def test_policy_positive_action():
