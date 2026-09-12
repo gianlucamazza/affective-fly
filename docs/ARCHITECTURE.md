@@ -26,7 +26,7 @@ HostFrame (JSON)
 
 | File | Notes |
 |---|---|
-| `fly_circuit.py` | Protocol `FlyAffectReadout`. Mock (linear rates), LIF, optional Brian2, MaleCNS (Aso names; random or loaded weights). |
+| `fly_circuit.py` | Protocol `FlyAffectReadout`. Mock (linear rates), LIF, optional Brian2 (`codegen_target` numpy default / `cpp_standalone` opt-in), MaleCNS (Aso names; random or loaded weights). |
 | `malecns_connectome.py` | Connectome loader: `load_connectome()` from JSON/Feather/Parquet; curated Aso 2014 `map_to_aso_names()`. `n_kc` must match the file unless `allow_kc_mismatch`. Without path, random (not connectome-backed). |
 | `td.py` | `learn()`: PAM/PPL1 from the US; optional `prediction_error` (r−V); eligibility `e ← e exp(−dt/τ)+KC`, τ = 1 s. Sequential uses the previous trace. Weight change is functional contrast (approach vs avoid), not Hige depression. |
 | `affect_bridge.py` | Rates → `CoreAffect`. Spec in MAPPING. |

@@ -40,7 +40,6 @@ v0.2.0 plus: MoodField JSON round-trip, delayed US through `AffectiveLoop`, `mak
 **Blocked** (requires external data or production infrastructure):
 
 - **MaleCNS connectivity matrix**: Loader implemented (`malecns_connectome.py`) for JSON/Feather/Parquet (HDF5 stub). `data/malecns/kc_mbon_connectivity.feather` is the published KC→MBON export (61,210 edges). `MaleCNSCircuit(connectivity_path=..., n_kc=...)` requires `n_kc` to match the file unless `allow_kc_mismatch=True`. Mapping uses the curated Aso 2014 short-name table (`PUBLISHED_MBON_SHORT_TO_ASO`); unmatched types stay zero. Without `connectivity_path`, weights remain random (NOT connectome-backed). See Phase 4 and `docs/MALECNS_DATA.md`.
-- **Brian2 C++ standalone codegen** (current Brian2Circuit hardcodes numpy backend; would need device selection + build lifecycle).
 
 Not in scope for this repo: token-launch product, sex/mating ensembles, swarm N ≫ 8.
 
@@ -68,6 +67,6 @@ See [ARCHITECTURE_COMPLETE.md](ARCHITECTURE_COMPLETE.md) for full system design.
 
 **Phase 4** (partial): MaleCNS connectivity — `data/malecns/kc_mbon_connectivity.feather` holds all 61,210 published KC→MBON edges from MaleCNS v1.0 (CC-BY 4.0). `MaleCNSCircuit(connectivity_path=..., n_kc=...)` loads them; `n_kc` must match the file or `ConnectomeLoadError` is raised (`allow_kc_mismatch=True` truncates/pads). Mapping uses `PUBLISHED_MBON_SHORT_TO_ASO` (Aso 2014 eLife e04580 Table 1); left/right bodies of one type are summed; types outside the 7-name catalog and `*-like` labels stay unmatched. `named_rates()` is a population alias, not a per-cell rate. Feather/Parquet need `uv sync --extra connectome`. Without `connectivity_path`, weights stay random. Top-200 fixture mapping remains partial (`docs/MALECNS_TOP200_MAPPING.md`). **Still open**: gain-law refit on real fan-out (item 1.3); a 4063-KC load of the published matrix steps, but untrained MBON rates exceed the 10–100 Hz band because `syn_gain` is still the random-weight fit. Phase 4 is not marked complete.
 
-**Phase 5** (blocked): Brian2 C++ codegen - Device selection, standalone build lifecycle. Current Brian2Circuit hardcodes numpy; the ~40 ms/step numpy overhead this incurs is quantified in [BENCHMARKS.md](BENCHMARKS.md).
+**Phase 5** (complete): Brian2 C++ codegen — `Brian2Circuit(codegen_target="numpy")` remains the default (no compiler). `codegen_target="cpp_standalone"` is opt-in: first `step()` compiles a cached standalone binary (`clean=False`); later steps reuse it via `device.run(run_args=...)`. Tests skip cleanly without a C++ toolchain (`CppStandaloneUnavailableError` if someone opts in anyway). `syn_gain` defaults to 1.0; the MBON/DAN band is still held by `w_max=0.12` (the LIF `n_kc` gain-law refit is item 1.3, not this phase). Latency budget: after the cached build, a 2000-KC `step()` should drop the ~40 ms numpy overhead; first compile is outside the budget. LIF stays the interactive default. See [BENCHMARKS.md](BENCHMARKS.md).
 
 **Phase 6** (empirical): τ parameter tuning - Real agent or user study to validate τ_valence=300s, labile window, etc.

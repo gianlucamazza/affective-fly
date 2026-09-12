@@ -36,6 +36,9 @@ class MaleCNSCircuit(FlyAffectReadout):
             When provided, KC→MBON weights are loaded from the file.
         allow_kc_mismatch: If False (default), raise when the file's KC count
             differs from ``n_kc``. If True, truncate extra KCs or pad with zeros.
+        codegen_target: Passed to ``Brian2Circuit`` when ``backend="brian2"``.
+            ``numpy`` (default) needs no compiler; ``cpp_standalone`` is opt-in.
+        build_dir: Standalone build/cache directory for the Brian2 C++ path.
     """
 
     def __init__(
@@ -46,6 +49,8 @@ class MaleCNSCircuit(FlyAffectReadout):
         seed: int = 42,
         connectivity_path: str | Path | None = None,
         allow_kc_mismatch: bool = False,
+        codegen_target: str = "numpy",
+        build_dir: str | Path | None = None,
     ):
         self.catalog = catalog or ASO_CATALOG
         self.mbon_names = self.catalog.mbon_names
@@ -79,6 +84,8 @@ class MaleCNSCircuit(FlyAffectReadout):
                 n_approach=self.catalog.n_approach,
                 n_pam=self.catalog.n_pam,
                 seed=seed,
+                codegen_target=codegen_target,
+                build_dir=build_dir,
             )
         else:
             raise ValueError(f"Unknown backend: {backend!r}")
@@ -172,6 +179,7 @@ class MaleCNSCircuit(FlyAffectReadout):
         # Warn if mapping matched few or no catalog MBONs
         if self.matched_mbon_count == 0:
             import warnings
+
             warnings.warn(
                 f"map_to_aso_names matched 0 MBONs from {len(connectivity.mbon_body_ids)} loaded. "
                 f"Weights will be all zeros. Check MaleCNS type / Aso catalog coverage.",
@@ -180,6 +188,7 @@ class MaleCNSCircuit(FlyAffectReadout):
             )
         elif self.matched_mbon_count < len(self.mbon_names) // 2:
             import warnings
+
             warnings.warn(
                 f"map_to_aso_names matched only {self.matched_mbon_count}/{len(self.mbon_names)} "
                 f"MBONs. Coverage is partial. Unmatched MBONs: "
