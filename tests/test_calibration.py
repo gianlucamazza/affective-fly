@@ -123,7 +123,7 @@ def _run(circuit, n=40, sentiment=0.8, reward=None):
     )
     actions = []
     for _ in range(n):
-        context = {"page": "launchpad", "ticker": "MEME", "sentiment": sentiment, "query": "launch"}
+        context = {"context": "journal", "note_id": "exp-001", "sentiment": sentiment, "query": "experiment"}
         if reward is not None:
             context["reward"] = reward
         actions.append(loop.step(SensoryFrame.from_dict(context)).action)
