@@ -1,7 +1,21 @@
 {
+  "$schema": "https://www.cursor.com/schemas/environment.schema.json",
   "name": "affective-fly",
   "build": {
-    "dockerfile": "Dockerfile"
+    "dockerfile": "Dockerfile",
+    "context": "."
   },
-  "install": "uv sync --extra dev --extra brian --extra viz"
+  "install": "set -e && if ! command -v uv &> /dev/null; then echo 'Installing uv...' && curl -LsSf https://astral.sh/uv/install.sh | sh && export PATH=\"$HOME/.local/bin:$HOME/.cargo/bin:$PATH\"; fi && uv sync --all-extras",
+  "egressMode": "parent_plus_network_settings",
+  "egressAllowlist": [
+    "pypi.org",
+    "files.pythonhosted.org",
+    "pypi.python.org",
+    "github.com",
+    "api.github.com",
+    "storage.googleapis.com",
+    "huggingface.co",
+    "cdn-lfs.huggingface.co",
+    "api.openai.com"
+  ]
 }
