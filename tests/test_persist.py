@@ -14,7 +14,7 @@ def test_sqlite_store_reopen(tmp_path):
         emotional_memory=EmotionalMemory(store=store, embedder=FakeEmbedder()),
     )
     loop.step(
-        SensoryFrame.from_dict({"ticker": "MEME", "query": "crash", "sentiment": -1.0}),
+        SensoryFrame.from_dict({"note_id": "exp-001", "query": "failed", "sentiment": -1.0}),
         encode_memory=True,
     )
     n = len(store.list_all())
@@ -39,7 +39,7 @@ def test_mood_survives_in_same_sqlite(tmp_path):
         mood_field=mood,
     )
     loop.step(
-        SensoryFrame.from_dict({"ticker": "MEME", "sentiment": -1.0, "query": "crash"}),
+        SensoryFrame.from_dict({"note_id": "exp-001", "sentiment": -1.0, "query": "failed"}),
         encode_memory=True,
     )
     save_mood(db, loop.mood_field)

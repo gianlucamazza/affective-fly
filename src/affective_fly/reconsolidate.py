@@ -1,7 +1,7 @@
 """
 Reconsolidation: update an existing memory instead of duplicating it.
 
-If the same stimulus (ticker, else event, else page) is re-encoded inside
+If the same stimulus (note_id, ticker, event, or page) is re-encoded inside
 the labile window, blend the new circuit affect into the stored tag.
 This is a computational analogue of retrieval-induced updating, not a
 claim about molecular reconsolidation in flies.
@@ -18,8 +18,11 @@ from emotional_memory import CoreAffect, EmotionalMemory, Memory
 def stimulus_key(context: dict[str, Any]) -> str | None:
     """Identity of a stimulus for match-or-encode.
 
-    Ticker wins so the same odor/token reconsolidates across pages.
+    note_id (or ticker for backward compat) wins so the same odor key reconsolidates across contexts.
     """
+    note_id = context.get("note_id")
+    if note_id:
+        return f"note_id:{note_id}"
     ticker = context.get("ticker")
     if ticker:
         return f"ticker:{ticker}"

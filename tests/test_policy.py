@@ -47,13 +47,13 @@ def test_policy_positive_action():
     """Test policy acts when conditions favorable."""
     policy = Policy(threshold_act=0.2)
     mood = MoodState(valence=0.6, arousal=0.4, approach_tendency=0.5)
-    context = {"ticker": "MEME"}
+    context = {"note_id": "exp-001"}
 
     decision = policy.decide(mood, [], context)
 
     assert decision.action in [Action.CLICK, Action.TYPE]
     if decision.action == Action.TYPE:
-        assert decision.target == "MEME"
+        assert decision.target == "exp-001"
 
 
 def test_policy_memory_avoidance():

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Sustained approach opens the gate; a crash then yields SKIP from memory."""
+"""Sustained approach opens the gate; failed replication then yields SKIP from memory."""
 
 from emotional_memory import EmotionalMemory, InMemoryStore
 
@@ -15,10 +15,10 @@ from affective_fly import (
 
 SCENARIOS = [
     *[
-        {"page": "launchpad", "ticker": "MEME", "sentiment": 1.0, "query": "launch"}
+        {"context": "journal", "note_id": "exp-042", "sentiment": 1.0, "query": "success"}
         for _ in range(6)
     ],
-    *[{"page": "chart", "ticker": "MEME", "sentiment": -1.0, "query": "crash"} for _ in range(4)],
+    *[{"context": "review", "note_id": "exp-042", "sentiment": -1.0, "query": "failed"} for _ in range(4)],
 ]
 
 

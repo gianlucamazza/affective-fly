@@ -74,7 +74,7 @@ class Policy:
         Args:
             mood: Current MoodState
             retrieved_memories: List of retrieved memory dicts from EmotionalMemory
-            sensory_context: Dict with current context (e.g., {"page": "launchpad", "ticker": "MEME"})
+            sensory_context: Dict with current context (e.g., {"context": "journal", "note_id": "exp-001"})
 
         Returns:
             PolicyDecision
@@ -108,7 +108,7 @@ class Policy:
         # Rule 3: Positive valence + sufficient approach → act
         if valence > 0 and approach > self.threshold_act:
             # Check if we have a specific target from context
-            target = sensory_context.get("ticker") or sensory_context.get("target")
+            target = sensory_context.get("note_id") or sensory_context.get("target")
             action = Action.TYPE if target else Action.CLICK
 
             # Confidence from memory retrieval: if top memory has high valence, boost confidence

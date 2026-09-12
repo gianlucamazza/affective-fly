@@ -23,11 +23,11 @@ def main() -> None:
         emotional_memory=emotional_memory,
     )
 
-    print("=== Step 1: Encode positive memory for ticker MEME ===")
+    print("=== Step 1: Encode positive memory for experiment session ===")
     positive_frame = SensoryFrame.from_dict({
-        "ticker": "MEME",
-        "page": "launchpad",
-        "query": "launch token MEME",
+        "note_id": "exp-session-042",
+        "context": "journal",
+        "query": "successful experiment session notes",
         "sentiment": 0.9,
     })
     d1 = loop.step(positive_frame, encode_memory=True)
@@ -36,11 +36,11 @@ def main() -> None:
     print(f"Memories in store: {len(store.list_all())}")
     print()
 
-    print("=== Step 2: Encode negative memory for same ticker (reconsolidation) ===")
+    print("=== Step 2: Encode negative memory for same session (reconsolidation) ===")
     negative_frame = SensoryFrame.from_dict({
-        "ticker": "MEME",
-        "page": "chart",
-        "query": "MEME crash",
+        "note_id": "exp-session-042",
+        "context": "review",
+        "query": "experiment failed replication",
         "sentiment": -0.8,
         "reward": -0.9,
     })
@@ -57,9 +57,9 @@ def main() -> None:
 
     print("=== Step 3: Retrieve influences policy decision ===")
     query_frame = SensoryFrame.from_dict({
-        "ticker": "MEME",
-        "page": "launchpad",
-        "query": "should I launch MEME again?",
+        "note_id": "exp-session-042",
+        "context": "journal",
+        "query": "should I repeat this experiment approach?",
         "sentiment": 0.2,
     })
     d3 = loop.step(query_frame, encode_memory=False, retrieve_top_k=5)
