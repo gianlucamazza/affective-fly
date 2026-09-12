@@ -2,8 +2,8 @@
 Published mushroom-body cell types (Aso et al. 2014).
 
 These are literature names, not MaleCNS/Schlegel body IDs and not a
-connectivity matrix. Weights stay random until a connectome export is
-available. Do not invent numeric IDs here.
+connectivity matrix. ``MaleCNSCircuit`` weights stay random unless
+``connectivity_path`` is provided. Do not invent numeric IDs here.
 """
 
 from dataclasses import dataclass

@@ -100,7 +100,7 @@ Named circuit using Aso et al. (2014) published MBON/DAN cell types. Connectome 
 - Loader maps edges to Aso catalog names by instance name; unmatched MBONs are zero-filled.
 - Missing/unreadable file raises `ConnectomeLoadError`.
 
-**Still blocked on**: Full integration requires published MaleCNS export from Janelia (https://male-cns.janelia.org/download/) or hemibrain papers. Tests use minimal JSON fixture with real-shaped schema but synthetic body IDs. Phase 4 complete when production connectome file tested end-to-end.
+**Still blocked on**: Full integration requires published MaleCNS export from Janelia (https://male-cns.janelia.org/download/) or hemibrain papers. Test fixtures use real MaleCNS v1.0 body IDs with synthetic weights (`malecns_real_ids.*`); Phase 4 is **partial** until a production connectome file (real weights) is tested end-to-end. See [ROADMAP.md](ROADMAP.md).
 
 **Do not** invent body IDs or connectome weights. Always load from real data or document that weights are random placeholders.
 
@@ -199,8 +199,8 @@ Order matters: avoidance is decided before the arousal gate. Being too calm to a
 `LaunchGate` blocks impulsive CLICK/TYPE until mood criteria hold for N ticks (default 3):
 
 - **Open** after `required_ticks` consecutive ticks with approach ≥ 0.2 and valence ≥ −0.1.
-- **Closed** if criteria fail; counter resets.
-- **Stays open** once opened (until `reset()`).
+- **Closed** if a tick fails the criteria: the consecutive-tick counter resets and the gate closes even after it has already opened.
+- ``reset()`` also returns the gate to closed. The gate does not latch open.
 
 The gate always runs; the loop overwrites CLICK/TYPE with WAIT if the gate is closed (reason: "Launch gate blocked").
 

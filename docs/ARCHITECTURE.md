@@ -34,7 +34,7 @@ HostFrame (JSON)
 | `dual_path.py` | Scherer vector on the tag only. |
 | `reconsolidate.py` | Match on note_id, else ticker/event/page; 600 s window; lerp α = 0.4. Disable with window ≤ 0. Owns the *encode-side* labile-window reconsolidation, tracked in `metadata["reconsolidation_count"]`; distinct from emotional-memory's APE-gated reconsolidation in `retrieve()`, which also bumps `tag.reconsolidation_count` (so `tag.reconsolidation_count ≥ metadata["reconsolidation_count"]`). |
 | `policy.py` | SKIP if approach < −0.3 or retrieved valence < −0.3 (avoidance evaluated before arousal gate); WAIT if arousal ≤ 0.0 (DAN baseline); CLICK/TYPE if valence > 0 and approach > 0.2; else WAIT. |
-| `launch_gate.py` | Opens after N ticks with approach > 0.2 and valence > −0.1. |
+| `launch_gate.py` | Opens after N ticks with approach ≥ 0.2 and valence ≥ −0.1. A later failing tick resets the counter and closes the gate. |
 | `host_adapter.py` | `HostFrame` v1.0 schema (JSON contract), `HostAdapter` journal replay (save/load JSONL), outcome reporting via context fields. |
 | `journal.py` | JSONL; `export_for_viz()`. |
 | `viz.py` | `plot_journal` → PNG (matplotlib extra). |

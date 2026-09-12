@@ -27,13 +27,16 @@ class SensoryFrame:
     Input to the fly circuit.
 
     Represents a single 'frame' of sensory input:
-    - visual: screenshot hash, page structure
-    - olfactory: virtual odor (e.g., token ticker as odor signature)
-    - context: metadata (form text, PnL, etc.)
+    - visual: screenshot hash, page or note structure
+    - olfactory: virtual odor (e.g., note_id as odor signature)
+    - context: metadata (journal text, outcome, etc.)
+
+    ``ticker`` / ``event`` / ``page`` remain valid stimulus identifiers
+    (reconsolidation keys); they are not a token-launch product surface.
     """
 
     visual: np.ndarray  # Raw sensory vector
-    context: dict  # Metadata (page, ticker, outcome, etc.)
+    context: dict  # Metadata (note_id, page, outcome, ticker, etc.)
 
     @classmethod
     def from_dict(cls, data: dict, dim: int = 64) -> "SensoryFrame":
