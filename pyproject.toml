@@ -39,6 +39,9 @@ viz = [
 embed = [
     "sentence-transformers>=2.2.0",
 ]
+llm = [
+    "openai>=1.0",
+]
 connectome = [
     "pyarrow>=14.0.0",
 ]

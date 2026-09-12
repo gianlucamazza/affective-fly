@@ -105,7 +105,7 @@ def test_live_llm_appraisal_with_key():
     """Integration test: live LLM call when key is present (CI skips)."""
     from emotional_memory import EmotionalMemory, InMemoryStore
 
-    from affective_fly import DualPathEncoder, FakeEmbedder, LIFCircuit, SensoryFrame
+    from affective_fly import AffectBridge, DualPathEncoder, FakeEmbedder, LIFCircuit, SensoryFrame
     from affective_fly.llm_env import build_llm_client
 
     llm_client = build_llm_client()
@@ -121,10 +121,16 @@ def test_live_llm_appraisal_with_key():
         "sentiment": 0.5,
     })
 
-    em.set_affect(LIFCircuit(n_kc=100, n_dan=10, n_mbon=20, seed=0).core_affect(frame.sensory))
-    mem = em.encode(frame.event_text(), metadata=frame.context)
+    circuit = LIFCircuit(n_kc=100, n_dan=10, n_mbon=20, seed=0)
+    bridge = AffectBridge()
+    mbon_dan_state = circuit.step(frame.visual, dt=0.05)
+    core_affect = bridge.mbon_dan_to_core_affect(mbon_dan_state)
+    em.set_affect(core_affect)
 
-    appraisal = encoder.appraise(frame.event_text(), frame.context)
+    event_text = frame.context.get("query", "test event")
+    mem = em.encode(event_text, metadata=frame.context)
+
+    appraisal = encoder.appraise(event_text, frame.context)
     updated = encoder.attach(em, mem, appraisal)
 
     assert updated.tag.appraisal is not None
