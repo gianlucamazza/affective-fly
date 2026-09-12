@@ -30,6 +30,9 @@ Usage:
         --format feather
 
 NO INVENTED WEIGHTS. This script only extracts published data.
+
+MaleCNS v1.0 minconf-0.5 yields 61,210 KC→MBON edges (4,063 KCs, 97 MBONs).
+The committed output is data/malecns/kc_mbon_connectivity.feather.
 """
 
 from __future__ import annotations
