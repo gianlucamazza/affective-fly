@@ -352,7 +352,7 @@ A host integration must be a schema plus journal replay of real frames, not a nu
 
 ## Version History
 
-- **v0.2.5**: Every circuit backend calibrated into the documented rate band (LIF sub-stepping, delta synapses, excitatory weights, `n_kc`-derived gain, exact rate window); valence and approach separated into distinct axes; arousal aligned to `CoreAffect`'s `[0, 1]`; `mypy src/` clean with no `type: ignore`.
+- **v0.2.5**: Every circuit backend calibrated into the documented rate band (LIF sub-stepping, delta synapses, excitatory weights, `n_kc`-derived gain, exact rate window); valence and approach separated into distinct axes; arousal aligned to `CoreAffect`'s `[0, 1]`; `mypy src/` clean with no `type: ignore`. Demo scene changed to research-journal context.
 - **v0.2.4**: Emotional-memory integration test + demo with `LIFCircuit`; `benchmark_brian2_codegen.py` (LIF vs Brian2); `make lint` includes mypy. Removed fake LLM demo (stub logic).
 - **v0.2.3**: Live tick runner (`python -m affective_fly run`); SQLite + journal persistence.
 - **v0.2.2**: CLI, mood in SQLite, CI without embed extra.
