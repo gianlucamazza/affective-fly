@@ -35,7 +35,6 @@ v0.2.0 plus: MoodField JSON round-trip, delayed US through `AffectiveLoop`, `mak
 
 **Blocked** (requires external data or production infrastructure):
 
-- **MaleCNS connectivity matrix** from HDF5/JSON (`aso.py` already has published names; no invented body IDs).
 - **Brian2 C++ standalone codegen** (current Brian2Circuit hardcodes numpy backend; would need device selection + build lifecycle).
 - **Production LLM** behind `DualPathEncoder.from_llm` (hook exists, `demo_llm_appraisal.py` shows pattern with fake callable; requires API keys and secrets).
 - **Semantic embedder** in default CI/demo (`demo_embedder.py` with `--extra embed` downloads MiniLM; kept optional to avoid network in CI).
@@ -64,7 +63,7 @@ See [ARCHITECTURE_COMPLETE.md](ARCHITECTURE_COMPLETE.md) for full system design.
 
 **Phase 3** (blocked): Embed + LLM - Production semantic embedder (SentenceTransformer) + production LLM for DualPathEncoder.from_llm(). Requires API keys/secrets.
 
-**Phase 4** (blocked): MaleCNS connectivity - Published HDF5/JSON from Aso et al. (2014). No invented weights.
+**Phase 4** (complete): MaleCNS connectivity - REAL KC→MBON weights from published Janelia MaleCNS v1.0 (Schlegel et al. 2023). `scripts/filter_malecns_connectivity.py` filters KC→MBON edges from the full connectome (~1.05 GB weights file). `MaleCNSCircuit(connectivity_path=...)` loads real weights; falls back to random when absent. Tests skip cleanly when data unavailable (CI), pass with real weights when present (Lenovo/local research). See `docs/MALECNS_DATA.md` for download/usage. NO invented weights.
 
 **Phase 5** (blocked): Brian2 C++ codegen - Device selection, standalone build lifecycle. Current Brian2Circuit hardcodes numpy.
 
