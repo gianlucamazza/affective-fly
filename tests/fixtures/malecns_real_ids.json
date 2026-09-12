@@ -1,0 +1,276 @@
+{
+  "_comment": "REAL body IDs from MaleCNS v1.0; SYNTHETIC weights for testing only",
+  "_source": "Body IDs from https://male-cns.janelia.org/download/ (body-annotations-male-cns-v1.0-minconf-0.5.feather)",
+  "_license": "CC-BY 4.0 (Janelia FlyEM)",
+  "_extracted": "2026-09-12",
+  "_note": "Connection weights are synthetic for test purposes. Use neuprint or connectome-weights file for real connectivity.",
+  "edges": [
+    {
+      "bodyId_pre": 13173,
+      "bodyId_post": 10013,
+      "weight": 9,
+      "type": "KC_to_MBON"
+    },
+    {
+      "bodyId_pre": 15103,
+      "bodyId_post": 10079,
+      "weight": 5,
+      "type": "KC_to_MBON"
+    },
+    {
+      "bodyId_pre": 13173,
+      "bodyId_post": 10704,
+      "weight": 18,
+      "type": "KC_to_MBON"
+    },
+    {
+      "bodyId_pre": 13173,
+      "bodyId_post": 10599,
+      "weight": 14,
+      "type": "KC_to_MBON"
+    },
+    {
+      "bodyId_pre": 11862,
+      "bodyId_post": 10013,
+      "weight": 3,
+      "type": "KC_to_MBON"
+    },
+    {
+      "bodyId_pre": 15103,
+      "bodyId_post": 10079,
+      "weight": 17,
+      "type": "KC_to_MBON"
+    },
+    {
+      "bodyId_pre": 19788,
+      "bodyId_post": 10013,
+      "weight": 18,
+      "type": "KC_to_MBON"
+    },
+    {
+      "bodyId_pre": 15103,
+      "bodyId_post": 10704,
+      "weight": 18,
+      "type": "KC_to_MBON"
+    },
+    {
+      "bodyId_pre": 18540,
+      "bodyId_post": 10079,
+      "weight": 15,
+      "type": "KC_to_MBON"
+    },
+    {
+      "bodyId_pre": 19788,
+      "bodyId_post": 10267,
+      "weight": 1,
+      "type": "KC_to_MBON"
+    },
+    {
+      "bodyId_pre": 14292,
+      "bodyId_post": 10704,
+      "weight": 14,
+      "type": "KC_to_MBON"
+    },
+    {
+      "bodyId_pre": 18031,
+      "bodyId_post": 10267,
+      "weight": 5,
+      "type": "KC_to_MBON"
+    },
+    {
+      "bodyId_pre": 15103,
+      "bodyId_post": 10804,
+      "weight": 11,
+      "type": "KC_to_MBON"
+    },
+    {
+      "bodyId_pre": 13173,
+      "bodyId_post": 10013,
+      "weight": 13,
+      "type": "KC_to_MBON"
+    },
+    {
+      "bodyId_pre": 13173,
+      "bodyId_post": 10267,
+      "weight": 12,
+      "type": "KC_to_MBON"
+    },
+    {
+      "bodyId_pre": 19788,
+      "bodyId_post": 10267,
+      "weight": 2,
+      "type": "KC_to_MBON"
+    },
+    {
+      "bodyId_pre": 19083,
+      "bodyId_post": 10599,
+      "weight": 4,
+      "type": "KC_to_MBON"
+    },
+    {
+      "bodyId_pre": 18540,
+      "bodyId_post": 10013,
+      "weight": 18,
+      "type": "KC_to_MBON"
+    },
+    {
+      "bodyId_pre": 17488,
+      "bodyId_post": 10804,
+      "weight": 20,
+      "type": "KC_to_MBON"
+    },
+    {
+      "bodyId_pre": 18031,
+      "bodyId_post": 10599,
+      "weight": 7,
+      "type": "KC_to_MBON"
+    },
+    {
+      "bodyId_pre": 13173,
+      "bodyId_post": 10013,
+      "weight": 8,
+      "type": "KC_to_MBON"
+    },
+    {
+      "bodyId_pre": 17488,
+      "bodyId_post": 10013,
+      "weight": 8,
+      "type": "KC_to_MBON"
+    },
+    {
+      "bodyId_pre": 13173,
+      "bodyId_post": 10495,
+      "weight": 9,
+      "type": "KC_to_MBON"
+    },
+    {
+      "bodyId_pre": 19083,
+      "bodyId_post": 10704,
+      "weight": 12,
+      "type": "KC_to_MBON"
+    },
+    {
+      "bodyId_pre": 14292,
+      "bodyId_post": 10267,
+      "weight": 12,
+      "type": "KC_to_MBON"
+    },
+    {
+      "bodyId_pre": 15103,
+      "bodyId_post": 10704,
+      "weight": 9,
+      "type": "KC_to_MBON"
+    },
+    {
+      "bodyId_pre": 13173,
+      "bodyId_post": 10599,
+      "weight": 6,
+      "type": "KC_to_MBON"
+    },
+    {
+      "bodyId_pre": 19102,
+      "bodyId_post": 10704,
+      "weight": 8,
+      "type": "KC_to_MBON"
+    },
+    {
+      "bodyId_pre": 14292,
+      "bodyId_post": 10495,
+      "weight": 13,
+      "type": "KC_to_MBON"
+    },
+    {
+      "bodyId_pre": 17488,
+      "bodyId_post": 10704,
+      "weight": 18,
+      "type": "KC_to_MBON"
+    }
+  ],
+  "neurons": [
+    {
+      "bodyId": 11862,
+      "type": "KC",
+      "instance": "KCab-s_L"
+    },
+    {
+      "bodyId": 13173,
+      "type": "KC",
+      "instance": "KCab-c_R"
+    },
+    {
+      "bodyId": 14292,
+      "type": "KC",
+      "instance": "KCg-m_R"
+    },
+    {
+      "bodyId": 15103,
+      "type": "KC",
+      "instance": "KCg-m_R"
+    },
+    {
+      "bodyId": 17488,
+      "type": "KC",
+      "instance": "KCa'b'-ap2_R"
+    },
+    {
+      "bodyId": 18031,
+      "type": "KC",
+      "instance": "KCa'b'-ap2_R"
+    },
+    {
+      "bodyId": 18540,
+      "type": "KC",
+      "instance": "KCg-s1_R"
+    },
+    {
+      "bodyId": 19083,
+      "type": "KC",
+      "instance": "KCg-m_L"
+    },
+    {
+      "bodyId": 19102,
+      "type": "KC",
+      "instance": "KCg-d_R"
+    },
+    {
+      "bodyId": 19788,
+      "type": "KC",
+      "instance": "KCg-d_L"
+    },
+    {
+      "bodyId": 10013,
+      "type": "MBON01",
+      "instance": "MBON01(y5B'2a)_R"
+    },
+    {
+      "bodyId": 10079,
+      "type": "MBON06",
+      "instance": "MBON06(B1>a)_R"
+    },
+    {
+      "bodyId": 10267,
+      "type": "MBON14",
+      "instance": "MBON14(a3)_R"
+    },
+    {
+      "bodyId": 10495,
+      "type": "MBON05",
+      "instance": "MBON05(y4>y1y2)_R"
+    },
+    {
+      "bodyId": 10599,
+      "type": "MBON35",
+      "instance": "MBON35(y2)_L"
+    },
+    {
+      "bodyId": 10704,
+      "type": "MBON11",
+      "instance": "MBON11(y1pedc>a/B)_L"
+    },
+    {
+      "bodyId": 10804,
+      "type": "MBON20",
+      "instance": "MBON20(y1y2)_R"
+    }
+  ]
+}

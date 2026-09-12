@@ -50,7 +50,7 @@ def load_connectome(path: str | Path) -> ConnectivityData:
 
     Supports:
         - JSON: {"edges": [...], "neurons": [...]}
-        - Feather/Parquet: future (requires pyarrow)
+        - Feather/Parquet: requires pyarrow (install via `uv sync --extra connectome`)
         - HDF5: future (requires h5py)
 
     Args:
@@ -61,6 +61,7 @@ def load_connectome(path: str | Path) -> ConnectivityData:
 
     Raises:
         ConnectomeLoadError: If file is missing, unreadable, or malformed.
+        ImportError: If required optional dependency is not installed.
     """
     path_obj = Path(path)
     if not path_obj.exists():
@@ -71,10 +72,7 @@ def load_connectome(path: str | Path) -> ConnectivityData:
     if suffix == ".json":
         return _load_json(path_obj)
     elif suffix in (".feather", ".parquet"):
-        raise ConnectomeLoadError(
-            f"Feather/Parquet loading not yet implemented. "
-            f"Install pyarrow and extend _load_feather() to support {suffix}."
-        )
+        return _load_arrow(path_obj)
     elif suffix in (".h5", ".hdf5"):
         raise ConnectomeLoadError(
             f"HDF5 loading not yet implemented. "
@@ -102,7 +100,10 @@ def _load_json(path: Path) -> ConnectivityData:
 
     # Collect KC and MBON body IDs
     kc_ids = sorted([bid for bid, meta in neurons.items() if meta.get("type") == "KC"])
-    mbon_ids = sorted([bid for bid, meta in neurons.items() if meta.get("type") == "MBON"])
+    mbon_ids = sorted([
+        bid for bid, meta in neurons.items()
+        if meta.get("type", "").startswith("MBON") or meta.get("type") == "MBON"
+    ])
 
     if not kc_ids or not mbon_ids:
         raise ConnectomeLoadError("No KC or MBON neurons found in connectivity data.")
@@ -127,6 +128,119 @@ def _load_json(path: Path) -> ConnectivityData:
             j = mbon_idx.get(post_id)
             if i is not None and j is not None:
                 weights[i, j] += weight
+
+    return ConnectivityData(
+        kc_to_mbon=weights,
+        neuron_metadata=neurons,
+        source_path=str(path),
+        mbon_body_ids=mbon_ids,
+        kc_body_ids=kc_ids,
+    )
+
+
+def _load_arrow(path: Path) -> ConnectivityData:
+    """Load Feather or Parquet connectivity export using pyarrow."""
+    try:
+        import pyarrow.feather as feather
+        import pyarrow.parquet as parquet
+    except ImportError as e:
+        raise ImportError(
+            f"pyarrow is required to load {path.suffix} files. "
+            f"Install with: uv sync --extra connectome"
+        ) from e
+
+    try:
+        suffix = path.suffix.lower()
+        if suffix == ".feather":
+            table = feather.read_table(path)
+        elif suffix == ".parquet":
+            table = parquet.read_table(path)
+        else:
+            raise ConnectomeLoadError(f"Unexpected arrow format: {suffix}")
+    except Exception as e:
+        raise ConnectomeLoadError(f"Failed to read {path.suffix} from {path}: {e}") from e
+
+    # Convert to pandas for easier manipulation
+    try:
+        df = table.to_pandas()
+    except Exception as e:
+        raise ConnectomeLoadError(f"Failed to convert arrow table to pandas: {e}") from e
+
+    # Expect columns: bodyId_pre, bodyId_post, weight, type (and optionally neuron metadata)
+    required_cols = {"bodyId_pre", "bodyId_post"}
+    if not required_cols.issubset(df.columns):
+        raise ConnectomeLoadError(
+            f"Arrow file must contain columns {required_cols}. Found: {list(df.columns)}"
+        )
+
+    # If neuron metadata columns exist (type_pre, type_post, instance_pre, instance_post),
+    # build the neurons dict. Otherwise, infer from the edge types.
+    neurons: dict[int, dict[str, Any]] = {}
+
+    # Collect unique pre and post body IDs
+    all_pre = df["bodyId_pre"].unique()
+    all_post = df["bodyId_post"].unique()
+    all_body_ids = set(all_pre) | set(all_post)
+
+    # Build neuron metadata from columns if available
+    if "type_pre" in df.columns and "type_post" in df.columns:
+        for _, row in df.iterrows():
+            pre_id = row["bodyId_pre"]
+            post_id = row["bodyId_post"]
+            if pre_id not in neurons:
+                neurons[pre_id] = {
+                    "bodyId": int(pre_id),
+                    "type": row.get("type_pre", ""),
+                    "instance": row.get("instance_pre", ""),
+                }
+            if post_id not in neurons:
+                neurons[post_id] = {
+                    "bodyId": int(post_id),
+                    "type": row.get("type_post", ""),
+                    "instance": row.get("instance_post", ""),
+                }
+    else:
+        # Infer types from connection patterns or explicit type column
+        # Assume KC→MBON edges: pre are KC, post are MBON
+        for body_id in all_body_ids:
+            if body_id not in neurons:
+                # Heuristic: if it appears as pre more often, likely KC; as post, likely MBON
+                inferred_type = "KC" if body_id in all_pre and body_id not in all_post else "MBON"
+                neurons[int(body_id)] = {
+                    "bodyId": int(body_id),
+                    "type": inferred_type,
+                    "instance": "",
+                }
+
+    # Collect KC and MBON body IDs
+    kc_ids = sorted([bid for bid, meta in neurons.items() if meta.get("type") == "KC"])
+    mbon_ids = sorted([
+        bid for bid, meta in neurons.items()
+        if meta.get("type", "").startswith("MBON") or meta.get("type") == "MBON"
+    ])
+
+    if not kc_ids or not mbon_ids:
+        raise ConnectomeLoadError("No KC or MBON neurons found in arrow connectivity data.")
+
+    # Build index maps
+    kc_idx = {bid: i for i, bid in enumerate(kc_ids)}
+    mbon_idx = {bid: i for i, bid in enumerate(mbon_ids)}
+
+    # Initialize weight matrix
+    weights = np.zeros((len(kc_ids), len(mbon_ids)), dtype=float)
+
+    # Populate from edges
+    weight_col = "weight" if "weight" in df.columns else None
+    for _, row in df.iterrows():
+        pre_id = int(row["bodyId_pre"])
+        post_id = int(row["bodyId_post"])
+        weight = float(row[weight_col]) if weight_col else 1.0
+
+        # Only process KC→MBON edges
+        if pre_id in kc_idx and post_id in mbon_idx:
+            i = kc_idx[pre_id]
+            j = mbon_idx[post_id]
+            weights[i, j] += weight
 
     return ConnectivityData(
         kc_to_mbon=weights,

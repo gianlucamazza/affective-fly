@@ -135,3 +135,69 @@ def test_circuit_with_loaded_weights_can_step():
     assert state.mbon_avoid_rate >= 0
     rates = circuit.named_rates()
     assert len(rates) == len(ASO_CATALOG.mbon_names) + len(ASO_CATALOG.dan_names)
+
+
+# Real body ID fixtures (optional, skip if pyarrow not installed or file missing)
+REAL_IDS_JSON = Path(__file__).parent / "fixtures" / "malecns_real_ids.json"
+REAL_IDS_FEATHER = Path(__file__).parent / "fixtures" / "malecns_real_ids.feather"
+REAL_IDS_PARQUET = Path(__file__).parent / "fixtures" / "malecns_real_ids.parquet"
+
+
+@pytest.mark.skipif(not REAL_IDS_FEATHER.exists(), reason="Real IDs Feather fixture not available")
+def test_load_connectome_from_feather():
+    """Load the real-IDs Feather fixture and verify structure."""
+    try:
+        connectivity = load_connectome(REAL_IDS_FEATHER)
+    except ImportError as e:
+        pytest.skip(f"pyarrow not installed: {e}")
+
+    assert connectivity.kc_to_mbon.shape[0] == 10  # 10 KCs in real-IDs fixture
+    assert connectivity.kc_to_mbon.shape[1] == 7  # 7 MBONs in real-IDs fixture
+    assert connectivity.source_path == str(REAL_IDS_FEATHER)
+    # Check that weights are non-zero (from fixture)
+    assert np.sum(connectivity.kc_to_mbon) > 0
+    # Check for real body IDs (from MaleCNS v1.0)
+    assert 11862 in connectivity.kc_body_ids or 13173 in connectivity.kc_body_ids
+
+
+@pytest.mark.skipif(not REAL_IDS_PARQUET.exists(), reason="Real IDs Parquet fixture not available")
+def test_load_connectome_from_parquet():
+    """Load the real-IDs Parquet fixture and verify structure."""
+    try:
+        connectivity = load_connectome(REAL_IDS_PARQUET)
+    except ImportError as e:
+        pytest.skip(f"pyarrow not installed: {e}")
+
+    assert connectivity.kc_to_mbon.shape[0] == 10  # 10 KCs in real-IDs fixture
+    assert connectivity.kc_to_mbon.shape[1] == 7  # 7 MBONs in real-IDs fixture
+    assert connectivity.source_path == str(REAL_IDS_PARQUET)
+    # Check that weights are non-zero (from fixture)
+    assert np.sum(connectivity.kc_to_mbon) > 0
+
+
+@pytest.mark.skipif(not REAL_IDS_JSON.exists(), reason="Real IDs JSON fixture not available")
+def test_real_ids_json_has_malecns_body_ids():
+    """Verify the real-IDs JSON fixture contains actual MaleCNS body IDs."""
+    connectivity = load_connectome(REAL_IDS_JSON)
+    # Check for real body IDs from MaleCNS v1.0 (not synthetic like 10001, 20001)
+    real_kc_ids = {11862, 13173, 14292, 15103, 17488, 18031, 18540, 19083, 19102, 19788}
+    real_mbon_ids = {10013, 10079, 10267, 10495, 10599, 10704, 10804}
+
+    assert real_kc_ids.issubset(set(connectivity.kc_body_ids))
+    assert real_mbon_ids.issubset(set(connectivity.mbon_body_ids))
+
+
+def test_feather_without_pyarrow_raises_importerror():
+    """Loading Feather without pyarrow raises ImportError with clear message."""
+    if not REAL_IDS_FEATHER.exists():
+        pytest.skip("Real IDs Feather fixture not available")
+
+    # This test documents the expected error when pyarrow is missing
+    # In practice, if pyarrow is installed (as in connectome extra), this won't fail
+    # But the error message should be helpful
+    import importlib.util
+    if importlib.util.find_spec("pyarrow") is not None:
+        pytest.skip("pyarrow is installed, can't test missing-dependency case")
+
+    with pytest.raises(ImportError, match="uv sync --extra connectome"):
+        load_connectome(REAL_IDS_FEATHER)
