@@ -83,26 +83,58 @@ def load_connectome(path: str | Path) -> ConnectivityData:
 
 
 def _load_json(path: Path) -> ConnectivityData:
-    """Load JSON connectivity export."""
+    """Load JSON connectivity export.
+
+    Supports two formats:
+    1. Dict with 'edges' and 'neurons' keys
+    2. List of edge dicts (infer neuron metadata from edge metadata columns)
+    """
     try:
         with open(path) as f:
             data = json.load(f)
     except (OSError, json.JSONDecodeError) as e:
         raise ConnectomeLoadError(f"Failed to read JSON from {path}: {e}") from e
 
-    if "edges" not in data or "neurons" not in data:
+    # Handle edge-list format (list of dicts)
+    if isinstance(data, list):
+        edges_list = data
+        # Infer neuron metadata from edges
+        neurons: dict[int, dict[str, Any]] = {}
+        for edge in edges_list:
+            pre_id = edge["bodyId_pre"]
+            post_id = edge["bodyId_post"]
+            if pre_id not in neurons:
+                neurons[pre_id] = {
+                    "bodyId": pre_id,
+                    "type": edge.get("type_pre", "KC"),
+                    "instance": edge.get("instance_pre", ""),
+                }
+            if post_id not in neurons:
+                neurons[post_id] = {
+                    "bodyId": post_id,
+                    "type": edge.get("type_post", "MBON"),
+                    "instance": edge.get("instance_post", ""),
+                }
+    # Handle dict format with 'edges' and 'neurons'
+    elif isinstance(data, dict):
+        if "edges" not in data or "neurons" not in data:
+            raise ConnectomeLoadError(
+                f"JSON dict must contain 'edges' and 'neurons' keys. Found: {list(data.keys())}"
+            )
+        edges_list = data["edges"]
+        neurons = {n["bodyId"]: n for n in data["neurons"]}
+    else:
         raise ConnectomeLoadError(
-            f"JSON must contain 'edges' and 'neurons' keys. Found: {list(data.keys())}"
+            f"JSON must be a dict (with 'edges'/'neurons') or a list of edges. Got: {type(data)}"
         )
 
-    # Build neuron metadata map
-    neurons = {n["bodyId"]: n for n in data["neurons"]}
-
     # Collect KC and MBON body IDs
-    kc_ids = sorted([bid for bid, meta in neurons.items() if meta.get("type") == "KC"])
+    # KC types can be "KC", "KCab-s", "KCg-s2", etc.
+    # MBON types can be "MBON", "MBON01", "MBON05", etc.
+    kc_ids = sorted([bid for bid, meta in neurons.items() if meta.get("type", "").startswith("KC")])
     mbon_ids = sorted([
         bid for bid, meta in neurons.items()
-        if meta.get("type", "").startswith("MBON") or meta.get("type") == "MBON"
+        if meta.get("type", "").startswith("MBON")
     ])
 
     if not kc_ids or not mbon_ids:
@@ -116,7 +148,7 @@ def _load_json(path: Path) -> ConnectivityData:
     weights = np.zeros((len(kc_ids), len(mbon_ids)), dtype=float)
 
     # Populate from edges
-    for edge in data["edges"]:
+    for edge in edges_list:
         pre_id = edge.get("bodyId_pre")
         post_id = edge.get("bodyId_post")
         weight = edge.get("weight", 1.0)
@@ -212,10 +244,12 @@ def _load_arrow(path: Path) -> ConnectivityData:
                 }
 
     # Collect KC and MBON body IDs
-    kc_ids = sorted([bid for bid, meta in neurons.items() if meta.get("type") == "KC"])
+    # KC types can be "KC", "KCab-s", "KCg-s2", etc.
+    # MBON types can be "MBON", "MBON01", "MBON05", etc.
+    kc_ids = sorted([bid for bid, meta in neurons.items() if meta.get("type", "").startswith("KC")])
     mbon_ids = sorted([
         bid for bid, meta in neurons.items()
-        if meta.get("type", "").startswith("MBON") or meta.get("type") == "MBON"
+        if meta.get("type", "").startswith("MBON")
     ])
 
     if not kc_ids or not mbon_ids:
