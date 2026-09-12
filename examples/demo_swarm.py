@@ -36,20 +36,20 @@ def main():
 
     print(f"Initialized swarm with {n_agents} agents sharing one EmotionalMemory.\n")
 
-    # Scenario: diverse sensory inputs to different agents
+    # Scenario: diverse sensory inputs to different agents (research journal context)
     scenarios = [
-        # First round: varied sentiment
+        # First round: varied sentiment across different experiments
         [
-            {"agent": i, "ticker": f"TOKEN{i}", "sentiment": np.random.randn() * 0.5}
+            {"agent": i, "note_id": f"exp-{i:03d}", "context": "journal", "sentiment": np.random.randn() * 0.5}
             for i in range(n_agents)
         ],
-        # Second round: synchronized positive
-        [{"agent": i, "ticker": "HYPE", "sentiment": 0.8} for i in range(n_agents)],
-        # Third round: synchronized negative
-        [{"agent": i, "ticker": "CRASH", "sentiment": -0.9} for i in range(n_agents)],
-        # Fourth round: mixed recovery
+        # Second round: synchronized positive (successful replication)
+        [{"agent": i, "note_id": "replication-success", "context": "journal", "sentiment": 0.8} for i in range(n_agents)],
+        # Third round: synchronized negative (protocol failure)
+        [{"agent": i, "note_id": "protocol-failure", "context": "journal", "sentiment": -0.9} for i in range(n_agents)],
+        # Fourth round: mixed recovery (partial validation)
         [
-            {"agent": i, "ticker": f"RECOVER{i % 2}", "sentiment": 0.3 if i % 2 == 0 else -0.2}
+            {"agent": i, "note_id": f"validation-{i % 2}", "context": "journal", "sentiment": 0.3 if i % 2 == 0 else -0.2}
             for i in range(n_agents)
         ],
     ]
@@ -72,7 +72,7 @@ def main():
             print(
                 f"  Agent {i}: {decision.action.value.upper():6s} | "
                 f"V={mood.valence:+.2f} A={mood.arousal:+.2f} | "
-                f"ticker={scenario['ticker']:10s} sentiment={scenario['sentiment']:+.2f}"
+                f"note_id={scenario['note_id']:25s} sentiment={scenario['sentiment']:+.2f}"
             )
 
         # Show aggregate swarm mood
