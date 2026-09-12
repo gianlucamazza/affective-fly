@@ -396,3 +396,61 @@ HostAdapter.save_journal([host_frame], "journal.jsonl")
 - `tests/test_host_adapter.py` — Comprehensive test suite
 - `docs/ARCHITECTURE_COMPLETE.md` — System architecture
 - `docs/ROADMAP.md` — Development phases
+
+## Phase 3: LLM and Embedder Configuration
+
+### Environment Variables for LLM Appraisal
+
+`DualPathEncoder.from_llm()` supports OpenAI-compatible LLM providers via environment variables. Set these before running `demo_llm_appraisal.py` or any code using LLM appraisal:
+
+**Required:**
+- `EMOTIONAL_MEMORY_LLM_API_KEY` (or `OPENAI_API_KEY` as fallback) — API key for your LLM provider
+
+**Optional:**
+- `EMOTIONAL_MEMORY_LLM_BASE_URL` — Base URL for API (default: `https://api.openai.com/v1`)
+- `EMOTIONAL_MEMORY_LLM_MODEL` — Model name (default: `gpt-4o-mini`)
+
+**Example:**
+```bash
+export EMOTIONAL_MEMORY_LLM_API_KEY="sk-..."
+export EMOTIONAL_MEMORY_LLM_MODEL="gpt-5-mini"
+python examples/demo_llm_appraisal.py
+```
+
+If keys are missing, demos skip cleanly with a message (exit 0, no crash). This ensures CI stays green without secrets.
+
+### Embedder Configuration
+
+The semantic embedder (`SentenceTransformerEmbedder`) requires the `embed` extra:
+
+```bash
+uv sync --extra embed
+python examples/demo_embedder.py
+```
+
+**Optional:**
+- `HF_TOKEN` — HuggingFace token for private model downloads (rarely needed for public models)
+
+If the extra is not installed or model download fails, the demo skips cleanly.
+
+### Integration with Host Systems
+
+When integrating LLM appraisal in production:
+
+1. Set environment variables in your deployment (Kubernetes secrets, .env file, etc.)
+2. **Never commit secrets to the repository**
+3. Use `affective_fly.llm_env.build_llm_client()` to get a client (returns `None` if keys missing)
+4. Fall back to `HeuristicAppraisalEngine` when client is `None`
+
+```python
+from affective_fly import DualPathEncoder, HeuristicAppraisalEngine
+from affective_fly.llm_env import build_llm_client
+
+llm_client = build_llm_client()
+if llm_client is not None:
+    encoder = DualPathEncoder.from_llm(llm_client, fallback_on_error=True)
+else:
+    encoder = DualPathEncoder(engine=HeuristicAppraisalEngine())
+```
+
+This pattern ensures your code works offline (CI, development without keys) and uses LLM when available (production with credentials).

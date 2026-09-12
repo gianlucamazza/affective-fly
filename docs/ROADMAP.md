@@ -37,8 +37,6 @@ v0.2.0 plus: MoodField JSON round-trip, delayed US through `AffectiveLoop`, `mak
 
 - **MaleCNS connectivity matrix** from HDF5/JSON (`aso.py` already has published names; no invented body IDs).
 - **Brian2 C++ standalone codegen** (current Brian2Circuit hardcodes numpy backend; would need device selection + build lifecycle).
-- **Production LLM** behind `DualPathEncoder.from_llm` (hook exists, `demo_llm_appraisal.py` shows pattern with fake callable; requires API keys and secrets).
-- **Semantic embedder** in default CI/demo (`demo_embedder.py` with `--extra embed` downloads MiniLM; kept optional to avoid network in CI).
 
 Not in scope for this repo: token-launch product, sex/mating ensembles, swarm N ≫ 8.
 
@@ -62,7 +60,7 @@ See [ARCHITECTURE_COMPLETE.md](ARCHITECTURE_COMPLETE.md) for full system design.
 
 **Phase 2** (complete): Host adapters - Versioned HostFrame schema (v1.0), journal replay via HostAdapter, host-side outcome reporting through context fields (reward/outcome/pnl). CLI runner (`python -m affective_fly run`) emits both ActionJournal and HostFrame JSONL for replay. LIFCircuit is the default circuit for live runs (fallback to Mock). No NullHost stubs. See `docs/HOST_INTEGRATION.md` for integration guide, `examples/demo_host_replay.py` for demonstration, and `tests/test_host_adapter.py` for test coverage.
 
-**Phase 3** (blocked): Embed + LLM - Production semantic embedder (SentenceTransformer) + production LLM for DualPathEncoder.from_llm(). Requires API keys/secrets.
+**Phase 3** (partial): Embed + LLM - Production semantic embedder (SentenceTransformer via `--extra embed`) + environment-driven OpenAI-compatible LLM for `DualPathEncoder.from_llm()` via `llm_env.build_llm_client()`. Demos (`demo_llm_appraisal.py`, `demo_embedder.py`) skip cleanly without keys/extras; live LLM path verified separately with user-supplied credentials. CI remains green offline. See `docs/HOST_INTEGRATION.md` for required environment variables.
 
 **Phase 4** (blocked): MaleCNS connectivity - Published HDF5/JSON from Aso et al. (2014). No invented weights.
 
