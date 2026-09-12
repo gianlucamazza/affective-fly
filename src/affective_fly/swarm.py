@@ -5,7 +5,6 @@ Implements NeuroSwarm × AFT: N agents with independent circuits
 but shared affective memory. Resonances become swarm 'culture'.
 """
 
-
 from emotional_memory import EmotionalMemory
 
 from .affect_bridge import AffectBridge

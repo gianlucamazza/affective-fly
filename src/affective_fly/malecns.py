@@ -22,7 +22,7 @@ if TYPE_CHECKING:
 
 class MaleCNSCircuit(FlyAffectReadout):
     """FlyAffectReadout whose MBON/DAN indices map to published Aso names.
-    
+
     Args:
         backend: Circuit backend ("lif", "brian2", or FlyAffectReadout instance)
         catalog: Aso catalog (defaults to ASO_CATALOG)
@@ -116,24 +116,28 @@ class MaleCNSCircuit(FlyAffectReadout):
 
     def _load_real_connectivity(self, seed: int) -> None:
         """Load real KC→MBON weights from connectivity_path into backend.
-        
+
         Only supports LIFCircuit and Brian2Circuit backends for now.
         Raises a warning if backend doesn't support weight loading.
         """
         if self.connectivity_path is None or not self.connectivity_path.exists():
-            print(f"Warning: connectivity_path {self.connectivity_path} not found, using random weights")
+            print(
+                f"Warning: connectivity_path {self.connectivity_path} not found, using random weights"
+            )
             return
-        
+
         # Check if backend has n_kc attribute
-        if not hasattr(self.backend, 'n_kc'):
-            print(f"Warning: backend {type(self.backend).__name__} does not expose n_kc, cannot load weights")
+        if not hasattr(self.backend, "n_kc"):
+            print(
+                f"Warning: backend {type(self.backend).__name__} does not expose n_kc, cannot load weights"
+            )
             return
-        
+
         from .malecns_connectome import load_connectivity, map_connectivity_to_circuit
-        
+
         print(f"Loading real KC→MBON connectivity from {self.connectivity_path}")
         conn = load_connectivity(self.connectivity_path)
-        
+
         # Map to circuit weight matrix
         w_kc_mbon = map_connectivity_to_circuit(
             conn,
@@ -141,16 +145,18 @@ class MaleCNSCircuit(FlyAffectReadout):
             n_mbon=self.catalog.n_mbon,
             catalog_mbon_names=list(self.mbon_names),
             seed=seed,
-            w_max=getattr(self.backend, 'w_max', 0.15),
+            w_max=getattr(self.backend, "w_max", 0.15),
         )
-        
+
         # Install weights into backend
         if isinstance(self.backend, LIFCircuit):
             self.backend.w_kc_mbon = w_kc_mbon
             print("Loaded real weights into LIFCircuit.w_kc_mbon")
-        elif hasattr(self.backend, 'w_kc_mbon'):
+        elif hasattr(self.backend, "w_kc_mbon"):
             # Brian2Circuit or similar
             self.backend.w_kc_mbon = w_kc_mbon  # type: ignore[attr-defined]
             print("Loaded real weights into backend.w_kc_mbon")
         else:
-            print(f"Warning: backend {type(self.backend).__name__} does not expose w_kc_mbon, cannot load weights")
+            print(
+                f"Warning: backend {type(self.backend).__name__} does not expose w_kc_mbon, cannot load weights"
+            )

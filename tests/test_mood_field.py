@@ -1,6 +1,5 @@
 """Tests for mood field."""
 
-
 from affective_fly.mood_field import MoodField, MoodState
 
 

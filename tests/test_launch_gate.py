@@ -1,6 +1,5 @@
 """Tests for launch gate."""
 
-
 from affective_fly.launch_gate import LaunchGate
 from affective_fly.mood_field import MoodState
 

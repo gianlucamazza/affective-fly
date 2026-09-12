@@ -32,7 +32,9 @@ def _drive(circuit, n=15, dim=64, seed=0):
     return np.array(rows)
 
 
-@pytest.mark.parametrize("n_kc,n_dan,n_mbon", [(40, 6, 8), (80, 8, 16), (200, 20, 34), (2000, 20, 34)])
+@pytest.mark.parametrize(
+    "n_kc,n_dan,n_mbon", [(40, 6, 8), (80, 8, 16), (200, 20, 34), (2000, 20, 34)]
+)
 def test_lif_rates_in_band_at_every_population_size(n_kc, n_dan, n_mbon):
     """syn_gain is derived from n_kc, so a small circuit is not a different model."""
     rates = _drive(LIFCircuit(n_kc=n_kc, n_dan=n_dan, n_mbon=n_mbon, seed=1))
@@ -123,7 +125,12 @@ def _run(circuit, n=40, sentiment=0.8, reward=None):
     )
     actions = []
     for _ in range(n):
-        context = {"context": "journal", "note_id": "exp-001", "sentiment": sentiment, "query": "experiment"}
+        context = {
+            "context": "journal",
+            "note_id": "exp-001",
+            "sentiment": sentiment,
+            "query": "experiment",
+        }
         if reward is not None:
             context["reward"] = reward
         actions.append(loop.step(SensoryFrame.from_dict(context)).action)

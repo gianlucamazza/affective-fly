@@ -1,0 +1,20 @@
+{
+  "source": "Janelia MaleCNS v1.0 (Schlegel et al. 2023)",
+  "url": "https://storage.googleapis.com/flyem-male-cns/v1.0/connectome-data/flat-connectome/",
+  "license": "CC-BY 4.0",
+  "description": "KC\u2192MBON connectivity filtered from full MaleCNS connectome",
+  "weights_file": "connectome-weights-male-cns-v1.0-minconf-0.5.feather",
+  "annotations_file": "body-annotations-male-cns-v1.0-minconf-0.5.feather",
+  "kc_patterns": [
+    "KC",
+    "KCab",
+    "KCg",
+    "KCa'b'"
+  ],
+  "mbon_patterns": [
+    "MBON"
+  ],
+  "n_edges": 200,
+  "n_kc": 185,
+  "n_mbon": 18
+}

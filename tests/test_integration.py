@@ -313,12 +313,14 @@ def test_full_emotional_memory_integration_path():
     assert len(store.list_all()) == 0
 
     # 2. Encode positive memory for experiment session
-    positive_frame = SensoryFrame.from_dict({
-        "note_id": "exp-session-042",
-        "context": "journal",
-        "query": "peak result breakthrough reward",
-        "sentiment": 1.0,
-    })
+    positive_frame = SensoryFrame.from_dict(
+        {
+            "note_id": "exp-session-042",
+            "context": "journal",
+            "query": "peak result breakthrough reward",
+            "sentiment": 1.0,
+        }
+    )
     d1 = loop.step(positive_frame, encode_memory=True, retrieve_top_k=5)
 
     # Memory store grew to 1
@@ -333,13 +335,15 @@ def test_full_emotional_memory_integration_path():
     assert d1.action in (Action.WAIT, Action.SKIP, Action.CLICK, Action.TYPE)
 
     # 3. Encode negative memory for same session
-    negative_frame = SensoryFrame.from_dict({
-        "note_id": "exp-session-042",
-        "context": "review",
-        "query": "experiment failed replication",
-        "sentiment": -0.8,
-        "reward": -0.9,
-    })
+    negative_frame = SensoryFrame.from_dict(
+        {
+            "note_id": "exp-session-042",
+            "context": "review",
+            "query": "experiment failed replication",
+            "sentiment": -0.8,
+            "reward": -0.9,
+        }
+    )
     loop.step(negative_frame, encode_memory=True, retrieve_top_k=5)
 
     # 4. Reconsolidation occurred: still only 1 memory (no duplicate)
@@ -353,12 +357,14 @@ def test_full_emotional_memory_integration_path():
 
     # 5. Third step: retrieve with query on same session
     # Retrieved memory has negative valence → policy blocks action
-    query_frame = SensoryFrame.from_dict({
-        "note_id": "exp-session-042",
-        "context": "journal",
-        "query": "should I repeat this experiment approach?",
-        "sentiment": 0.1,  # Weakly positive sensory, but memory overrides
-    })
+    query_frame = SensoryFrame.from_dict(
+        {
+            "note_id": "exp-session-042",
+            "context": "journal",
+            "query": "should I repeat this experiment approach?",
+            "sentiment": 0.1,  # Weakly positive sensory, but memory overrides
+        }
+    )
     d3 = loop.step(query_frame, encode_memory=False, retrieve_top_k=5)
 
     # Policy decision influenced by negative retrieved memory

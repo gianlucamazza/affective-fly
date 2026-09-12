@@ -12,7 +12,10 @@ def _em():
 
 
 def test_stimulus_key_prefers_note_id():
-    assert stimulus_key({"context": "journal", "note_id": "exp-001", "query": "success"}) == "note_id:exp-001"
+    assert (
+        stimulus_key({"context": "journal", "note_id": "exp-001", "query": "success"})
+        == "note_id:exp-001"
+    )
     assert stimulus_key({"page": "chart", "ticker": "MEME", "query": "crash"}) == "ticker:MEME"
     assert stimulus_key({"note_id": "exp-001", "ticker": "MEME"}) == "note_id:exp-001"
     assert stimulus_key({"event": "Market crash"}) == "event:Market crash"

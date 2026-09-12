@@ -1,6 +1,5 @@
 """Tests for policy."""
 
-
 from affective_fly.mood_field import MoodState
 from affective_fly.policy import Action, Policy, PolicyDecision
 

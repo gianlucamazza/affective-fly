@@ -162,4 +162,3 @@ def test_live_loop_accepts_custom_circuit(tmp_path):
     # Check that the custom circuit is used
     assert loop.fly_circuit is custom_circuit
     assert loop.fly_circuit.seed == 99
-

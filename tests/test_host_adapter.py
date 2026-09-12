@@ -1,6 +1,5 @@
 """Tests for host adapter: schema, replay, and outcome reporting."""
 
-
 import numpy as np
 from emotional_memory import EmotionalMemory, InMemoryStore
 
@@ -116,7 +115,7 @@ def test_host_adapter_load_skips_invalid_lines(tmp_path):
     journal_path = tmp_path / "journal.jsonl"
     with open(journal_path, "w") as f:
         f.write('{"schema_version": "1.0", "context": {"note_id": "good"}}\n')
-        f.write('invalid json line\n')
+        f.write("invalid json line\n")
         f.write('{"schema_version": "1.0", "context": {"note_id": "also-good"}}\n')
 
     loaded = HostAdapter.load_journal(journal_path)
@@ -147,9 +146,7 @@ def test_host_adapter_replay_with_mock_circuit():
 
     loop = AffectiveLoop(
         fly_circuit=MockFlyCircuit(seed=42),
-        emotional_memory=EmotionalMemory(
-            store=InMemoryStore(), embedder=FakeEmbedder()
-        ),
+        emotional_memory=EmotionalMemory(store=InMemoryStore(), embedder=FakeEmbedder()),
     )
 
     decisions = HostAdapter.replay(frames, loop, encode_memory=True)
@@ -168,9 +165,7 @@ def test_host_adapter_replay_with_lif_circuit():
 
     loop = AffectiveLoop(
         fly_circuit=LIFCircuit(n_kc=80, n_dan=8, n_mbon=16, seed=42),
-        emotional_memory=EmotionalMemory(
-            store=InMemoryStore(), embedder=FakeEmbedder()
-        ),
+        emotional_memory=EmotionalMemory(store=InMemoryStore(), embedder=FakeEmbedder()),
     )
 
     decisions = HostAdapter.replay(frames, loop, encode_memory=True)
@@ -189,9 +184,7 @@ def test_host_adapter_replay_outcome_triggers_learn():
 
     loop = AffectiveLoop(
         fly_circuit=LIFCircuit(n_kc=100, n_dan=10, n_mbon=20, seed=1),
-        emotional_memory=EmotionalMemory(
-            store=InMemoryStore(), embedder=FakeEmbedder()
-        ),
+        emotional_memory=EmotionalMemory(store=InMemoryStore(), embedder=FakeEmbedder()),
     )
 
     decisions = HostAdapter.replay(frames, loop)
@@ -206,7 +199,9 @@ def test_host_adapter_replay_journal_to_loop(tmp_path):
     """Full path: save HostFrames → load → replay through loop."""
     frames = [
         HostFrame(context={"context": "journal", "note_id": "exp-001", "sentiment": 1.0}),
-        HostFrame(context={"context": "review", "note_id": "exp-001", "sentiment": -0.9, "reward": -0.8}),
+        HostFrame(
+            context={"context": "review", "note_id": "exp-001", "sentiment": -0.9, "reward": -0.8}
+        ),
     ]
 
     journal_path = tmp_path / "frames.jsonl"
@@ -292,9 +287,7 @@ def test_host_frame_outcome_extracted_by_loop():
 
     loop = AffectiveLoop(
         fly_circuit=MockFlyCircuit(seed=42),
-        emotional_memory=EmotionalMemory(
-            store=InMemoryStore(), embedder=FakeEmbedder()
-        ),
+        emotional_memory=EmotionalMemory(store=InMemoryStore(), embedder=FakeEmbedder()),
     )
 
     loop.step(sf)
@@ -317,9 +310,7 @@ def test_host_adapter_replay_policy_influenced_by_outcome():
 
     loop = AffectiveLoop(
         fly_circuit=LIFCircuit(n_kc=100, n_dan=10, n_mbon=20, seed=42),
-        emotional_memory=EmotionalMemory(
-            store=InMemoryStore(), embedder=FakeEmbedder()
-        ),
+        emotional_memory=EmotionalMemory(store=InMemoryStore(), embedder=FakeEmbedder()),
     )
 
     decisions = HostAdapter.replay(frames, loop, encode_memory=True)

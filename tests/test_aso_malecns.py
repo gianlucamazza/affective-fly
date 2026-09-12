@@ -57,25 +57,22 @@ def _find_connectivity_file() -> Path | None:
     return None
 
 
-@pytest.mark.skipif(
-    _find_connectivity_file() is None,
-    reason="MaleCNS connectivity data not available (set MALECNS_CONNECTIVITY_PATH or place file in data/malecns/)",
-)
-def test_malecns_real_weights_differ_from_random():
-    """E2E test: real weights loaded from connectivity file differ from random init.
-    
-    This test validates Phase 4: REAL published KC→MBON weights are loaded
-    and differ from the random fallback. Skips cleanly when data is absent.
-    """
-    connectivity_path = _find_connectivity_file()
-    assert connectivity_path is not None  # Should not reach here if skip condition met
+def test_malecns_real_weights_committed_fixture():
+    """Test with committed fixture of REAL published KC→MBON weights.
 
-    # Create circuit with real weights
+    Uses tests/fixtures/malecns_kc_mbon_real_top200.json: top 200 KC→MBON edges
+    by weight from Janelia MaleCNS v1.0 (Schlegel et al. 2023, CC-BY 4.0).
+    Weights range [41, 152], mean≈49.70, 185 KCs, 18 MBONs — NO SYNTHETIC DATA.
+    """
+    fixture_path = Path("tests/fixtures/malecns_kc_mbon_real_top200.json")
+    assert fixture_path.exists(), f"Fixture missing: {fixture_path}"
+
+    # Create circuit with real weights from committed fixture
     circuit_real = MaleCNSCircuit(
         backend="lif",
         n_kc=80,
         seed=42,
-        connectivity_path=connectivity_path,
+        connectivity_path=fixture_path,
     )
 
     # Create circuit with random weights (same seed)
@@ -94,12 +91,8 @@ def test_malecns_real_weights_differ_from_random():
     assert w_real.shape == (80, ASO_CATALOG.n_mbon)
 
     # Real weights should differ from random initialization
-    # (unless by extreme coincidence all real weights matched random, which is ~impossible)
     diff_norm = np.linalg.norm(w_real - w_random)
     print(f"\nWeight matrix difference norm: {diff_norm:.4f}")
-
-    # If connectivity was successfully loaded, difference should be substantial
-    # A tiny difference would suggest real weights weren't actually loaded
     assert diff_norm > 0.01, "Real weights should differ significantly from random initialization"
 
     # Verify both circuits can step
@@ -112,3 +105,30 @@ def test_malecns_real_weights_differ_from_random():
 
     print(f"Real circuit approach rate: {state_real.mbon_approach_rate:.2f} Hz")
     print(f"Random circuit approach rate: {state_random.mbon_approach_rate:.2f} Hz")
+
+
+@pytest.mark.skipif(
+    _find_connectivity_file() is None,
+    reason="Full MaleCNS connectivity data not available (set MALECNS_CONNECTIVITY_PATH or place file in data/malecns/)",
+)
+def test_malecns_real_weights_full_data():
+    """Optional test with full KC→MBON connectivity (61,210 edges).
+
+    Skips when data/malecns/ files are absent (CI). Passes on Lenovo/local
+    with full downloaded dataset.
+    """
+    connectivity_path = _find_connectivity_file()
+    assert connectivity_path is not None
+
+    circuit = MaleCNSCircuit(
+        backend="lif",
+        n_kc=80,
+        seed=42,
+        connectivity_path=connectivity_path,
+    )
+
+    # Verify circuit can step with full real weights
+    sensory = np.random.rand(16)
+    state = circuit.step(sensory, dt=0.05)
+    assert state.mbon_approach_rate >= 0
+    print(f"Full data circuit approach rate: {state.mbon_approach_rate:.2f} Hz")

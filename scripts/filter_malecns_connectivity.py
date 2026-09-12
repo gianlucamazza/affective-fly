@@ -55,19 +55,30 @@ def load_annotations(annotations_path: Path) -> pd.DataFrame:
     print(f"Loading annotations from {annotations_path}...")
     df = feather.read_feather(annotations_path)
     print(f"Loaded {len(df):,} body annotations")
+
+    # Normalize column name: bodyId or body_id → bodyId
+    if "body_id" in df.columns and "bodyId" not in df.columns:
+        df = df.rename(columns={"body_id": "bodyId"})
+
     if "bodyId" not in df.columns:
-        raise ValueError(f"Expected 'bodyId' column in annotations, got: {df.columns.tolist()}")
+        raise ValueError(
+            f"Expected 'bodyId' or 'body_id' column in annotations, got: {df.columns.tolist()}"
+        )
     return df
 
 
 def load_weights(weights_path: Path) -> pd.DataFrame:
     """Load connectivity weights from feather file.
 
-    Expected columns: bodyId_pre, bodyId_post, weight, ...
+    Expected columns: body_pre, body_post, weight (MaleCNS v1.0 flat connectome)
     """
     print(f"Loading connectivity weights from {weights_path}...")
     df = feather.read_feather(weights_path)
     print(f"Loaded {len(df):,} connectivity edges")
+
+    # Normalize column names: body_pre/body_post → bodyId_pre/bodyId_post for consistency
+    if "body_pre" in df.columns and "bodyId_pre" not in df.columns:
+        df = df.rename(columns={"body_pre": "bodyId_pre", "body_post": "bodyId_post"})
 
     required = ["bodyId_pre", "bodyId_post", "weight"]
     missing = [c for c in required if c not in df.columns]
@@ -207,7 +218,7 @@ def main():
     parser.add_argument(
         "--kc-patterns",
         nargs="+",
-        default=["KC", "KCab", "KCg"],
+        default=["KC", "KCab", "KCg", "KCa'b'"],
         help="Type patterns to identify KCs (default: %(default)s)",
     )
     parser.add_argument(
@@ -215,6 +226,12 @@ def main():
         nargs="+",
         default=["MBON"],
         help="Type patterns to identify MBONs (default: %(default)s)",
+    )
+    parser.add_argument(
+        "--top-n",
+        type=int,
+        default=None,
+        help="Keep only top N edges by weight (default: keep all)",
     )
 
     args = parser.parse_args()
@@ -234,6 +251,11 @@ def main():
     if len(kc_mbon) == 0:
         print("\nWARNING: No KC→MBON edges found! Check patterns and data.")
         return 1
+
+    # Keep top N by weight if requested
+    if args.top_n is not None and args.top_n < len(kc_mbon):
+        print(f"\nKeeping top {args.top_n} edges by weight...")
+        kc_mbon = kc_mbon.nlargest(args.top_n, "weight")
 
     # Provenance metadata
     metadata = {

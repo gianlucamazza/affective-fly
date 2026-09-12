@@ -22,7 +22,7 @@ if TYPE_CHECKING:
 @dataclass
 class ConnectivityData:
     """Loaded KC→MBON connectivity with real weights.
-    
+
     Attributes:
         edges: List of (kc_body_id, mbon_body_id, weight) tuples
         kc_body_ids: Unique KC body IDs
@@ -48,22 +48,22 @@ class ConnectivityData:
 
 def load_connectivity(path: str | Path) -> ConnectivityData:
     """Load KC→MBON connectivity from file.
-    
+
     Supports .feather, .parquet, .json, .csv formats.
-    
+
     Expected columns:
         - bodyId_pre: int64, presynaptic KC body ID
         - bodyId_post: int64, postsynaptic MBON body ID
         - weight: float64, synaptic weight
         - type_post: str, MBON type
         - instance_post: str, MBON instance name
-    
+
     Args:
         path: Path to connectivity file (feather/parquet/json/csv)
-    
+
     Returns:
         ConnectivityData with loaded edges and metadata
-    
+
     Raises:
         FileNotFoundError: If path does not exist
         ValueError: If required columns are missing
@@ -84,45 +84,47 @@ def load_connectivity(path: str | Path) -> ConnectivityData:
 
     # Load based on extension
     suffix = path.suffix.lower()
-    if suffix == '.feather':
+    if suffix == ".feather":
         df = feather.read_feather(path)
-    elif suffix == '.parquet':
+    elif suffix == ".parquet":
         df = pd.read_parquet(path)
-    elif suffix == '.json':
+    elif suffix == ".json":
         df = pd.read_json(path)
-    elif suffix == '.csv':
+    elif suffix == ".csv":
         df = pd.read_csv(path)
     else:
-        raise ValueError(f"Unsupported file format: {suffix} (expected .feather/.parquet/.json/.csv)")
+        raise ValueError(
+            f"Unsupported file format: {suffix} (expected .feather/.parquet/.json/.csv)"
+        )
 
     # Validate required columns
-    required = ['bodyId_pre', 'bodyId_post', 'weight']
+    required = ["bodyId_pre", "bodyId_post", "weight"]
     missing = [c for c in required if c not in df.columns]
     if missing:
         raise ValueError(f"Missing required columns: {missing}")
 
     # Extract edges
     edges = [
-        (int(row['bodyId_pre']), int(row['bodyId_post']), float(row['weight']))
+        (int(row["bodyId_pre"]), int(row["bodyId_post"]), float(row["weight"]))
         for _, row in df.iterrows()
     ]
 
-    kc_body_ids = set(df['bodyId_pre'].unique())
-    mbon_body_ids = set(df['bodyId_post'].unique())
+    kc_body_ids = set(df["bodyId_pre"].unique())
+    mbon_body_ids = set(df["bodyId_post"].unique())
 
     # Extract MBON metadata if available
     mbon_types = {}
     mbon_instances = {}
-    if 'type_post' in df.columns:
+    if "type_post" in df.columns:
         for body_id in mbon_body_ids:
-            rows = df[df['bodyId_post'] == body_id]
+            rows = df[df["bodyId_post"] == body_id]
             if not rows.empty:
-                mbon_types[body_id] = rows.iloc[0]['type_post']
-    if 'instance_post' in df.columns:
+                mbon_types[body_id] = rows.iloc[0]["type_post"]
+    if "instance_post" in df.columns:
         for body_id in mbon_body_ids:
-            rows = df[df['bodyId_post'] == body_id]
+            rows = df[df["bodyId_post"] == body_id]
             if not rows.empty:
-                mbon_instances[body_id] = rows.iloc[0]['instance_post']
+                mbon_instances[body_id] = rows.iloc[0]["instance_post"]
 
     return ConnectivityData(
         edges=edges,
@@ -142,13 +144,13 @@ def map_connectivity_to_circuit(
     w_max: float = 0.15,
 ) -> np.ndarray:
     """Map loaded connectivity to circuit weight matrix.
-    
+
     Strategy:
     1. Sample n_kc KCs randomly from available body IDs
     2. Match MaleCNS MBON instances to Aso catalog names (fuzzy match)
     3. Build weight matrix w_kc_mbon[kc_idx, mbon_idx] from real weights
     4. Unmapped connections use uniform random on [0, w_max] as fallback
-    
+
     Args:
         conn: Loaded connectivity data
         n_kc: Circuit KC population size
@@ -156,7 +158,7 @@ def map_connectivity_to_circuit(
         catalog_mbon_names: Aso catalog MBON names in order
         seed: Random seed for sampling and fallback init
         w_max: Max weight for fallback random init
-    
+
     Returns:
         Weight matrix w_kc_mbon with shape (n_kc, n_mbon)
     """
@@ -180,14 +182,31 @@ def map_connectivity_to_circuit(
     kc_body_to_idx = {body_id: idx for idx, body_id in enumerate(sampled_kc_ids)}
 
     # Map MBON instances to catalog indices (fuzzy match on name)
+    # MaleCNS v1.0 uses notation like "MBON01(y5B'2a)_L" while Aso catalog
+    # uses "MBON-gamma5beta'2a". Mapping: gamma=y, alpha=a, beta=B.
     mbon_body_to_idx: dict[int, int] = {}
     for body_id, instance in conn.mbon_instances.items():
-        # Try to match instance name to catalog names
-        # E.g., "MBON-gamma5beta'2a" in catalog vs "MBON(gamma5beta'2a)..." in instance
+        instance_lower = instance.lower()
+        # Try direct substring match first
         for idx, catalog_name in enumerate(catalog_mbon_names):
-            if catalog_name in instance or instance in catalog_name:
+            catalog_lower = catalog_name.lower()
+            if catalog_lower in instance_lower or instance_lower in catalog_lower:
                 mbon_body_to_idx[body_id] = idx
                 break
+        # Try Greek-to-shorthand mapping (gamma→y, alpha→a, beta→b)
+        if body_id not in mbon_body_to_idx:
+            for idx, catalog_name in enumerate(catalog_mbon_names):
+                # Extract compartment part after "MBON-" prefix
+                if not catalog_name.startswith("MBON-"):
+                    continue
+                compartment = catalog_name[5:]  # Skip "MBON-"
+                # Simple heuristic: gamma→y, alpha→a, beta→b (case-insensitive)
+                shorthand = (
+                    compartment.replace("gamma", "y").replace("alpha", "a").replace("beta", "b")
+                )
+                if shorthand.lower() in instance_lower:
+                    mbon_body_to_idx[body_id] = idx
+                    break
 
     if not mbon_body_to_idx:
         print(
