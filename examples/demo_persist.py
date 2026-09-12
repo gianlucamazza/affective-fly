@@ -1,11 +1,23 @@
 #!/usr/bin/env python3
-"""Two sessions on one SQLite file: memories and MoodField (table fly_mood)."""
+"""Two sessions on one SQLite file: memories and MoodField (table fly_mood).
+
+Uses ``LIFCircuit`` (this is a demo, not an isolated unit test) and lab
+taus so mood is visible across the two short sessions. Hypothesis
+defaults (300 / 60 / 180 s) stay on ``MoodField()``.
+"""
 
 from pathlib import Path
 
 from emotional_memory import EmotionalMemory, SQLiteStore
 
-from affective_fly import AffectiveLoop, FakeEmbedder, MockFlyCircuit, MoodField, SensoryFrame
+from affective_fly import (
+    AffectiveLoop,
+    FakeEmbedder,
+    MoodField,
+    SensoryFrame,
+    get_circuit,
+    lab_mood_field,
+)
 from affective_fly.persist import load_mood, save_mood
 
 DB = Path("affective_fly.db")
@@ -14,11 +26,11 @@ DB = Path("affective_fly.db")
 def session(store: SQLiteStore, mood: MoodField | None = None) -> AffectiveLoop:
     embedder = FakeEmbedder()
     return AffectiveLoop(
-        fly_circuit=MockFlyCircuit(seed=42),
+        fly_circuit=get_circuit("lif", n_kc=80, n_dan=8, n_mbon=16, seed=42),
         emotional_memory=EmotionalMemory(store=store, embedder=embedder),
         store=store,
         embedder=embedder,
-        mood_field=mood or MoodField(tau_valence=8.0, tau_arousal=4.0, tau_approach=5.0),
+        mood_field=mood or lab_mood_field(),
     )
 
 

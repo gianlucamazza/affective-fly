@@ -8,13 +8,14 @@ from pathlib import Path
 
 from emotional_memory import EmotionalMemory, SQLiteStore
 
+from .circuit_registry import get_circuit
 from .fake_embedder import FakeEmbedder
-from .fly_circuit import FlyAffectReadout, LIFCircuit, MockFlyCircuit
+from .fly_circuit import FlyAffectReadout
 from .host_adapter import HostAdapter, HostFrame
 from .journal import ActionJournal
 from .launch_gate import LaunchGate
 from .loop import AffectiveLoop
-from .mood_field import MoodField
+from .mood_field import lab_mood_field
 from .persist import load_mood, save_mood
 
 DEFAULT_EVENTS: tuple[dict, ...] = (
@@ -48,6 +49,10 @@ def live_loop(
     ``interval`` is seconds between ticks; 0 skips sleeping (tests).
     Restores MoodField from the same SQLite file when present.
 
+    Mood uses **lab** taus (8 / 4 / 5 s) so valence moves on a CLI
+    timescale. Hypothesis defaults (300 / 60 / 180 s) stay on
+    ``MoodField()``; this runner is not measuring those.
+
     Args:
         db_path: Path to SQLite database for memory and mood persistence
         journal_path: Path to ActionJournal JSONL (decision log)
@@ -57,21 +62,20 @@ def live_loop(
         events: Sequence of event dicts (context/note_id scene)
         sleep: Sleep callable (default time.sleep, injectable for tests)
         on_tick: Optional callback invoked after each tick
-        fly_circuit: FlyAffectReadout implementation (default: LIFCircuit with
-            fallback to MockFlyCircuit if LIF construction fails)
+        fly_circuit: FlyAffectReadout implementation (default: ``get_circuit("lif")``
+            with fallback to ``get_circuit("mock")`` if LIF construction fails)
     """
     db = Path(db_path)
     store = SQLiteStore(db)
     embedder = FakeEmbedder()
-    mood = load_mood(db) or MoodField(tau_valence=8.0, tau_arousal=4.0, tau_approach=5.0)
+    mood = load_mood(db) or lab_mood_field()
 
-    # Default to LIFCircuit (honest spiking), fallback to Mock
+    # Default to LIF (honest spiking), fallback to Mock
     if fly_circuit is None:
         try:
-            fly_circuit = LIFCircuit(n_kc=1000, n_dan=20, n_mbon=34, seed=42)
+            fly_circuit = get_circuit("lif", n_kc=1000, n_dan=20, n_mbon=34, seed=42)
         except Exception:
-            # Fallback to Mock if LIF construction fails
-            fly_circuit = MockFlyCircuit(seed=42)
+            fly_circuit = get_circuit("mock", seed=42)
 
     loop = AffectiveLoop(
         fly_circuit=fly_circuit,

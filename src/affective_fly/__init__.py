@@ -4,9 +4,17 @@ __version__ = "0.2.5"
 
 from .affect_bridge import AffectBridge, MBONDanReadout
 from .aso import ASO_CATALOG, AsoCatalog, NamedCell
+from .circuit_registry import CIRCUIT_NAMES, get_circuit
 from .dual_path import DualPathEncoder, HeuristicAppraisalEngine
 from .fake_embedder import FakeEmbedder
-from .fly_circuit import FlyAffectReadout, LIFCircuit, MBONDanState, MockFlyCircuit
+from .fly_circuit import (
+    FlyAffectReadout,
+    LIFCircuit,
+    MBONDanState,
+    MockFlyCircuit,
+    default_syn_gain,
+    mean_column_fan_in,
+)
 from .honesty import HumanEmotionLabel, map_to_human_label
 from .host_adapter import (
     SCHEMA_VERSION,
@@ -27,7 +35,16 @@ from .malecns_connectome import (
     map_to_aso_names,
     resolve_aso_name,
 )
-from .mood_field import MoodField
+from .mood_field import (
+    HYPOTHESIS_TAU_APPROACH,
+    HYPOTHESIS_TAU_AROUSAL,
+    HYPOTHESIS_TAU_VALENCE,
+    LAB_TAU_APPROACH,
+    LAB_TAU_AROUSAL,
+    LAB_TAU_VALENCE,
+    MoodField,
+    lab_mood_field,
+)
 from .persist import load_mood, save_mood
 from .policy import Policy, PolicyDecision
 from .reconsolidate import Reconsolidator, stimulus_key
@@ -70,6 +87,10 @@ __all__ = [
     "CppStandaloneUnavailableError",
     "has_cpp_compiler",
     "MaleCNSCircuit",
+    "get_circuit",
+    "CIRCUIT_NAMES",
+    "default_syn_gain",
+    "mean_column_fan_in",
     "ConnectivityData",
     "ConnectomeLoadError",
     "load_connectome",
@@ -89,6 +110,13 @@ __all__ = [
     "SCHEMA_VERSION",
     "sensory_frame_to_host_frame",
     "MoodField",
+    "lab_mood_field",
+    "HYPOTHESIS_TAU_VALENCE",
+    "HYPOTHESIS_TAU_AROUSAL",
+    "HYPOTHESIS_TAU_APPROACH",
+    "LAB_TAU_VALENCE",
+    "LAB_TAU_AROUSAL",
+    "LAB_TAU_APPROACH",
     "save_mood",
     "load_mood",
     "AffectiveLoop",

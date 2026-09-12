@@ -252,19 +252,40 @@ def test_sensory_frame_to_host_frame():
 
 
 def test_sensory_frame_to_host_frame_round_trip():
-    """SensoryFrame → HostFrame → SensoryFrame preserves context and visual hash."""
+    """SensoryFrame → HostFrame preserves context; visual is not a round-trip."""
     sf1 = SensoryFrame.from_dict({"note_id": "exp-001", "sentiment": 0.8})
 
     hf = sensory_frame_to_host_frame(sf1)
     sf2 = hf.to_sensory_frame()
 
-    # Context preserved
     assert sf2.context == sf1.context
-    # Visual vectors should match (same hash seed)
-    # Note: not exactly equal because visual_hash is from sf1.visual bytes,
-    # but sf2.visual is generated from context. They're different seeds.
-    # This is expected: visual_hash is a fingerprint, not a seed for regeneration.
-    # If we want exact replay, host must log visual_hash at frame creation time.
+    # Fingerprint of sf1.visual bytes is not the seed that built sf1.visual.
+    # Replaying it must not invent a matching vector.
+    assert hf.visual_hash is not None
+    assert not np.allclose(sf1.visual, sf2.visual)
+
+
+def test_host_logged_visual_hash_replays_exactly():
+    """Exact visual replay requires the host-chosen visual_hash at creation."""
+    created = HostFrame(
+        visual_hash="host-chosen-seed-42",
+        context={"note_id": "exp-001", "sentiment": 0.2},
+    )
+    sf1 = created.to_sensory_frame()
+
+    logged = HostFrame(
+        visual_hash=created.visual_hash,
+        context=created.context,
+        timestamp=created.timestamp,
+    )
+    sf2 = logged.to_sensory_frame()
+    assert np.allclose(sf1.visual, sf2.visual)
+
+    # Re-exporting the SensoryFrame stores a fingerprint, not the seed.
+    # Do not treat that fingerprint as invertible.
+    reexported = sensory_frame_to_host_frame(sf1)
+    assert reexported.visual_hash != created.visual_hash
+    assert not np.allclose(sf1.visual, reexported.to_sensory_frame().visual)
 
 
 def test_host_frame_required_fields():

@@ -36,6 +36,9 @@ class MaleCNSCircuit(FlyAffectReadout):
             When provided, KC→MBON weights are loaded from the file.
         allow_kc_mismatch: If False (default), raise when the file's KC count
             differs from ``n_kc``. If True, truncate extra KCs or pad with zeros.
+        syn_gain: Override LIF ``syn_gain``. ``None`` (default) refits from
+            KC→MBON fan-in after a connectome load. Ignored by Brian2
+            (band held by ``w_max``; pass ``syn_gain`` on ``Brian2Circuit``).
         codegen_target: Passed to ``Brian2Circuit`` when ``backend="brian2"``.
             ``numpy`` (default) needs no compiler; ``cpp_standalone`` is opt-in.
         build_dir: Standalone build/cache directory for the Brian2 C++ path.
@@ -49,6 +52,7 @@ class MaleCNSCircuit(FlyAffectReadout):
         seed: int = 42,
         connectivity_path: str | Path | None = None,
         allow_kc_mismatch: bool = False,
+        syn_gain: float | None = None,
         codegen_target: str = "numpy",
         build_dir: str | Path | None = None,
     ):
@@ -65,6 +69,8 @@ class MaleCNSCircuit(FlyAffectReadout):
 
         if isinstance(backend, FlyAffectReadout):
             self.backend = backend
+            if syn_gain is not None:
+                self._apply_syn_gain_override(syn_gain)
         elif backend == "lif":
             self.backend = LIFCircuit(
                 n_kc=n_kc,
@@ -73,6 +79,7 @@ class MaleCNSCircuit(FlyAffectReadout):
                 n_approach=self.catalog.n_approach,
                 n_pam=self.catalog.n_pam,
                 seed=seed,
+                syn_gain=syn_gain,
             )
         elif backend == "brian2":
             from .brian2_circuit import Brian2Circuit
@@ -223,3 +230,18 @@ class MaleCNSCircuit(FlyAffectReadout):
                     )
             self.backend.w_kc_mbon = mapped_weights
             self.connectivity_loaded = True
+            refresh = getattr(self.backend, "refresh_default_syn_gain", None)
+            if callable(refresh):
+                refresh()
+
+    def _apply_syn_gain_override(self, syn_gain: float) -> None:
+        """Force a caller-supplied syn_gain on a prebuilt LIF backend."""
+        backend = self.backend
+        if hasattr(backend, "syn_gain"):
+            setattr(backend, "syn_gain", syn_gain)
+        if hasattr(backend, "dan_syn_gain"):
+            setattr(backend, "dan_syn_gain", syn_gain)
+        if hasattr(backend, "_syn_gain_overridden"):
+            setattr(backend, "_syn_gain_overridden", True)
+        if hasattr(backend, "_syn_gain_override"):
+            setattr(backend, "_syn_gain_override", syn_gain)

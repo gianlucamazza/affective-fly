@@ -4,6 +4,15 @@ MoodField: slow EMA (exponential moving average) over MBON outputs.
 Implements persistent mood that outlasts individual stimulus presentations.
 A failed review or aversive note leaves mood depressed for tens of minutes,
 not just a spike-and-gone response.
+
+Two τ sets live in this module and must not be confused:
+
+- **Hypothesis** (``MoodField`` defaults: 300 / 60 / 180 s). Documented
+  working values. Unvalidated; Phase 6 needs a real host study. Do not
+  replace them without that study.
+- **Lab** (8 / 4 / 5 s via ``lab_mood_field()``). Compressed so CLI ticks
+  and demos move mood in seconds. ``python -m affective_fly run`` is a
+  lab runner, not a measurement of τ_valence = 300 s.
 """
 
 from __future__ import annotations
@@ -11,6 +20,17 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import numpy as np
+
+# Hypothesis time constants — MoodField defaults. Unvalidated (Phase 6).
+HYPOTHESIS_TAU_VALENCE = 300.0
+HYPOTHESIS_TAU_AROUSAL = 60.0
+HYPOTHESIS_TAU_APPROACH = 180.0
+
+# Compressed lab taus so mood moves on a CLI/demo timescale. Not a claim
+# about biology and not a substitute for the hypothesis values.
+LAB_TAU_VALENCE = 8.0
+LAB_TAU_AROUSAL = 4.0
+LAB_TAU_APPROACH = 5.0
 
 
 @dataclass
@@ -43,17 +63,20 @@ class MoodField:
     inside the engine). They are not interchangeable; do not pass one where the
     other is expected.
 
-    Decay time constants:
-    - tau_valence: ~300 seconds (5 minutes) for valence
-    - tau_arousal: ~60 seconds (1 minute) for arousal (faster decay)
-    - tau_approach: ~180 seconds (3 minutes) for approach tendency
+    Decay time constants (hypothesis defaults, unvalidated):
+    - tau_valence: 300 seconds (5 minutes) for valence
+    - tau_arousal: 60 seconds (1 minute) for arousal (faster decay)
+    - tau_approach: 180 seconds (3 minutes) for approach tendency
+
+    Lab / CLI code should call ``lab_mood_field()`` (8 / 4 / 5 s) instead
+    of changing these defaults.
     """
 
     def __init__(
         self,
-        tau_valence: float = 300.0,
-        tau_arousal: float = 60.0,
-        tau_approach: float = 180.0,
+        tau_valence: float = HYPOTHESIS_TAU_VALENCE,
+        tau_arousal: float = HYPOTHESIS_TAU_AROUSAL,
+        tau_approach: float = HYPOTHESIS_TAU_APPROACH,
         initial_valence: float = 0.0,
         initial_arousal: float = 0.0,
         initial_approach: float = 0.0,
@@ -150,3 +173,24 @@ class MoodField:
             initial_approach=float(data["approach_tendency"]),
         )
         return field
+
+
+def lab_mood_field(
+    *,
+    initial_valence: float = 0.0,
+    initial_arousal: float = 0.0,
+    initial_approach: float = 0.0,
+) -> MoodField:
+    """MoodField with compressed lab taus (8 / 4 / 5 s).
+
+    Use this in the live runner and short demos so mood is visible in
+    seconds. Hypothesis defaults stay on ``MoodField()`` until Phase 6.
+    """
+    return MoodField(
+        tau_valence=LAB_TAU_VALENCE,
+        tau_arousal=LAB_TAU_AROUSAL,
+        tau_approach=LAB_TAU_APPROACH,
+        initial_valence=initial_valence,
+        initial_arousal=initial_arousal,
+        initial_approach=initial_approach,
+    )

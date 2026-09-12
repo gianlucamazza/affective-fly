@@ -52,4 +52,4 @@ To rebuild the file from Janelia GCS, see `docs/MALECNS_DATA.md`.
 - Curated Aso 2014 short-name table (not heuristic-only)
 - Loader fails on KC-count mismatch unless overridden
 - Full biological coverage of 34/97 MBON types is out of scope for the reduced catalog
-- Gain-law refit after real fan-out is a later item (not done here)
+- Gain is refit from published KC→MBON fan-in after load (`default_syn_gain`); not done in the top-200 fixture itself
