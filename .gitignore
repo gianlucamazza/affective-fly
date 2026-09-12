@@ -45,6 +45,7 @@ affective_fly.mood.json
 journal.jsonl
 swarm_journal.jsonl
 test_journal.jsonl
+host_journal.jsonl
 
 # Virtual environments
 venv/
