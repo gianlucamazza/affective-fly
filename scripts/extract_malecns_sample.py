@@ -65,7 +65,7 @@ def extract_via_neuprint(output_path: Path, fmt: str, max_edges: int):
 
     # Note: Public neuprint access may require authentication
     # Set NEUPRINT_APPLICATION_CREDENTIALS env var or token
-    client = Client("https://neuprint.janelia.org", dataset="male-cns:v1.0")
+    Client("https://neuprint.janelia.org", dataset="male-cns:v1.0")
 
     print("Querying neuprint for KC→MBON connections...", file=sys.stderr)
 

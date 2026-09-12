@@ -130,10 +130,10 @@ class MaleCNSCircuit(FlyAffectReadout):
 
         connectivity = load_connectome(self.connectivity_path)
         mapped_weights, matched = map_to_aso_names(connectivity, list(self.mbon_names))
-        
+
         # Track how many MBONs were matched
         self.matched_mbon_count = len(matched)
-        
+
         # Warn if mapping matched few or no MBONs
         if self.matched_mbon_count == 0:
             import warnings
