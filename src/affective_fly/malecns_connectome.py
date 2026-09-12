@@ -17,11 +17,44 @@ See also:
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 import numpy as np
+
+# Aso et al. 2014 eLife e04580 Table 1 short names → compartment names.
+# ASCII forms match ASO_CATALOG (gamma/beta/alpha, prime as ').
+# Types 23+ and "*-like" MaleCNS labels are intentionally absent: we do not
+# invent Aso identities for them.
+PUBLISHED_MBON_SHORT_TO_ASO: dict[str, str] = {
+    "MBON01": "MBON-gamma5beta'2a",
+    "MBON02": "MBON-beta2beta'2a",
+    "MBON03": "MBON-beta'2mp",
+    "MBON04": "MBON-beta'2mp_bilateral",
+    "MBON05": "MBON-gamma4>gamma1gamma2",
+    "MBON06": "MBON-beta1>alpha",
+    "MBON07": "MBON-alpha1",
+    "MBON08": "MBON-gamma3",
+    "MBON09": "MBON-gamma3beta'1",
+    "MBON10": "MBON-beta'1",
+    "MBON11": "MBON-gamma1pedc>alpha/beta",
+    "MBON12": "MBON-gamma2alpha'1",
+    "MBON13": "MBON-alpha'2",
+    "MBON14": "MBON-alpha3",
+    "MBON15": "MBON-alpha'1",
+    "MBON16": "MBON-alpha'3ap",
+    "MBON17": "MBON-alpha'3m",
+    "MBON18": "MBON-alpha2sc",
+    "MBON19": "MBON-alpha2p3p",
+    "MBON20": "MBON-gamma1gamma2",
+    "MBON21": "MBON-gamma4gamma5",
+    "MBON22": "MBON-calyx",
+}
+
+_MBON_EXACT_TYPE = re.compile(r"^MBON-?(\d+)$", re.IGNORECASE)
+_MBON_INSTANCE_TYPE = re.compile(r"^MBON-?(\d+)(?!\d)(?:\(|_|$)", re.IGNORECASE)
 
 
 @dataclass
@@ -328,7 +361,6 @@ def _normalize_mbon_name(name: str) -> str:
     # - After '>' or '/': >a/B → >alpha/beta
     # - But NOT in the middle of 'gamma' or at the end of lobe descriptors like '2a'
     # Strategy: Only replace standalone 'a' followed by a digit or at boundaries
-    import re
     # Match 'a' at start of string followed by digit
     normalized = re.sub(r'^a(\d)', r'alpha\1', normalized)
     # Match 'a' after '>' or '/'
@@ -339,6 +371,51 @@ def _normalize_mbon_name(name: str) -> str:
         normalized = "MBON-" + normalized
 
     return normalized
+
+
+def malecns_mbon_short_name(meta: dict[str, Any]) -> str | None:
+    """Return published Aso short name (MBON01…) from MaleCNS type/instance.
+
+    Exact types like ``MBON01`` match. Instance wrappers like
+    ``MBON01(y5B'2a)_R`` match. ``MBON15-like`` does not (not in Aso 2014).
+    """
+    for raw in (str(meta.get("type") or ""), str(meta.get("instance") or "")):
+        raw = raw.strip()
+        if not raw:
+            continue
+        exact = _MBON_EXACT_TYPE.match(raw)
+        if exact:
+            return f"MBON{int(exact.group(1)):02d}"
+        wrapped = _MBON_INSTANCE_TYPE.match(raw)
+        if wrapped:
+            return f"MBON{int(wrapped.group(1)):02d}"
+    return None
+
+
+def resolve_aso_name(meta: dict[str, Any], aso_names: list[str]) -> str | None:
+    """Resolve one MaleCNS MBON onto a catalog name, or None if unmatched.
+
+    Order: curated Aso 2014 short-name table, then exact instance, then
+    heuristic instance normalization (for fixtures that already use Aso names).
+    A published short name that is not in ``aso_names`` is unmatched — we do
+    not invent a catalog column for it.
+    """
+    aso_set = set(aso_names)
+    short = malecns_mbon_short_name(meta)
+    if short is not None:
+        published = PUBLISHED_MBON_SHORT_TO_ASO.get(short)
+        if published is None:
+            return None
+        return published if published in aso_set else None
+
+    instance_name = str(meta.get("instance") or "")
+    if instance_name in aso_set:
+        return instance_name
+    if instance_name:
+        normalized = _normalize_mbon_name(instance_name)
+        if normalized in aso_set:
+            return normalized
+    return None
 
 
 def map_to_aso_names(
@@ -355,37 +432,28 @@ def map_to_aso_names(
     Returns:
         (mapped_weights, matched_names) where:
             - mapped_weights: (n_kc, len(aso_names)) array; unmatched columns are zero
-            - matched_names: list of Aso names that were successfully matched
+            - matched_names: unique Aso names that received at least one body
 
     Note:
-        MaleCNS body IDs and Aso catalog names do not have 1:1 correspondence.
-        This function matches by instance name when available, with normalization
-        to handle MaleCNS abbreviations (y→gamma, B→beta, a→alpha).
-        Unmatched MBONs are zero-filled.
+        MaleCNS often has several bodies per Aso type (left/right). Their
+        KC→MBON weights are **summed** onto the catalog column. Mapping uses
+        the curated Aso 2014 short-name table first; heuristic instance
+        normalization is fallback only. Unmatched MBONs stay zero.
     """
     n_kc = connectivity.kc_to_mbon.shape[0]
     n_aso = len(aso_names)
     mapped = np.zeros((n_kc, n_aso), dtype=float)
-    matched = []
+    aso_index = {name: j for j, name in enumerate(aso_names)}
+    matched: list[str] = []
 
-    # Try to match each Aso name to a loaded MBON
-    for j, aso_name in enumerate(aso_names):
-        # Look for matching instance name in neuron metadata
-        for mbon_idx, mbon_body_id in enumerate(connectivity.mbon_body_ids):
-            meta = connectivity.neuron_metadata.get(mbon_body_id, {})
-            instance_name = meta.get("instance", "")
-
-            # Try exact match first
-            if instance_name == aso_name:
-                mapped[:, j] = connectivity.kc_to_mbon[:, mbon_idx]
-                matched.append(aso_name)
-                break
-
-            # Try normalized match (handle MaleCNS abbreviations)
-            normalized = _normalize_mbon_name(instance_name)
-            if normalized == aso_name:
-                mapped[:, j] = connectivity.kc_to_mbon[:, mbon_idx]
-                matched.append(aso_name)
-                break
+    for mbon_idx, mbon_body_id in enumerate(connectivity.mbon_body_ids):
+        meta = connectivity.neuron_metadata.get(mbon_body_id, {})
+        aso_name = resolve_aso_name(meta, aso_names)
+        if aso_name is None:
+            continue
+        j = aso_index[aso_name]
+        mapped[:, j] += connectivity.kc_to_mbon[:, mbon_idx]
+        if aso_name not in matched:
+            matched.append(aso_name)
 
     return mapped, matched

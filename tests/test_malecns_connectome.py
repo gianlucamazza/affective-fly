@@ -7,10 +7,14 @@ import pytest
 
 from affective_fly import (
     ASO_CATALOG,
+    PUBLISHED_MBON_SHORT_TO_ASO,
+    ConnectivityData,
     ConnectomeLoadError,
     MaleCNSCircuit,
     load_connectome,
+    malecns_mbon_short_name,
     map_to_aso_names,
+    resolve_aso_name,
 )
 
 FIXTURE_PATH = Path(__file__).parent / "fixtures" / "malecns_mini.json"
@@ -201,6 +205,101 @@ def test_real_ids_json_has_malecns_body_ids():
 
     assert real_kc_ids.issubset(set(connectivity.kc_body_ids))
     assert real_mbon_ids.issubset(set(connectivity.mbon_body_ids))
+
+
+def test_published_short_names_cover_aso_catalog_only_from_aso_2014():
+    """Curated table is Aso 2014 e04580 Table 1; catalog names are a subset."""
+    assert set(ASO_CATALOG.mbon_names) <= set(PUBLISHED_MBON_SHORT_TO_ASO.values())
+    assert PUBLISHED_MBON_SHORT_TO_ASO["MBON01"] == "MBON-gamma5beta'2a"
+    assert PUBLISHED_MBON_SHORT_TO_ASO["MBON02"] == "MBON-beta2beta'2a"
+    assert PUBLISHED_MBON_SHORT_TO_ASO["MBON03"] == "MBON-beta'2mp"
+    assert PUBLISHED_MBON_SHORT_TO_ASO["MBON11"] == "MBON-gamma1pedc>alpha/beta"
+    assert PUBLISHED_MBON_SHORT_TO_ASO["MBON12"] == "MBON-gamma2alpha'1"
+    assert PUBLISHED_MBON_SHORT_TO_ASO["MBON13"] == "MBON-alpha'2"
+    assert PUBLISHED_MBON_SHORT_TO_ASO["MBON14"] == "MBON-alpha3"
+    # MaleCNS expansions are not invented into the table
+    assert "MBON27" not in PUBLISHED_MBON_SHORT_TO_ASO
+    assert "MBON35" not in PUBLISHED_MBON_SHORT_TO_ASO
+
+
+def test_malecns_short_name_rejects_like_suffix():
+    assert malecns_mbon_short_name({"type": "MBON01"}) == "MBON01"
+    assert malecns_mbon_short_name({"instance": "MBON11(y1pedc>a/B)_R"}) == "MBON11"
+    assert malecns_mbon_short_name({"type": "MBON15-like"}) is None
+    assert malecns_mbon_short_name({"instance": "MBON15-like(a'1)_R"}) is None
+
+
+def test_curated_mapping_sums_hemisphere_bodies_and_skips_non_catalog():
+    """MBON01 L+R sum onto gamma5beta'2a; MBON05 is published but not in catalog."""
+    connectivity = ConnectivityData(
+        kc_to_mbon=np.array([[3.0, 4.0, 9.0]]),
+        neuron_metadata={
+            1: {"type": "KC", "instance": "KCg"},
+            10: {"type": "MBON01", "instance": "MBON01(y5B'2a)_R"},
+            11: {"type": "MBON01", "instance": "MBON01(y5B'2a)_L"},
+            12: {"type": "MBON05", "instance": "MBON05(y4>y1y2)_R"},
+        },
+        source_path="memory",
+        mbon_body_ids=[10, 11, 12],
+        kc_body_ids=[1],
+    )
+    aso_names = list(ASO_CATALOG.mbon_names)
+    mapped, matched = map_to_aso_names(connectivity, aso_names)
+    assert matched == ["MBON-gamma5beta'2a"]
+    col = aso_names.index("MBON-gamma5beta'2a")
+    assert mapped[0, col] == 7.0
+    # MBON05 is a real Aso 2014 type but not an ASO_CATALOG column
+    assert resolve_aso_name(
+        {"type": "MBON05", "instance": "MBON05(y4>y1y2)_R"}, aso_names
+    ) is None
+    assert np.all(mapped[:, aso_names.index("MBON-alpha3")] == 0.0)
+
+
+def test_kc_count_mismatch_raises_without_override():
+    with pytest.raises(ConnectomeLoadError, match="allow_kc_mismatch"):
+        MaleCNSCircuit(
+            backend="lif",
+            n_kc=80,
+            seed=1,
+            connectivity_path=FIXTURE_PATH,
+        )
+
+
+def test_kc_count_mismatch_override_truncates_or_pads():
+    truncated = MaleCNSCircuit(
+        backend="lif",
+        n_kc=2,
+        seed=1,
+        connectivity_path=FIXTURE_PATH,
+        allow_kc_mismatch=True,
+    )
+    assert truncated.connectivity_loaded
+    assert truncated.backend.w_kc_mbon.shape == (2, ASO_CATALOG.n_mbon)
+    assert truncated.kc_rows_in_file == 3
+
+    padded = MaleCNSCircuit(
+        backend="lif",
+        n_kc=5,
+        seed=1,
+        connectivity_path=FIXTURE_PATH,
+        allow_kc_mismatch=True,
+    )
+    assert padded.backend.w_kc_mbon.shape == (5, ASO_CATALOG.n_mbon)
+    assert np.all(padded.backend.w_kc_mbon[3:] == 0.0)
+
+
+def test_named_rates_are_population_aliases():
+    circuit = MaleCNSCircuit(backend="lif", n_kc=3, seed=1, connectivity_path=FIXTURE_PATH)
+    circuit.step(np.ones(16) * 0.5, dt=0.001)
+    rates = circuit.named_rates()
+    index_rates = circuit.mbon_index_rates()
+    n_app = ASO_CATALOG.n_approach
+    approach_names = ASO_CATALOG.mbon_names[:n_app]
+    avoid_names = ASO_CATALOG.mbon_names[n_app:]
+    assert len(set(rates[name] for name in approach_names)) == 1
+    assert len(set(rates[name] for name in avoid_names)) == 1
+    assert index_rates == [rates[name] for name in ASO_CATALOG.mbon_names]
+    assert circuit.dan_index_rates() == [rates[name] for name in ASO_CATALOG.dan_names]
 
 
 def test_feather_without_pyarrow_raises_importerror():
