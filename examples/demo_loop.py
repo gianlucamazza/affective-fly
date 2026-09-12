@@ -9,8 +9,8 @@ from affective_fly import (
     FakeEmbedder,
     LaunchGate,
     MockFlyCircuit,
-    MoodField,
     SensoryFrame,
+    lab_mood_field,
 )
 
 SCENARIOS = [
@@ -31,7 +31,7 @@ def main() -> None:
         emotional_memory=EmotionalMemory(store=store, embedder=embedder),
         store=store,
         embedder=embedder,
-        mood_field=MoodField(tau_valence=8.0, tau_arousal=4.0, tau_approach=5.0),
+        mood_field=lab_mood_field(),  # lab 8/4/5 s; not the 300/60/180 hypothesis
         launch_gate=LaunchGate(required_ticks=3),
         journal=journal,
     )

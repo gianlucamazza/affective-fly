@@ -113,8 +113,7 @@ def test_valence_and_approach_are_not_the_same_axis():
 def _run(circuit, n=40, sentiment=0.8, reward=None):
     from emotional_memory import EmotionalMemory, InMemoryStore
 
-    from affective_fly import AffectiveLoop, FakeEmbedder, SensoryFrame
-    from affective_fly.mood_field import MoodField
+    from affective_fly import AffectiveLoop, FakeEmbedder, SensoryFrame, lab_mood_field
 
     store = InMemoryStore()
     embedder = FakeEmbedder()
@@ -123,7 +122,7 @@ def _run(circuit, n=40, sentiment=0.8, reward=None):
         emotional_memory=EmotionalMemory(store=store, embedder=embedder),
         store=store,
         embedder=embedder,
-        mood_field=MoodField(tau_valence=8.0, tau_arousal=4.0, tau_approach=5.0),
+        mood_field=lab_mood_field(),
     )
     actions = []
     for _ in range(n):

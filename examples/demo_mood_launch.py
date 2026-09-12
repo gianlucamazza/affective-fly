@@ -21,7 +21,8 @@ def main():
     # Initialize components
     fly_circuit = MockFlyCircuit(seed=42)
     affect_bridge = AffectBridge()
-    # Faster taus so 9 ticks can recover past the gate (production defaults are minutes).
+    # Demo-compressed taus so 9 ticks can recover past the gate.
+    # Hypothesis defaults remain 300 / 60 / 180 s on MoodField().
     mood_field = MoodField(tau_valence=25.0, tau_arousal=8.0, tau_approach=18.0)
 
     # Launch gate: requires 3 consecutive ticks above threshold

@@ -61,6 +61,8 @@ make benchmark    # LIF vs Brian2 ms/step sweep (docs/BENCHMARKS.md)
 make figures      # regenerate docs/figures/ (needs viz extra)
 ```
 
+`python -m affective_fly run` uses lab mood taus (8 / 4 / 5 s) so valence moves in seconds. `MoodField()` defaults (300 / 60 / 180 s) are unvalidated hypotheses — see [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+
 A demo episode: sustained approach opens the launch gate (shaded), then failed reviews pull valence down and memory-driven avoidance yields SKIP. Regenerate with `make figures`.
 
 ![circumplex and mood over a demo episode](docs/figures/circumplex_mood.png)

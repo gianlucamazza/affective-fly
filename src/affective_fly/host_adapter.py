@@ -40,7 +40,10 @@ class HostFrame:
         * query: str (optional) - retrieval query
         * sentiment: float (optional) - declared sentiment in [-1, 1]
         * reward, outcome, pnl: float (optional) - outcome signal in [-1, 1]
-    - visual_hash: str (optional) - deterministic hash of visual input
+    - visual_hash: str (optional) - host-chosen seed for ``to_sensory_frame()``.
+      Log the same string at frame creation for exact visual replay.
+      ``sensory_frame_to_host_frame()`` writes a fingerprint of the vector
+      bytes, not this seed — do not treat that fingerprint as invertible.
     - visual_data: dict (optional) - host-specific visual encoding
 
     At least one of (context keys, visual_hash, visual_data) must be present
@@ -74,11 +77,16 @@ class HostFrame:
         Convert HostFrame to SensoryFrame for loop.step().
 
         Visual vector is generated from:
-        1. visual_hash if present (deterministic seed)
+        1. visual_hash if present (host-chosen deterministic seed)
         2. else context dict (hash of sorted items)
         3. else visual_data (hash of JSON)
 
         Sentiment bias is applied if context["sentiment"] is present.
+
+        A ``visual_hash`` produced by ``sensory_frame_to_host_frame()`` is a
+        fingerprint of vector bytes, not the seed that created them. Replaying
+        that fingerprint seeds a *new* vector. Exact replay needs the
+        host-chosen hash logged at creation (or a context-only seed).
         """
         # Determine seed for visual vector
         if self.visual_hash:
@@ -194,9 +202,15 @@ def sensory_frame_to_host_frame(
     """
     Convert a SensoryFrame back to a HostFrame for logging.
 
-    Visual vector is not serialized (only its hash). Context is preserved.
+    Context is preserved. The visual vector is **not** serialized: the
+    stored ``visual_hash`` is a SHA-256 fingerprint of the vector bytes.
+
+    That fingerprint is **not** the seed ``to_sensory_frame()`` used (or
+    would need) to regenerate the same vector. Do not invent a seed from
+    it. For exact visual replay, the host must log the ``visual_hash`` it
+    chose at frame creation.
     """
-    # Hash the visual vector for deterministic replay
+    # Fingerprint of the vector, not a regenerating seed.
     visual_bytes = sensory_frame.visual.tobytes()
     visual_hash = hashlib.sha256(visual_bytes).hexdigest()[:16]
 
