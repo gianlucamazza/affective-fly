@@ -84,11 +84,11 @@ def load_connectome(path: str | Path) -> ConnectivityData:
 
 def _load_json(path: Path) -> ConnectivityData:
     """Load JSON connectivity export.
-    
-    Supports two formats:
-    1. {"edges": [...], "neurons": [...]} - full format
-    2. [{"bodyId_pre": ..., "bodyId_post": ..., "weight": ..., ...}, ...] - edge list
-    """
+
+Supports two formats:
+1. {"edges": [...], "neurons": [...]} - full format
+2. [{"bodyId_pre": ..., "bodyId_post": ..., "weight": ..., ...}, ...] - edge list
+"""
     try:
         with open(path) as f:
             data = json.load(f)
@@ -128,10 +128,13 @@ def _load_json(path: Path) -> ConnectivityData:
 
     # Collect KC and MBON body IDs
     kc_ids = sorted([bid for bid, meta in neurons.items() if meta.get("type", "").startswith("KC")])
-    mbon_ids = sorted([
-        bid for bid, meta in neurons.items()
-        if meta.get("type", "").startswith("MBON") or meta.get("type") == "MBON"
-    ])
+    mbon_ids = sorted(
+        [
+            bid
+            for bid, meta in neurons.items()
+            if meta.get("type", "").startswith("MBON") or meta.get("type") == "MBON"
+        ]
+    )
 
     if not kc_ids or not mbon_ids:
         raise ConnectomeLoadError("No KC or MBON neurons found in connectivity data.")
@@ -212,12 +215,24 @@ def _load_arrow(path: Path) -> ConnectivityData:
     if "type_pre" in table.column_names and "type_post" in table.column_names:
         type_pre_list = table["type_pre"].to_pylist()
         type_post_list = table["type_post"].to_pylist()
-        instance_pre_list = table["instance_pre"].to_pylist() if "instance_pre" in table.column_names else [""] * len(bodyId_pre_list)
-        instance_post_list = table["instance_post"].to_pylist() if "instance_post" in table.column_names else [""] * len(bodyId_post_list)
+        instance_pre_list = (
+            table["instance_pre"].to_pylist()
+            if "instance_pre" in table.column_names
+            else [""] * len(bodyId_pre_list)
+        )
+        instance_post_list = (
+            table["instance_post"].to_pylist()
+            if "instance_post" in table.column_names
+            else [""] * len(bodyId_post_list)
+        )
 
         for pre_id, post_id, type_pre, type_post, inst_pre, inst_post in zip(
-            bodyId_pre_list, bodyId_post_list, type_pre_list, type_post_list,
-            instance_pre_list, instance_post_list
+            bodyId_pre_list,
+            bodyId_post_list,
+            type_pre_list,
+            type_post_list,
+            instance_pre_list,
+            instance_post_list,
         ):
             if pre_id not in neurons:
                 neurons[pre_id] = {
@@ -246,10 +261,13 @@ def _load_arrow(path: Path) -> ConnectivityData:
 
     # Collect KC and MBON body IDs
     kc_ids = sorted([bid for bid, meta in neurons.items() if meta.get("type") == "KC"])
-    mbon_ids = sorted([
-        bid for bid, meta in neurons.items()
-        if meta.get("type", "").startswith("MBON") or meta.get("type") == "MBON"
-    ])
+    mbon_ids = sorted(
+        [
+            bid
+            for bid, meta in neurons.items()
+            if meta.get("type", "").startswith("MBON") or meta.get("type") == "MBON"
+        ]
+    )
 
     if not kc_ids or not mbon_ids:
         raise ConnectomeLoadError("No KC or MBON neurons found in arrow connectivity data.")
@@ -262,7 +280,11 @@ def _load_arrow(path: Path) -> ConnectivityData:
     weights = np.zeros((len(kc_ids), len(mbon_ids)), dtype=float)
 
     # Populate from edges
-    weight_list = table["weight"].to_pylist() if "weight" in table.column_names else [1.0] * len(bodyId_pre_list)
+    weight_list = (
+        table["weight"].to_pylist()
+        if "weight" in table.column_names
+        else [1.0] * len(bodyId_pre_list)
+    )
 
     for pre_id, post_id, weight in zip(bodyId_pre_list, bodyId_post_list, weight_list):
         # Only process KC→MBON edges
