@@ -4,6 +4,8 @@ Formulas: [MAPPING_MBON_DAN.md](MAPPING_MBON_DAN.md). Open work: [ROADMAP.md](RO
 
 ## `AffectiveLoop.step`
 
+**Host integration:** `HostFrame` (v1.0 JSON schema) → `to_sensory_frame()` → loop. See [HOST_INTEGRATION.md](HOST_INTEGRATION.md).
+
 1. `fly_circuit.step(visual)` returns `MBONDanState`.
 2. If the frame context has `reward`, `outcome`, or `pnl`, `learn()` updates KC→MBON weights. `td_sequential=True` applies the update to the previous odor's eligibility (delayed US).
 3. `AffectBridge` maps rates to `CoreAffect`; `MoodField` is an EMA of that readout.
@@ -11,7 +13,9 @@ Formulas: [MAPPING_MBON_DAN.md](MAPPING_MBON_DAN.md). Open work: [ROADMAP.md](RO
 5. Retrieve, `Policy.decide`, `LaunchGate` (CLICK/TYPE only after N ticks of approach and valence), journal.
 
 ```
-SensoryFrame
+HostFrame (JSON)
+  → to_sensory_frame()
+  → SensoryFrame
   → circuit.step / learn
   → AffectBridge → MoodField
   → encode | reconsolidate; DualPath.attach
@@ -28,8 +32,9 @@ SensoryFrame
 | `mood_field.py` | EMA, τ_valence = 300 s, τ_arousal = 60 s, τ_approach = 180 s. |
 | `dual_path.py` | Scherer vector on the tag only. |
 | `reconsolidate.py` | Match on note_id, else ticker/event/page; 600 s window; lerp α = 0.4. Disable with window ≤ 0. |
-| `policy.py` | SKIP if approach < −0.3 or retrieved valence < −0.3; WAIT if arousal < −0.5; CLICK/TYPE if valence > 0 and approach > 0.2; else WAIT. |
+| `policy.py` | SKIP if approach < −0.3 or retrieved valence < −0.3 (avoidance evaluated before arousal gate); WAIT if arousal ≤ 0.0 (DAN baseline); CLICK/TYPE if valence > 0 and approach > 0.2; else WAIT. |
 | `launch_gate.py` | Opens after N ticks with approach > 0.2 and valence > −0.1. |
+| `host_adapter.py` | `HostFrame` v1.0 schema (JSON contract), `HostAdapter` journal replay (save/load JSONL), outcome reporting via context fields. |
 | `journal.py` | JSONL; `export_for_viz()`. |
 | `viz.py` | `plot_journal` → PNG (matplotlib extra). |
 | `swarm.py` | Independent circuits, shared store. Default N = 8. |

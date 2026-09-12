@@ -264,7 +264,7 @@ Where the gap is, layer by layer. Today = v0.2.5.
 
 | Layer | Today | Complete |
 |---|---|---|
-| **L0 Sensing** | `SensoryFrame.from_dict` hash→vector | Host adapters: browser DOM hash, screenshot embed, API event bus → Frame; stable schema version |
+| **L0 Sensing** | `HostFrame` v1.0 schema with stable JSON contract; `HostAdapter` for journal save/load/replay; `SensoryFrame.from_dict` remains for direct use; host supplies reward/outcome/pnl via context fields | Production embedders (screenshot → vector, DOM structure → vector); real-time event bus adapters; stable schema version across breaking changes |
 | **L1 Circuit** | Mock, LIF, Brian2 (numpy), MaleCNS (Aso names, **random** weights); all backends calibrated to one rate band, `syn_gain` derived from `n_kc` | MaleCNS weights from a real export; Brian2 C++ path + latency budget; circuit registry; gain law replaced by a physical normalisation |
 | **L2 Plasticity** | Three-factor `learn`, delayed US (`td_sequential`), optional r−V | Eligibility τ calibrated from usage; online PE mode documented; no invented Hige identity |
 | **L3 Affect bridge** | Fixed MBON/DAN → CoreAffect map; valence (relative) and approach (absolute) are distinct axes; arousal on `[0, 1]` | Same map (frozen) + calibration notebook; approach saturation resolved; honesty labels unchanged |

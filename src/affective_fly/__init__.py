@@ -8,6 +8,12 @@ from .dual_path import DualPathEncoder, HeuristicAppraisalEngine
 from .fake_embedder import FakeEmbedder
 from .fly_circuit import FlyAffectReadout, LIFCircuit, MBONDanState, MockFlyCircuit
 from .honesty import HumanEmotionLabel, map_to_human_label
+from .host_adapter import (
+    SCHEMA_VERSION,
+    HostAdapter,
+    HostFrame,
+    sensory_frame_to_host_frame,
+)
 from .journal import ActionJournal, JournalEntry
 from .launch_gate import LaunchGate
 from .loop import AffectiveLoop, SensoryFrame
@@ -52,6 +58,10 @@ __all__ = [
     "MockFlyCircuit",
     "HumanEmotionLabel",
     "map_to_human_label",
+    "HostAdapter",
+    "HostFrame",
+    "SCHEMA_VERSION",
+    "sensory_frame_to_host_frame",
     "MoodField",
     "save_mood",
     "load_mood",
