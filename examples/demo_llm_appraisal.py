@@ -20,7 +20,8 @@ def main() -> None:
     llm_client = build_llm_client()
 
     if llm_client is None:
-        print("LLM appraisal demo: skipping (no API key)")
+        print("LLM appraisal demo: skipping (missing openai package or no API key)")
+        print("Install: uv sync --extra llm")
         print("Set EMOTIONAL_MEMORY_LLM_API_KEY or OPENAI_API_KEY to enable")
         print("Optional: EMOTIONAL_MEMORY_LLM_MODEL, EMOTIONAL_MEMORY_LLM_BASE_URL")
         return
@@ -44,13 +45,17 @@ def main() -> None:
         "sentiment": 0.8,
     })
 
-    em.set_affect(loop.fly_circuit.core_affect(frame.sensory))
-    mem = em.encode(frame.event_text(), metadata=frame.context)
+    mbon_dan_state = loop.fly_circuit.step(frame.visual, dt=0.05)
+    core_affect = loop.affect_bridge.mbon_dan_to_core_affect(mbon_dan_state)
+    em.set_affect(core_affect)
 
-    print(f"Event: {frame.event_text()}")
+    event_text = frame.context.get("query", "journal event")
+    mem = em.encode(event_text, metadata=frame.context)
+
+    print(f"Event: {event_text}")
     print(f"Context: {frame.context}")
 
-    appraisal = encoder.appraise(frame.event_text(), frame.context)
+    appraisal = encoder.appraise(event_text, frame.context)
     updated = encoder.attach(em, mem, appraisal)
 
     print("\nLLM Appraisal:")
