@@ -90,11 +90,19 @@ Brian2-backed LIF with the same functional contract as `LIFCircuit`:
 
 For most demos and tests, `LIFCircuit` is sufficient and faster.
 
-### 3. `MaleCNS` (Blocked)
+### 3. `MaleCNS` (Partial)
 
-Placeholder for a connectome-based circuit using Aso et al. (2014) published MBON/DAN names. Currently uses random weights because the HDF5/JSON connectivity matrix is not available.
+Named circuit using Aso et al. (2014) published MBON/DAN cell types. Connectome loader implemented (`malecns_connectome.py`) but requires user-provided connectivity file.
 
-**Blocked on**: Published MaleCNS connectivity data (HDF5 or JSON format). Do **not** invent body IDs or connectome weights.
+**Usage**:
+- `MaleCNSCircuit(connectivity_path="/path/to/connectome.json")` loads KC→MBON weights from local file (JSON fully implemented).
+- Without `connectivity_path`, weights remain **random (NOT connectome-backed)**.
+- Loader maps edges to Aso catalog names by instance name; unmatched MBONs are zero-filled.
+- Missing/unreadable file raises `ConnectomeLoadError`.
+
+**Still blocked on**: Full integration requires published MaleCNS export from Janelia (https://male-cns.janelia.org/download/) or hemibrain papers. Tests use minimal JSON fixture with real-shaped schema but synthetic body IDs. Phase 4 complete when production connectome file tested end-to-end.
+
+**Do not** invent body IDs or connectome weights. Always load from real data or document that weights are random placeholders.
 
 ### 4. `MockFlyCircuit` (Test Utility Only)
 
@@ -251,7 +259,7 @@ See `examples/demo_persist.py` and `python -m affective_fly demo persist`.
 
 These require external data or production infrastructure and are **explicitly blocked**:
 
-1. **MaleCNS connectivity**: Published HDF5/JSON from Aso et al. (2014). Do **not** invent weights.
+1. **MaleCNS connectivity**: Loader implemented (`malecns_connectome.py`) but requires user-provided connectome file. `MaleCNSCircuit(connectivity_path=...)` loads KC→MBON weights from local JSON (Feather/Parquet/HDF5 stubs documented). Without path, weights stay random (NOT connectome-backed). Full integration blocked on published MaleCNS export from Janelia or hemibrain papers.
 2. **Brian2 C++ codegen**: Requires device selection + build lifecycle. Current `Brian2Circuit` hardcodes numpy.
 3. **Production LLM**: `DualPathEncoder.from_llm()` hook exists; requires API keys and secrets. Do **not** add fake LLM stubs that pretend to call OpenAI/Anthropic.
 4. **Semantic embedder in CI**: `SentenceTransformerEmbedder` (`--extra embed`) downloads MiniLM. Kept optional to avoid network in default CI.
@@ -339,7 +347,7 @@ The line between a legitimate test double and a stub that fakes completion:
 |---|---|
 | `FakeEmbedder` in unit tests that cannot download MiniLM | Demos or features that only work with `FakeEmbedder` |
 | Skipping when there is no C++ compiler or no LLM key | A fake LLM returning canned JSON while claiming the path is wired |
-| `HeuristicAppraisalEngine` (deterministic, offline) | Invented MaleCNS weights standing in for a connectome |
+| `HeuristicAppraisalEngine` (deterministic, offline) | Random MaleCNS weights (loader exists; requires user-provided connectome file) |
 
 A host integration must be a schema plus journal replay of real frames, not a null host inventing outcomes.
 

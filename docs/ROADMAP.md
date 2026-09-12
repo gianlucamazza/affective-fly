@@ -35,7 +35,7 @@ v0.2.0 plus: MoodField JSON round-trip, delayed US through `AffectiveLoop`, `mak
 
 **Blocked** (requires external data or production infrastructure):
 
-- **MaleCNS connectivity matrix** from HDF5/JSON (`aso.py` already has published names; no invented body IDs).
+- **MaleCNS connectivity matrix**: Loader implemented (`malecns_connectome.py`) but requires user-provided connectome file. `MaleCNSCircuit(connectivity_path="...")` loads KC→MBON weights from local JSON/Feather/Parquet (JSON fully implemented; Feather/Parquet/HDF5 stubs documented). Without `connectivity_path`, weights remain random (NOT connectome-backed). See Phase 4 below for integration status.
 - **Brian2 C++ standalone codegen** (current Brian2Circuit hardcodes numpy backend; would need device selection + build lifecycle).
 - **Production LLM** behind `DualPathEncoder.from_llm` (hook exists, `demo_llm_appraisal.py` shows pattern with fake callable; requires API keys and secrets).
 - **Semantic embedder** in default CI/demo (`demo_embedder.py` with `--extra embed` downloads MiniLM; kept optional to avoid network in CI).
@@ -64,7 +64,7 @@ See [ARCHITECTURE_COMPLETE.md](ARCHITECTURE_COMPLETE.md) for full system design.
 
 **Phase 3** (blocked): Embed + LLM - Production semantic embedder (SentenceTransformer) + production LLM for DualPathEncoder.from_llm(). Requires API keys/secrets.
 
-**Phase 4** (blocked): MaleCNS connectivity - Published HDF5/JSON from Aso et al. (2014). No invented weights.
+**Phase 4** (partial): MaleCNS connectivity - Loader implemented (`malecns_connectome.py`, `load_connectome()`, `map_to_aso_names()`). `MaleCNSCircuit(connectivity_path=...)` loads KC→MBON weights from user-provided local file (JSON fully implemented; Feather/Parquet/HDF5 stubs raise clear errors). Mapping to Aso catalog names is best-effort by instance name; mismatches are zero-filled. Missing file or bad format raises `ConnectomeLoadError`. Without `connectivity_path`, weights stay random (NOT connectome-backed; docstring warns). Tests use minimal JSON fixture with real-shaped schema (`tests/fixtures/malecns_mini.json`; synthetic body IDs, real column names). **Still blocked**: Full MB matrix integration requires published MaleCNS export from Janelia (https://male-cns.janelia.org/download/ or hemibrain papers). Phase 4 complete when production connectome file tested end-to-end.
 
 **Phase 5** (blocked): Brian2 C++ codegen - Device selection, standalone build lifecycle. Current Brian2Circuit hardcodes numpy.
 

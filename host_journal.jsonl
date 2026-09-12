@@ -1,0 +1,4 @@
+{"schema_version": "1.0", "timestamp": "2026-09-12T13:19:42.412224", "context": {"context": "journal", "note_id": "exp-001", "sentiment": 1.0, "query": "successful experiment"}, "visual_hash": null, "visual_data": null}
+{"schema_version": "1.0", "timestamp": "2026-09-12T13:19:42.445235", "context": {"context": "journal", "note_id": "exp-001", "sentiment": 0.8, "query": "promising results"}, "visual_hash": null, "visual_data": null}
+{"schema_version": "1.0", "timestamp": "2026-09-12T13:19:42.468805", "context": {"context": "review", "note_id": "exp-001", "sentiment": -1.0, "query": "failed replication"}, "visual_hash": null, "visual_data": null}
+{"schema_version": "1.0", "timestamp": "2026-09-12T13:19:42.497415", "context": {"context": "review", "note_id": "exp-001", "sentiment": -0.4, "query": "revision required"}, "visual_hash": null, "visual_data": null}

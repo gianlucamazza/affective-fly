@@ -1,13 +1,16 @@
 """
 Named MB circuit using published Aso types.
 
-This is NOT a MaleCNS connectome loader. It sizes KC/DAN/MBON populations
-to the Aso catalog and labels them. Synaptic weights remain seeded-random
-until an HDF5/JSON export is available.
+When connectivity_path is provided, KC→MBON weights are loaded from a published
+connectome export (JSON/Feather/Parquet). Without a path, weights remain seeded-random.
+
+**Important**: Random weights are NOT connectome-backed. They are placeholders
+until real connectivity data is provided via connectivity_path.
 """
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
 import numpy as np
@@ -20,7 +23,17 @@ if TYPE_CHECKING:
 
 
 class MaleCNSCircuit(FlyAffectReadout):
-    """FlyAffectReadout whose MBON/DAN indices map to published Aso names."""
+    """FlyAffectReadout whose MBON/DAN indices map to published Aso names.
+
+    Args:
+        backend: "lif", "brian2", or a FlyAffectReadout instance
+        catalog: Aso catalog (defaults to ASO_CATALOG)
+        n_kc: Number of Kenyon cells
+        seed: Random seed (used only when connectivity_path is None)
+        connectivity_path: Path to connectome file (JSON/Feather/Parquet).
+            When None, weights are random (NOT connectome-backed).
+            When provided, KC→MBON weights are loaded from the file.
+    """
 
     def __init__(
         self,
@@ -28,11 +41,14 @@ class MaleCNSCircuit(FlyAffectReadout):
         catalog: AsoCatalog | None = None,
         n_kc: int = 200,
         seed: int = 42,
+        connectivity_path: str | Path | None = None,
     ):
         self.catalog = catalog or ASO_CATALOG
         self.mbon_names = self.catalog.mbon_names
         self.dan_names = self.catalog.dan_names
         self.last_state: MBONDanState | None = None
+        self.connectivity_path = connectivity_path
+        self.connectivity_loaded = False
 
         if isinstance(backend, FlyAffectReadout):
             self.backend = backend
@@ -58,6 +74,10 @@ class MaleCNSCircuit(FlyAffectReadout):
             )
         else:
             raise ValueError(f"Unknown backend: {backend!r}")
+
+        # Load connectome if path provided
+        if connectivity_path is not None:
+            self._load_connectivity()
 
     def step(self, sensory_input: np.ndarray, dt: float = 0.001) -> MBONDanState:
         self.last_state = self.backend.step(sensory_input, dt=dt)
@@ -95,3 +115,41 @@ class MaleCNSCircuit(FlyAffectReadout):
         for name in self.dan_names:
             out[name] = self.last_state.dan_reinforcement_rate
         return out
+
+    def _load_connectivity(self) -> None:
+        """Load KC→MBON weights from connectivity_path.
+
+        Updates backend.w_kc_mbon with loaded weights.
+        Raises ConnectomeLoadError if file is missing/unreadable.
+        """
+        from .malecns_connectome import load_connectome, map_to_aso_names
+
+        if self.connectivity_path is None:
+            return
+
+        connectivity = load_connectome(self.connectivity_path)
+        mapped_weights, matched = map_to_aso_names(connectivity, list(self.mbon_names))
+
+        # Update backend weights if it has w_kc_mbon
+        if hasattr(self.backend, "w_kc_mbon"):
+            # Ensure shapes match
+            if mapped_weights.shape[1] != self.backend.w_kc_mbon.shape[1]:
+                raise ValueError(
+                    f"Loaded connectivity has {mapped_weights.shape[1]} MBONs, "
+                    f"but backend expects {self.backend.w_kc_mbon.shape[1]}"
+                )
+            # Resize if KC count differs
+            if mapped_weights.shape[0] != self.backend.w_kc_mbon.shape[0]:
+                n_kc_backend = self.backend.w_kc_mbon.shape[0]
+                if mapped_weights.shape[0] > n_kc_backend:
+                    # Truncate
+                    mapped_weights = mapped_weights[:n_kc_backend, :]
+                else:
+                    # Pad with zeros
+                    pad_rows = n_kc_backend - mapped_weights.shape[0]
+                    mapped_weights = np.vstack([
+                        mapped_weights,
+                        np.zeros((pad_rows, mapped_weights.shape[1]))
+                    ])
+            self.backend.w_kc_mbon = mapped_weights
+            self.connectivity_loaded = True

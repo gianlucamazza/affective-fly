@@ -18,6 +18,12 @@ from .journal import ActionJournal, JournalEntry
 from .launch_gate import LaunchGate
 from .loop import AffectiveLoop, SensoryFrame
 from .malecns import MaleCNSCircuit
+from .malecns_connectome import (
+    ConnectivityData,
+    ConnectomeLoadError,
+    load_connectome,
+    map_to_aso_names,
+)
 from .mood_field import MoodField
 from .persist import load_mood, save_mood
 from .policy import Policy, PolicyDecision
@@ -51,6 +57,10 @@ __all__ = [
     "LIFCircuit",
     "Brian2Circuit",
     "MaleCNSCircuit",
+    "ConnectivityData",
+    "ConnectomeLoadError",
+    "load_connectome",
+    "map_to_aso_names",
     "ASO_CATALOG",
     "AsoCatalog",
     "NamedCell",
