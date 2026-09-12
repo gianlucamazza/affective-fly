@@ -60,7 +60,7 @@ See [ARCHITECTURE_COMPLETE.md](ARCHITECTURE_COMPLETE.md) for full system design.
 
 **Phase 1** (complete): Polish - LIFCircuit integration tests, benchmarks, mypy in lint, comprehensive docs. v0.2.4.
 
-**Phase 2** (complete): Host adapters - Versioned HostFrame schema (v1.0), journal replay via HostAdapter, host-side outcome reporting through context fields (reward/outcome/pnl). No NullHost stubs. See `docs/HOST_INTEGRATION.md` for integration guide, `examples/demo_host_replay.py` for demonstration, and `tests/test_host_adapter.py` for test coverage.
+**Phase 2** (complete): Host adapters - Versioned HostFrame schema (v1.0), journal replay via HostAdapter, host-side outcome reporting through context fields (reward/outcome/pnl). CLI runner (`python -m affective_fly run`) emits both ActionJournal and HostFrame JSONL for replay. LIFCircuit is the default circuit for live runs (fallback to Mock). No NullHost stubs. See `docs/HOST_INTEGRATION.md` for integration guide, `examples/demo_host_replay.py` for demonstration, and `tests/test_host_adapter.py` for test coverage.
 
 **Phase 3** (blocked): Embed + LLM - Production semantic embedder (SentenceTransformer) + production LLM for DualPathEncoder.from_llm(). Requires API keys/secrets.
 

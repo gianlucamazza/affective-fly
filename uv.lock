@@ -18,7 +18,7 @@ resolution-markers = [
 
 [[package]]
 name = "affective-fly"
-version = "0.2.4"
+version = "0.2.5"
 source = { editable = "." }
 dependencies = [
     { name = "emotional-memory", extra = ["sqlite"] },

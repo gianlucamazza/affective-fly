@@ -27,8 +27,48 @@ python -m affective_fly demo persist
 python -m affective_fly run --interval 2    # live ticks; Ctrl-C to stop
 ```
 
+### Recommended: HostFrame Integration
+
+Use `HostFrame` for structured host integration with versioned schema and journal replay (see [`docs/HOST_INTEGRATION.md`](docs/HOST_INTEGRATION.md)):
+
 ```python
 from emotional_memory import EmotionalMemory, InMemoryStore
+from affective_fly import AffectiveLoop, FakeEmbedder, LIFCircuit, HostFrame
+
+loop = AffectiveLoop(
+    fly_circuit=LIFCircuit(n_kc=1000, n_dan=20, n_mbon=34, seed=42),
+    emotional_memory=EmotionalMemory(
+        store=InMemoryStore(), embedder=FakeEmbedder()
+    ),
+)
+
+# Create a HostFrame from semantic events
+frame = HostFrame(context={
+    "context": "journal",
+    "note_id": "debugging-session-001",
+    "sentiment": 0.8,
+    "query": "successful debugging session notes",
+})
+
+decision = loop.step(frame.to_sensory_frame(), encode_memory=True)
+
+# Report outcome for three-factor learning
+outcome_frame = HostFrame(context={
+    "context": "journal",
+    "note_id": "debugging-session-001",
+    "sentiment": -0.6,
+    "reward": -0.8,  # Triggers KC→MBON plasticity
+})
+
+decision = loop.step(outcome_frame.to_sensory_frame())
+print(decision.action, decision.mood_valence, decision.reason)
+```
+
+### Alternative: Direct SensoryFrame (still supported)
+
+Direct `SensoryFrame.from_dict()` usage remains supported:
+
+```python
 from affective_fly import AffectiveLoop, FakeEmbedder, MockFlyCircuit, SensoryFrame
 
 loop = AffectiveLoop(
@@ -43,20 +83,9 @@ decision = loop.step(
         "context": "journal",
         "note_id": "debugging-session-001",
         "sentiment": 0.8,
-        "query": "successful debugging session notes",
     }),
     encode_memory=True,
 )
-
-decision = loop.step(
-    SensoryFrame.from_dict({
-        "context": "journal",
-        "note_id": "debugging-session-001",
-        "sentiment": -0.6,
-        "reward": -0.8,
-    }),
-)
-print(decision.action, decision.mood_valence, decision.reason)
 ```
 
 `sentiment` is added to the sensory vector. `reward`, `outcome`, or `pnl` call `learn()` (PAM if positive, PPL1 if negative).
