@@ -28,6 +28,7 @@ if TYPE_CHECKING:
 
 try:
     import brian2 as b2
+    from brian2.devices.device import get_device
 except ImportError as exc:  # pragma: no cover
     raise ImportError("Brian2Circuit requires brian2. Install with: uv sync --extra brian") from exc
 
@@ -52,9 +53,13 @@ def has_cpp_compiler() -> bool:
     return any(shutil.which(name) for name in names)
 
 
+def _is_cpp_standalone_device() -> bool:
+    return type(get_device()).__name__ == "CPPStandaloneDevice"
+
+
 def activate_runtime_numpy() -> None:
     """Switch Brian2 back to the runtime device with numpy codegen."""
-    if type(b2.device).__name__ == "CPPStandaloneDevice":
+    if _is_cpp_standalone_device():
         b2.device.reinit()
         b2.set_device("runtime")
     b2.prefs.codegen.target = "numpy"
@@ -68,9 +73,12 @@ def activate_cpp_standalone(directory: str | Path) -> None:
             "(g++, clang++, c++, or CXX). CI and hosts without a toolchain should "
             "keep the default codegen_target='numpy'."
         )
-    if type(b2.device).__name__ == "CPPStandaloneDevice":
-        b2.device.reinit()
-    b2.set_device("cpp_standalone", directory=str(directory), build_on_run=False)
+    directory = str(directory)
+    # The standalone device is a process-wide singleton: a prior build()
+    # stays on it until reinit()+activate(), even after a detour to runtime.
+    b2.set_device("cpp_standalone", directory=directory, build_on_run=False)
+    b2.device.reinit()
+    b2.device.activate(directory=directory, build_on_run=False)
 
 
 class Brian2Circuit(FlyAffectReadout):
