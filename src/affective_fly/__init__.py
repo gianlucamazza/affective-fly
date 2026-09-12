@@ -6,7 +6,14 @@ from .affect_bridge import AffectBridge, MBONDanReadout
 from .aso import ASO_CATALOG, AsoCatalog, NamedCell
 from .dual_path import DualPathEncoder, HeuristicAppraisalEngine
 from .fake_embedder import FakeEmbedder
-from .fly_circuit import FlyAffectReadout, LIFCircuit, MBONDanState, MockFlyCircuit
+from .fly_circuit import (
+    FlyAffectReadout,
+    LIFCircuit,
+    MBONDanState,
+    MockFlyCircuit,
+    default_syn_gain,
+    mean_column_fan_in,
+)
 from .honesty import HumanEmotionLabel, map_to_human_label
 from .host_adapter import (
     SCHEMA_VERSION,
@@ -60,6 +67,8 @@ __all__ = [
     "LIFCircuit",
     "Brian2Circuit",
     "MaleCNSCircuit",
+    "default_syn_gain",
+    "mean_column_fan_in",
     "ConnectivityData",
     "ConnectomeLoadError",
     "load_connectome",

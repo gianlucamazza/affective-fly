@@ -215,6 +215,6 @@ pip install pyarrow>=14.0.0
 
 ## Phase 4 Status
 
-**Partial.** Published KC→MBON weights load end-to-end from `data/malecns/kc_mbon_connectivity.feather` (or a user rebuild). Mapping is the curated Aso 2014 short-name table onto the 7-name catalog. KC-count mismatch fails unless overridden. Gain-law refit after real fan-out is not done.
+**Partial.** Published KC→MBON weights load end-to-end from `data/malecns/kc_mbon_connectivity.feather` (or a user rebuild). Mapping is the curated Aso 2014 short-name table onto the 7-name catalog. KC-count mismatch fails unless overridden. `syn_gain` is refit from published KC→MBON fan-in (`default_syn_gain`); pass `syn_gain` to override.
 
 See `ROADMAP.md` and `MALECNS_TOP200_MAPPING.md`.

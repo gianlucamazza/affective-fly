@@ -19,6 +19,46 @@ import numpy as np
 if TYPE_CHECKING:
     from .td import PlasticityTrace, TDResult
 
+# n_kc law fitted on uniform [0, w_max] KC→MBON weights (v0.2.5). After a
+# published connectome load, default_syn_gain rescales it by actual fan-in.
+SYN_GAIN_PREFACTOR = 950.0
+SYN_GAIN_EXPONENT = -0.70
+
+
+def mean_column_fan_in(weights: np.ndarray) -> float:
+    """Mean incoming weight per postsynaptic column (KC→MBON or KC→DAN)."""
+    arr = np.asarray(weights, dtype=float)
+    if arr.size == 0 or arr.ndim != 2 or arr.shape[1] == 0:
+        return 0.0
+    return float(np.mean(np.sum(arr, axis=0)))
+
+
+def default_syn_gain(
+    n_kc: float,
+    *,
+    weights: np.ndarray | None = None,
+    w_max: float = 0.15,
+) -> float:
+    """Default ``syn_gain`` from ``n_kc`` and optional real KC→post fan-in.
+
+    The v0.2.5 law ``950 · n_kc^(−0.70)`` keeps untrained random-weight
+    circuits near ~20 Hz total MBON. Published MaleCNS synapse counts have
+    ~80× that column fan-in after Aso mapping, so the same law is scaled by
+    ``(n_kc · w_max / 2) / mean_column_fan_in(weights)``. Uniform init on
+    ``[0, w_max]`` recovers the original law. Pass ``syn_gain`` on the
+    circuit to override.
+    """
+    g0 = SYN_GAIN_PREFACTOR * float(n_kc) ** SYN_GAIN_EXPONENT
+    if weights is None:
+        return g0
+    actual = mean_column_fan_in(weights)
+    if actual <= 0.0:
+        return g0
+    expected = float(n_kc) * float(w_max) / 2.0
+    if expected <= 0.0:
+        return g0
+    return g0 * expected / actual
+
 
 @dataclass
 class MBONDanState:
@@ -233,13 +273,9 @@ class LIFCircuit(FlyAffectReadout):
         self.seed = seed
         self.sparse_frac = sparse_frac
         self.kc_drive_scale = kc_drive_scale
-        # More Kenyon cells means more co-active KCs per odor, so a fixed gain
-        # would put a 80-KC and a 2000-KC circuit in different rate bands. The
-        # constants are an empirical fit, rounded: for each n_kc the gain that
-        # puts an untrained circuit at ~20 Hz total MBON rate was solved by
-        # bisection over several seeds, then log-log fitted (residuals within
-        # ~7%; see docs/MAPPING_MBON_DAN.md). Pass syn_gain to override.
-        self.syn_gain = 950.0 * float(n_kc) ** -0.70 if syn_gain is None else syn_gain
+        # syn_gain is set after weight init so the default can use real fan-in.
+        self._syn_gain_overridden = syn_gain is not None
+        self._syn_gain_override = syn_gain
         self.dan_mod_gain = dan_mod_gain
         self.spike_window = spike_window
         if dt_sim <= 0:
@@ -276,6 +312,16 @@ class LIFCircuit(FlyAffectReadout):
         self.w_kc_dan = self.rng.uniform(0.0, self.w_max, size=(n_kc, n_dan))
         self.w_kc_mbon = self.rng.uniform(0.0, self.w_max, size=(n_kc, n_mbon))
         self.w_in_kc: np.ndarray | None = None
+        # MBON gain follows KC→MBON fan-in (random or published). DAN weights
+        # stay random, so they keep the n_kc law even after a connectome load.
+        # A caller override applies to both paths.
+        override = self._syn_gain_override
+        if override is not None:
+            self.syn_gain = float(override)
+            self.dan_syn_gain = float(override)
+        else:
+            self.syn_gain = default_syn_gain(n_kc, weights=self.w_kc_mbon, w_max=self.w_max)
+            self.dan_syn_gain = default_syn_gain(n_kc, weights=self.w_kc_dan, w_max=self.w_max)
 
         self.v_kc = np.full(n_kc, v_rest)
         self.v_dan = np.full(n_dan, v_rest)
@@ -290,6 +336,18 @@ class LIFCircuit(FlyAffectReadout):
         # populated as timestamps of steps that produced any spike.
         self.mbon_spikes: list[float] = []
         self.dan_spikes: list[float] = []
+
+    def refresh_default_syn_gain(self) -> None:
+        """Recompute ``syn_gain`` from current ``w_kc_mbon`` unless overridden.
+
+        ``MaleCNSCircuit`` calls this after replacing KC→MBON weights with a
+        published matrix. DAN gain is left on the random-weight n_kc law.
+        """
+        if self._syn_gain_overridden:
+            return
+        self.syn_gain = default_syn_gain(
+            self.n_kc, weights=self.w_kc_mbon, w_max=self.w_max
+        )
 
     def _ensure_input_weights(self, n_in: int) -> None:
         if self.w_in_kc is None or self.w_in_kc.shape[0] != n_in:
@@ -354,7 +412,7 @@ class LIFCircuit(FlyAffectReadout):
 
             # Delta synapses: a presynaptic spike is an instantaneous voltage
             # jump (Brian2's ``v_post += w``), not a current held over h.
-            dan_input = kc_act @ self.w_kc_dan * self.syn_gain
+            dan_input = kc_act @ self.w_kc_dan * self.dan_syn_gain
             self.v_dan += -(self.v_dan - self.v_rest) / self.tau_m * h + dan_input
             dan_spikes = self.v_dan >= self.v_thresh
             self.v_dan[dan_spikes] = self.v_rest

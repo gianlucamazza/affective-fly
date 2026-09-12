@@ -8,8 +8,20 @@ above it, so Policy and LaunchGate were only ever exercised by MockFlyCircuit.
 import numpy as np
 import pytest
 
-from affective_fly import AffectBridge, MockFlyCircuit
-from affective_fly.fly_circuit import LIFCircuit, MBONDanState
+from pathlib import Path
+
+from affective_fly import AffectBridge, MaleCNSCircuit, MockFlyCircuit
+from affective_fly.fly_circuit import (
+    SYN_GAIN_EXPONENT,
+    SYN_GAIN_PREFACTOR,
+    LIFCircuit,
+    MBONDanState,
+    default_syn_gain,
+    mean_column_fan_in,
+)
+
+PUBLISHED_CONNECTOME = Path("data/malecns/kc_mbon_connectivity.feather")
+TOP200_CONNECTOME = Path("tests/fixtures/malecns_kc_mbon_real_top200.json")
 
 MBON_MAX = 100.0
 DAN_MAX = 80.0
@@ -189,3 +201,100 @@ def test_gain_law_keeps_every_seed_in_band():
         mbon_total = rates[:, 0].mean()
         assert 1.0 < mbon_total <= MBON_MAX, f"seed {seed}: {mbon_total:.1f} Hz"
         assert rates[:, 1].mean() <= DAN_MAX
+
+
+def test_default_syn_gain_recovers_nkc_law_on_random_weights():
+    """Uniform [0, w_max] fan-in recovers 950 · n_kc^(−0.70) within seed noise."""
+    for n_kc in (80, 200, 2000):
+        circuit = LIFCircuit(n_kc=n_kc, seed=1)
+        g0 = SYN_GAIN_PREFACTOR * float(n_kc) ** SYN_GAIN_EXPONENT
+        assert circuit.syn_gain == pytest.approx(g0, rel=0.02)
+        assert default_syn_gain(n_kc) == pytest.approx(g0)
+        expected = n_kc * circuit.w_max / 2.0
+        assert mean_column_fan_in(circuit.w_kc_mbon) == pytest.approx(expected, rel=0.02)
+
+
+def test_syn_gain_override_is_honored():
+    circuit = LIFCircuit(n_kc=200, seed=1, syn_gain=1.25)
+    assert circuit.syn_gain == 1.25
+    assert circuit.dan_syn_gain == 1.25
+    circuit.w_kc_mbon[:] = 10.0
+    circuit.refresh_default_syn_gain()
+    assert circuit.syn_gain == 1.25
+
+
+def test_refresh_default_syn_gain_tracks_replaced_weights():
+    circuit = LIFCircuit(n_kc=80, n_dan=4, n_mbon=7, seed=1)
+    before = circuit.syn_gain
+    circuit.w_kc_mbon[:] = 8.0
+    circuit.refresh_default_syn_gain()
+    assert circuit.syn_gain < before / 10.0
+    assert circuit.syn_gain == pytest.approx(
+        default_syn_gain(80, weights=circuit.w_kc_mbon, w_max=circuit.w_max)
+    )
+
+
+def test_mbon_min_active_still_guards_below_operating_point():
+    """5 Hz stays a silence floor: untrained LIF sits above it, 0.59 Hz does not."""
+    bridge = AffectBridge()
+    assert bridge.mbon_min_active == 5.0
+    rates = _drive(LIFCircuit(n_kc=2000, seed=1))
+    assert rates[:, 0].mean() > bridge.mbon_min_active
+    silent_v, _, _ = bridge.readout_to_tuple(MBONDanState(0.0, 0.59, 1.0, 1.0))
+    assert -0.3 < silent_v < 0.0
+
+
+@pytest.mark.skipif(not TOP200_CONNECTOME.exists(), reason="top-200 fixture missing")
+def test_top200_published_fanout_stays_in_band():
+    circuit = MaleCNSCircuit(
+        backend="lif", n_kc=185, seed=42, connectivity_path=TOP200_CONNECTOME
+    )
+    g0 = default_syn_gain(185)
+    assert circuit.backend.syn_gain < g0
+    rates = _drive(circuit, seed=42)
+    mbon_total, dan = rates[:, 0].mean(), rates[:, 1].mean()
+    assert 1.0 < mbon_total <= MBON_MAX, f"MBON {mbon_total:.1f} Hz outside band"
+    assert dan <= DAN_MAX, f"DAN {dan:.1f} Hz outside band"
+
+
+def _published_pyarrow_missing() -> bool:
+    if not PUBLISHED_CONNECTOME.exists():
+        return True
+    import importlib.util
+
+    return importlib.util.find_spec("pyarrow") is None
+
+
+@pytest.mark.skipif(_published_pyarrow_missing(), reason="published feather or pyarrow missing")
+def test_published_malecns_fanout_stays_in_band():
+    """Item 1.3: real KC→MBON fan-out must land in the Policy/LaunchGate band."""
+    circuit = MaleCNSCircuit(
+        backend="lif", n_kc=4063, seed=1, connectivity_path=PUBLISHED_CONNECTOME
+    )
+    g0 = default_syn_gain(4063)
+    assert circuit.backend.syn_gain == pytest.approx(
+        default_syn_gain(
+            4063, weights=circuit.backend.w_kc_mbon, w_max=circuit.backend.w_max
+        )
+    )
+    assert circuit.backend.syn_gain < g0 / 10.0
+    # DAN weights stay random, so they keep the n_kc-scale gain.
+    assert circuit.backend.dan_syn_gain == pytest.approx(g0, rel=0.05)
+    rates = _drive(circuit, seed=1)
+    mbon_total, dan = rates[:, 0].mean(), rates[:, 1].mean()
+    assert 10.0 <= mbon_total <= MBON_MAX, f"MBON {mbon_total:.1f} Hz outside band"
+    assert 0.0 < dan <= DAN_MAX, f"DAN {dan:.1f} Hz outside band"
+    assert mbon_total > AffectBridge().mbon_min_active
+
+
+@pytest.mark.skipif(_published_pyarrow_missing(), reason="published feather or pyarrow missing")
+def test_published_syn_gain_override_survives_connectome_load():
+    circuit = MaleCNSCircuit(
+        backend="lif",
+        n_kc=4063,
+        seed=1,
+        connectivity_path=PUBLISHED_CONNECTOME,
+        syn_gain=0.5,
+    )
+    assert circuit.backend.syn_gain == 0.5
+    assert circuit.backend.dan_syn_gain == 0.5
