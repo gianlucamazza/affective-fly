@@ -60,7 +60,9 @@ def main() -> None:
     print(f"\nQuery: '{query}'")
     print(f"Retrieved {len(hits)} memories:")
     for i, hit in enumerate(hits, 1):
-        print(f"  {i}. {hit.content[:60]}... (similarity: {hit.similarity:.3f})")
+        # Memory objects have: content, id, embedding, tag, metadata (no .similarity)
+        ctx = hit.metadata.get("context", "?") if hit.metadata else "?"
+        print(f"  {i}. {hit.content[:60]}... (context: {ctx})")
 
 
 if __name__ == "__main__":
