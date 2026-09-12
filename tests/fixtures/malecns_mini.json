@@ -1,0 +1,21 @@
+{
+  "_comment": "Minimal MaleCNS-style connectivity fixture. Real schema: bodyId_pre, bodyId_post, type (from Janelia FlyEM). Derived from public male-cns.janelia.org data structure. This fixture has synthetic body IDs for testing only.",
+  "edges": [
+    {"bodyId_pre": 10001, "bodyId_post": 20001, "weight": 12, "type": "KC_to_MBON"},
+    {"bodyId_pre": 10002, "bodyId_post": 20001, "weight": 8, "type": "KC_to_MBON"},
+    {"bodyId_pre": 10003, "bodyId_post": 20002, "weight": 15, "type": "KC_to_MBON"},
+    {"bodyId_pre": 10001, "bodyId_post": 20003, "weight": 5, "type": "KC_to_MBON"},
+    {"bodyId_pre": 30001, "bodyId_post": 20001, "weight": 3, "type": "DAN_to_MBON"},
+    {"bodyId_pre": 30002, "bodyId_post": 20002, "weight": 4, "type": "DAN_to_MBON"}
+  ],
+  "neurons": [
+    {"bodyId": 10001, "type": "KC", "instance": "KC_alpha"},
+    {"bodyId": 10002, "type": "KC", "instance": "KC_beta"},
+    {"bodyId": 10003, "type": "KC", "instance": "KC_gamma"},
+    {"bodyId": 20001, "type": "MBON", "instance": "MBON-gamma5beta'2a"},
+    {"bodyId": 20002, "type": "MBON", "instance": "MBON-gamma2alpha'1"},
+    {"bodyId": 20003, "type": "MBON", "instance": "MBON-beta'2mp"},
+    {"bodyId": 30001, "type": "DAN", "instance": "PAM-alpha1"},
+    {"bodyId": 30002, "type": "DAN", "instance": "PPL1-gamma1pedc"}
+  ]
+}

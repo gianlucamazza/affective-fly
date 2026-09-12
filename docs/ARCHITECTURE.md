@@ -26,7 +26,8 @@ HostFrame (JSON)
 
 | File | Notes |
 |---|---|
-| `fly_circuit.py` | Protocol `FlyAffectReadout`. Mock (linear rates), LIF, optional Brian2, MaleCNS (Aso names; random weights). |
+| `fly_circuit.py` | Protocol `FlyAffectReadout`. Mock (linear rates), LIF, optional Brian2, MaleCNS (Aso names; random or loaded weights). |
+| `malecns_connectome.py` | Connectome loader: `load_connectome()` from JSON/Feather/Parquet; `map_to_aso_names()`. `MaleCNSCircuit(connectivity_path=...)` uses loaded weights; without path, random (not connectome-backed). |
 | `td.py` | `learn()`: PAM/PPL1 from the US; optional `prediction_error` (r−V); eligibility `e ← e exp(−dt/τ)+KC`, τ = 1 s. Sequential uses the previous trace. Weight change is functional contrast (approach vs avoid), not Hige depression. |
 | `affect_bridge.py` | Rates → `CoreAffect`. Spec in MAPPING. |
 | `mood_field.py` | EMA, τ_valence = 300 s, τ_arousal = 60 s, τ_approach = 180 s. |

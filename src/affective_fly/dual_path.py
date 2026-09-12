@@ -20,10 +20,10 @@ from typing import Any, Protocol, cast
 
 from emotional_memory import AppraisalVector, EmotionalMemory, Memory
 
-_NEGATIVE = ("crash", "dump", "loss", "fail", "decline", "punish", "shock")
-_POSITIVE = ("launch", "surge", "peak", "recover", "success", "reward", "hype")
-_CONTROL = ("wallet", "holdings", "form", "type", "confirm", "review")
-_SELF = ("wallet", "pnl", "loss", "holdings", "self", "my", "review")
+_NEGATIVE = ("fail", "failed", "failure", "error", "reject", "decline", "punish", "shock")
+_POSITIVE = ("success", "successful", "breakthrough", "replicate", "confirm", "reward", "novel")
+_CONTROL = ("form", "type", "protocol", "method", "review", "design")
+_SELF = ("my", "self", "review", "note", "experiment", "observation")
 
 
 def _blob(event_text: str, context: dict[str, Any] | None) -> str:
