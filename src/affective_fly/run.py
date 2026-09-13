@@ -15,6 +15,7 @@ from .host_adapter import HostAdapter, HostFrame
 from .journal import ActionJournal
 from .launch_gate import LaunchGate
 from .loop import AffectiveLoop
+from .measure import MeasurementLog
 from .mood_field import lab_mood_field
 from .persist import load_mood, save_mood
 
@@ -36,6 +37,7 @@ def live_loop(
     db_path: Path | str = "affective_fly.db",
     journal_path: Path | str = "journal.jsonl",
     host_journal_path: Path | str = "host_journal.jsonl",
+    measure_path: Path | str = "measure.jsonl",
     interval: float = 2.0,
     ticks: int = 0,
     events: Sequence[dict] | None = None,
@@ -57,6 +59,7 @@ def live_loop(
         db_path: Path to SQLite database for memory and mood persistence
         journal_path: Path to ActionJournal JSONL (decision log)
         host_journal_path: Path to HostFrame JSONL (replay-compatible journal)
+        measure_path: Path to Phase 6 measurement JSONL (mood/gate/approach)
         interval: Seconds between ticks (0 for no sleep)
         ticks: Number of frames to run (0 for infinite)
         events: Sequence of event dicts (context/note_id scene)
@@ -85,6 +88,7 @@ def live_loop(
         mood_field=mood,
         launch_gate=LaunchGate(required_ticks=3),
         journal=ActionJournal(filepath=str(journal_path)),
+        measurement_log=MeasurementLog(filepath=measure_path),
     )
     script = list(events) if events is not None else list(DEFAULT_EVENTS)
     host_frames: list[HostFrame] = []
@@ -105,6 +109,8 @@ def live_loop(
                 on_tick(n, decision)
             save_mood(db, loop.mood_field)
             loop.journal.save()
+            if loop.measurement_log is not None:
+                loop.measurement_log.save()
             # Save HostFrame journal incrementally
             HostAdapter.save_journal(host_frames, host_journal_path)
             n += 1
@@ -113,6 +119,8 @@ def live_loop(
     finally:
         save_mood(db, loop.mood_field)
         loop.journal.save()
+        if loop.measurement_log is not None:
+            loop.measurement_log.save()
         # Final save of HostFrame journal
         HostAdapter.save_journal(host_frames, host_journal_path)
         store.close()

@@ -36,13 +36,14 @@ HostFrame (JSON)
 | `policy.py` | SKIP if approach < −0.3 or retrieved valence < −0.3 (avoidance evaluated before arousal gate); WAIT if arousal ≤ 0.0 (DAN baseline); CLICK/TYPE if valence > 0 and approach > 0.2; else WAIT. |
 | `launch_gate.py` | Opens after N ticks with approach ≥ 0.2 and valence ≥ −0.1. A later failing tick resets the counter and closes the gate. |
 | `host_adapter.py` | `HostFrame` v1.0 schema (JSON contract), `HostAdapter` journal replay (save/load JSONL), outcome reporting via context fields. `sensory_frame_to_host_frame()` stores a visual fingerprint, not a regenerating seed. |
-| `journal.py` | JSONL; `export_for_viz()`. |
+| `journal.py` | JSONL; `export_for_viz()`. Phase 6 extras: instant affect, MBON rates, τ triple, saturation. |
+| `measure.py` | Phase 6 `MeasurementRecord` / `MeasurementLog` + L3 `summarize_measurements` (no invented fits). |
 | `viz.py` | `plot_journal` → PNG (matplotlib extra). |
 | `swarm.py` | Independent circuits, shared store. Default N = 8. |
 | `honesty.py` | Circumplex quadrant → string + disclaimer. |
 | `aso.py` | Aso et al. 2014 names. No invented body IDs. |
 | `circuit_registry.py` | `get_circuit("mock"\|"lif"\|"brian2"\|"malecns")` — one name for hosts and `live_loop`. |
-| `run.py` | `live_loop`: interval ticks, SQLite + journal. CLI `run`. Uses lab taus and `get_circuit("lif")`. |
+| `run.py` | `live_loop`: interval ticks, SQLite + journal + `measure.jsonl`. CLI `run` / `calibrate`. Uses lab taus and `get_circuit("lif")`. |
 
 Store, embed, retrieve, and optional resonance stay in `emotional-memory`. The engine exposes no public `store`/`embedder` accessor, so affective-fly injects the same instances it handed to `EmotionalMemory` into `AffectiveLoop(store=, embedder=)` (and `Swarm`), which forward them to `Reconsolidator`/`DualPathEncoder` instead of reaching into engine internals. On-disk memories: `SQLiteStore`. Mood in the same file: `save_mood` / `load_mood` (`persist.py`, `examples/demo_persist.py`). CLI: `python -m affective_fly`. Semantic vectors: `SentenceTransformerEmbedder` (`examples/demo_embedder.py`, extra `embed`). Delayed US: `examples/demo_cs_us.py` and `AffectiveLoop(td_sequential=True)`. Resonance links: `examples/demo_resonance.py` (emotional-memory default).
 

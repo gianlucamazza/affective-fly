@@ -16,6 +16,8 @@ Reduced *Drosophila* mushroom-body circuit as the affect source for
 
 - [HOST_INTEGRATION.md](HOST_INTEGRATION.md) — `HostFrame` v1.0 schema, journal replay, and
   outcome reporting for host systems.
+- [PHASE6_MEASUREMENT.md](PHASE6_MEASUREMENT.md) — host study protocol, mood/gate/approach
+  log, L3 calibrator (no invented fitted values).
 
 ## Connectome data
 

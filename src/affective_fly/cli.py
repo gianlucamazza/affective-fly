@@ -9,6 +9,7 @@ from pathlib import Path
 
 from . import __version__
 from .journal import main as journal_main
+from .measure import format_summary, load_measurement_records, summarize_measurements
 from .run import live_loop
 
 _DEMOS = {
@@ -51,6 +52,14 @@ def main(argv: list[str] | None = None) -> int:
     run.add_argument("--ticks", type=int, default=0, help="0 = until interrupt")
     run.add_argument("--db", default="affective_fly.db")
     run.add_argument("--journal", default="journal.jsonl")
+    run.add_argument("--measure", default="measure.jsonl", help="Phase 6 measurement JSONL")
+
+    calibrate = sub.add_parser(
+        "calibrate",
+        help="L3: summarize a host measurement/journal JSONL (no invented fits)",
+    )
+    calibrate.add_argument("path", nargs="?", default="measure.jsonl")
+    calibrate.add_argument("--json", action="store_true", help="Print summary as JSON")
 
     args = parser.parse_args(argv)
     if args.cmd == "version":
@@ -84,11 +93,26 @@ def main(argv: list[str] | None = None) -> int:
             live_loop(
                 db_path=args.db,
                 journal_path=args.journal,
+                measure_path=args.measure,
                 interval=args.interval,
                 ticks=args.ticks,
                 on_tick=_print,
             )
         except KeyboardInterrupt:
             print("stopped")
+        return 0
+    if args.cmd == "calibrate":
+        records = load_measurement_records(args.path)
+        summary = summarize_measurements(records)
+        if args.json:
+            import json
+
+            print(json.dumps(summary.to_dict(), indent=2))
+        else:
+            if not records:
+                print(f"No Phase 6 records in {args.path}")
+                print("A host must collect measure.jsonl (or an enriched journal).")
+                print("This command does not invent fitted τ or thresholds.")
+            print(format_summary(summary))
         return 0
     return 1
