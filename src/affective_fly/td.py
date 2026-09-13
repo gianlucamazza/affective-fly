@@ -106,6 +106,33 @@ def decay_eligibility(
     return np.asarray(np.clip(lam * e + k, 0.0, 1.0), dtype=float)
 
 
+def ensure_weights_in_plasticity_band(
+    weights: np.ndarray,
+    w_max: float,
+    *,
+    name: str = "w_kc_mbon",
+) -> None:
+    """Refuse ``learn()`` when published counts still sit above ``w_max``.
+
+    ``apply_three_factor`` clips to ``[w_min, w_max]``. On raw MaleCNS counts
+    (1–152) that clip flattens anatomy. ``MaleCNSCircuit`` scales at load;
+    this guard is the honest fallback if someone assigns raw counts later.
+    """
+    arr = np.asarray(weights, dtype=float)
+    if arr.size == 0:
+        return
+    peak = float(np.max(arr))
+    ceiling = float(w_max)
+    if peak > ceiling + 1e-12:
+        raise ValueError(
+            f"{name} peak {peak} exceeds w_max={ceiling}. "
+            "learn() would clip published synapse counts and flatten anatomy. "
+            "Load via MaleCNSCircuit(connectivity_path=...) so counts are "
+            "scaled into the plasticity band, or call "
+            "scale_published_weights_to_band() yourself."
+        )
+
+
 def apply_three_factor(
     weights: np.ndarray,
     eligibility: np.ndarray | None,

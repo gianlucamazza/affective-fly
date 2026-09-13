@@ -36,6 +36,7 @@ from .malecns_connectome import (
     malecns_mbon_short_name,
     map_to_aso_names,
     resolve_aso_name,
+    scale_published_weights_to_band,
 )
 from .measure import (
     APPROACH_DENOMINATOR_FACTOR,
@@ -70,6 +71,7 @@ from .td import (
     PlasticityTrace,
     TDResult,
     decay_eligibility,
+    ensure_weights_in_plasticity_band,
     extract_reward,
     rescorla_wagner,
     td_error,
@@ -112,9 +114,11 @@ __all__ = [
     "ConnectomeLoadError",
     "load_connectome",
     "map_to_aso_names",
+    "scale_published_weights_to_band",
     "PUBLISHED_MBON_SHORT_TO_ASO",
     "malecns_mbon_short_name",
     "resolve_aso_name",
+    "ensure_weights_in_plasticity_band",
     "ASO_CATALOG",
     "AsoCatalog",
     "NamedCell",

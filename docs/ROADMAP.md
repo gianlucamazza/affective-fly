@@ -4,7 +4,9 @@
 
 ## Unreleased
 
-Docs and tooling. `benchmark_brian2_codegen.py` now sweeps KC size (default 500/1000/2000/5000) instead of a single 2000-KC point, writes machine-readable JSON alongside the text results, and is driven by `make benchmark`; the committed reference table and methodology live in [BENCHMARKS.md](BENCHMARKS.md) (the raw `.txt`/`.json` stay git-ignored, local-only). `examples/make_figures.py` (`make figures`) regenerates two committed figures under `docs/figures/`: the demo circumplex/mood readout and the LIF-vs-Brian2 scaling plot. Added a documentation index ([docs/README.md](README.md)) cross-linking every doc. No library code changed.
+MaleCNS published synapse counts (typically 1–152) are uniformly scaled into the LIF `w_max` band at load (`scale_published_weights_to_band`) so `learn()` cannot flatten anatomy; `learn()` raises if raw counts are assigned later. Docs distinguish trained-regime approach saturation (~70% `|approach|=1`) from the Phase 6 host replay (~39% on 28 little-trained ticks). Stale “Blocked” headings for the MaleCNS loader and Brian2 C++ opt-in are split into in-repo remaining limits vs host/secrets gaps. [BENCHMARKS.md](BENCHMARKS.md) now has one local `--cpp` snapshot at 200/2000/5000 KC (this machine only). Approach denominator, taus, and Policy/LaunchGate thresholds are unchanged.
+
+Docs and tooling (earlier). `benchmark_brian2_codegen.py` now sweeps KC size (default 500/1000/2000/5000) instead of a single 2000-KC point, writes machine-readable JSON alongside the text results, and is driven by `make benchmark`; the committed reference table and methodology live in [BENCHMARKS.md](BENCHMARKS.md) (the raw `.txt`/`.json` stay git-ignored, local-only). `examples/make_figures.py` (`make figures`) regenerates two committed figures under `docs/figures/`: the demo circumplex/mood readout and the LIF-vs-Brian2 scaling plot. Added a documentation index ([docs/README.md](README.md)) cross-linking every doc.
 
 ## v0.2.5
 
@@ -21,7 +23,7 @@ Calibration pass. Every circuit backend now lands in the MBON 10–100 Hz / DAN 
 
 ## v0.2.4
 
-Polish and hygiene: emotional-memory integration test + demo (`test_full_emotional_memory_integration_path`, `demo_emotional_memory_integration.py`) proves encode→retrieve→reconsolidate with real EmotionalMemory APIs; `demo_llm_appraisal.py` shows `DualPathEncoder.from_llm` with fake callable (no production LLM); `benchmark_brian2_codegen.py` compares LIFCircuit vs Brian2Circuit (C++ standalone not yet implemented); `make lint` now includes mypy (the type ignores it needed on numpy `Any` returns were replaced by real annotations in v0.2.5).
+Polish and hygiene: emotional-memory integration test + demo (`test_full_emotional_memory_integration_path`, `demo_emotional_memory_integration.py`) proves encode→retrieve→reconsolidate with real EmotionalMemory APIs; `demo_llm_appraisal.py` shows `DualPathEncoder.from_llm` with fake callable (no production LLM); `benchmark_brian2_codegen.py` compares LIFCircuit vs Brian2Circuit (C++ standalone was not yet implemented in this release; Phase 5 later added opt-in `codegen_target="cpp_standalone"`); `make lint` now includes mypy (the type ignores it needed on numpy `Any` returns were replaced by real annotations in v0.2.5).
 
 ## v0.2.3
 
@@ -37,9 +39,16 @@ v0.2.0 plus: MoodField JSON round-trip, delayed US through `AffectiveLoop`, `mak
 
 ## Open
 
-**Blocked** (requires external data or production infrastructure):
+**In-repo, remaining limits** (not blocked — the loaders exist):
 
-- **MaleCNS connectivity matrix**: Loader implemented (`malecns_connectome.py`) for JSON/Feather/Parquet (HDF5 stub). `data/malecns/kc_mbon_connectivity.feather` is the published KC→MBON export (61,210 edges). `MaleCNSCircuit(connectivity_path=..., n_kc=...)` requires `n_kc` to match the file unless `allow_kc_mismatch=True`. Mapping uses the curated Aso 2014 short-name table (`PUBLISHED_MBON_SHORT_TO_ASO`); unmatched types stay zero. Without `connectivity_path`, weights remain random (NOT connectome-backed). See Phase 4 and `docs/MALECNS_DATA.md`.
+- **MaleCNS connectivity (partial)**: Loader implemented (`malecns_connectome.py`) for JSON/Feather/Parquet (HDF5 stub). `data/malecns/kc_mbon_connectivity.feather` is the published KC→MBON export (61,210 edges). `MaleCNSCircuit(connectivity_path=..., n_kc=...)` requires `n_kc` to match the file unless `allow_kc_mismatch=True`. Mapping uses the curated Aso 2014 short-name table (`PUBLISHED_MBON_SHORT_TO_ASO`); unmatched types stay zero. Published synapse counts are uniformly scaled into the LIF `w_max` band before `learn()` so anatomy is not silently clipped. Without `connectivity_path`, weights remain random (NOT connectome-backed). Catalog is still the 7 Aso names. See Phase 4 and `docs/MALECNS_DATA.md`.
+- **Brian2 C++ codegen (opt-in)**: `codegen_target="cpp_standalone"` is implemented. Default remains numpy. One local `--cpp` snapshot at 200/2000/5000 KC is in [BENCHMARKS.md](BENCHMARKS.md); other hosts must compile locally rather than copy those numbers.
+
+**Still blocked on a host or secrets**:
+
+- Phase 6 empirics (fitted τ, approach-denominator change, Policy/LaunchGate retune). Scaffolding is in-repo; numbers stay hypotheses until a real human/production-host session. Do not invent Hige IDs or fake traces.
+- Production LLM keys (`DualPathEncoder.from_llm`).
+- Semantic embedder download in default CI (`--extra embed`).
 
 Not in scope for this repo: token-launch product, sex/mating ensembles, swarm N ≫ 8.
 
@@ -50,7 +59,7 @@ Whether τ_valence = 300 s is appropriate; whether valence should stay linear; h
 Open from the v0.2.5 calibration:
 
 - The `950 · n_kc^(−0.70)` gain law is now the random-weight baseline, scaled by actual KC→MBON column fan-in (`default_syn_gain`). Published MaleCNS load is in the 10–100 Hz MBON band; `mbon_min_active = 5 Hz` was re-checked against that operating point and kept. Pass `syn_gain` to override. `approach_tendency` saturation is unchanged (Phase 6).
-- `approach_tendency` saturates at ±1 in ~70% of ticks once a circuit is trained, because net drive is referred to `2 × mbon_baseline` (20 Hz). Referring it to `mbon_max` removes the saturation but shifts what `threshold_act = 0.2` and `threshold_approach = 0.2` mean, and there is no data to re-tune them against. Deferred to Phase 6 with the τ questions rather than churned silently.
+- `approach_tendency` saturates at ±1 in ~70% of ticks once a circuit is trained, because net drive is referred to `2 × mbon_baseline` (20 Hz). A later Phase 6 host replay (emotional-memory `#137`, 28 ticks, little-trained `LIFCircuit`) measured `approach_saturated_fraction ≈ 0.393`. Those are different conditions; neither number is a new default. Referring the axis to `mbon_max` removes the saturation but shifts what `threshold_act = 0.2` and `threshold_approach = 0.2` mean, and there is no data to re-tune them against. Deferred to Phase 6 with the τ questions rather than churned silently.
 - `MockFlyCircuit` has one degree of freedom, so valence and approach stay collinear there (r ≈ 0.997) even though the bridge separates them. Mock-based demos remain collinear; host adapter and LIF-based demos show separated valence/approach axes (r ≈ 0.77–0.85 in spiking backends).
 
 ## Development Phases
@@ -65,7 +74,7 @@ See [ARCHITECTURE_COMPLETE.md](ARCHITECTURE_COMPLETE.md) for full system design.
 
 **Phase 3** (complete): Embed + LLM - Production semantic embedder (SentenceTransformer via `--extra embed`) + environment-driven OpenAI-compatible LLM for `DualPathEncoder.from_llm()` via `llm_env.build_llm_client()`. Demos (`demo_llm_appraisal.py`, `demo_embedder.py`) skip cleanly without keys/extras (`uv sync --extra llm` for openai package); live LLM path verified with real EMOTIONAL_MEMORY_LLM_* credentials. `demo_embedder.py` fixed to use actual Memory fields (content, metadata) instead of non-existent `.similarity` attribute; retrieve printing path live-verified. CI remains green offline. See `docs/HOST_INTEGRATION.md` for required environment variables.
 
-**Phase 4** (partial): MaleCNS connectivity — `data/malecns/kc_mbon_connectivity.feather` holds all 61,210 published KC→MBON edges from MaleCNS v1.0 (CC-BY 4.0). `MaleCNSCircuit(connectivity_path=..., n_kc=...)` loads them; `n_kc` must match the file or `ConnectomeLoadError` is raised (`allow_kc_mismatch=True` truncates/pads). Mapping uses `PUBLISHED_MBON_SHORT_TO_ASO` (Aso 2014 eLife e04580 Table 1); left/right bodies of one type are summed; types outside the 7-name catalog and `*-like` labels stay unmatched. `named_rates()` is a population alias, not a per-cell rate. Feather/Parquet need `uv sync --extra connectome`. Without `connectivity_path`, weights stay random. Top-200 fixture mapping remains partial (`docs/MALECNS_TOP200_MAPPING.md`). Gain is `default_syn_gain`: the n_kc law scaled by published KC→MBON fan-in, so an untrained 4063-KC load stays in the 10–100 Hz MBON band. `syn_gain` remains overridable. Phase 4 is not marked complete (catalog is still the 7 Aso names; HDF5 is still a stub).
+**Phase 4** (partial): MaleCNS connectivity — `data/malecns/kc_mbon_connectivity.feather` holds all 61,210 published KC→MBON edges from MaleCNS v1.0 (CC-BY 4.0). `MaleCNSCircuit(connectivity_path=..., n_kc=...)` loads them; `n_kc` must match the file or `ConnectomeLoadError` is raised (`allow_kc_mismatch=True` truncates/pads). Mapping uses `PUBLISHED_MBON_SHORT_TO_ASO` (Aso 2014 eLife e04580 Table 1); left/right bodies of one type are summed; types outside the 7-name catalog and `*-like` labels stay unmatched. `named_rates()` is a population alias, not a per-cell rate. Feather/Parquet need `uv sync --extra connectome`. Without `connectivity_path`, weights stay random. Top-200 fixture mapping remains partial (`docs/MALECNS_TOP200_MAPPING.md`). Published synapse counts (typically 1–152) are uniformly scaled into the LIF `w_max` band at load (`scale_published_weights_to_band`) so `learn()` cannot flatten anatomy; `learn()` raises if raw counts are assigned later. Gain is `default_syn_gain` on the *scaled* matrix, so an untrained 4063-KC load stays in the 10–100 Hz MBON band (the `w · syn_gain` product is invariant under a uniform scale). `syn_gain` remains overridable. Phase 4 is not marked complete (catalog is still the 7 Aso names; HDF5 is still a stub). No invented Hige IDs.
 
 **Phase 5** (complete): Brian2 C++ codegen — `Brian2Circuit(codegen_target="numpy")` remains the default (no compiler). `codegen_target="cpp_standalone"` is opt-in: first `step()` compiles a cached standalone binary (`clean=False`); later steps reuse it via `device.run(run_args=...)`. Tests skip cleanly without a C++ toolchain (`CppStandaloneUnavailableError` if someone opts in anyway). Brian2 `syn_gain` defaults to 1.0; the MBON/DAN band is still held by `w_max=0.12` (LIF fan-in refit is `default_syn_gain` on main, not applied to Brian2). Latency budget: after the cached build, a 2000-KC `step()` should drop the ~40 ms numpy overhead; first compile is outside the budget. LIF stays the interactive default. See [BENCHMARKS.md](BENCHMARKS.md).
 

@@ -25,7 +25,7 @@ Mapping uses the curated Aso 2014 eLife e04580 Table 1 short-name table in `male
 ## Impact
 
 - **Tests pass**: Real weights differ from random initialization (diff norm > 0.01) when `n_kc` matches the file (185).
-- **Circuit runs**: Mapped columns carry published synapse counts; unmatched catalog columns stay zero.
+- **Circuit runs**: Mapped columns carry published synapse counts, uniformly scaled into LIF `w_max` so `learn()` cannot flatten them; unmatched catalog columns stay zero.
 - **Honest documentation**: We do **not** claim full Aso coverage from the top-200 fixture, and we do **not** mark Phase 4 complete.
 
 ## Full Dataset
@@ -52,4 +52,4 @@ To rebuild the file from Janelia GCS, see `docs/MALECNS_DATA.md`.
 - Curated Aso 2014 short-name table (not heuristic-only)
 - Loader fails on KC-count mismatch unless overridden
 - Full biological coverage of 34/97 MBON types is out of scope for the reduced catalog
-- Gain is refit from published KC→MBON fan-in after load (`default_syn_gain`); not done in the top-200 fixture itself
+- Published counts are scaled into LIF `w_max` at load; `syn_gain` is then refit from the scaled fan-in (`default_syn_gain`)

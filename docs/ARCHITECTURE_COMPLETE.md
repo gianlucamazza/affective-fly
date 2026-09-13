@@ -101,7 +101,7 @@ Named circuit using Aso et al. (2014) published MBON/DAN cell types. Connectome 
 - Loader maps edges onto Aso catalog names via the curated Aso 2014 short-name table (heuristic instance match is fallback). Several MaleCNS bodies of one type are summed. Unmatched MBONs are zero-filled. File KC count must match `n_kc` unless `allow_kc_mismatch=True`. `named_rates()` aliases population rates, not per-cell rates.
 - Missing/unreadable file raises `ConnectomeLoadError`.
 
-Published weights load from `data/malecns/kc_mbon_connectivity.feather`. After load, `LIFCircuit.refresh_default_syn_gain()` refits `syn_gain` from column fan-in so untrained MBON rates stay in band; DAN keeps the n_kc-scale gain. Test fixtures (`malecns_real_ids.*`) still use real MaleCNS v1.0 body IDs with synthetic weights. Phase 4 remains partial (7-name catalog, HDF5 stub). See [ROADMAP.md](ROADMAP.md).
+Published weights load from `data/malecns/kc_mbon_connectivity.feather`. Synapse counts are uniformly scaled into the LIF `w_max` band (`scale_published_weights_to_band`) so `learn()` cannot flatten published anatomy; relative counts are preserved. After load, `LIFCircuit.refresh_default_syn_gain()` refits `syn_gain` from the *scaled* column fan-in so untrained MBON rates stay in band; DAN keeps the n_kc-scale gain. Test fixtures (`malecns_real_ids.*`) still use real MaleCNS v1.0 body IDs with synthetic weights. Phase 4 remains partial (7-name catalog, HDF5 stub). See [ROADMAP.md](ROADMAP.md).
 
 **Do not** invent body IDs or connectome weights. Always load from real data or document that weights are random placeholders.
 
@@ -272,15 +272,20 @@ See `examples/demo_persist.py` and `python -m affective_fly demo persist`.
 - `journal <path>`: Parse and display a journal file.
 - `calibrate <path>`: L3 summary of a measurement/journal JSONL. No invented fitted τ.
 
-## Blocked Features
+## Remaining gaps
 
-These require external data or production infrastructure and are **explicitly blocked**:
+These are **not** missing loaders. MaleCNS load and Brian2 C++ codegen are in-repo.
 
-1. **MaleCNS connectivity**: Published KC→MBON weights load from `data/malecns/kc_mbon_connectivity.feather`. Mapping is the curated Aso 2014 table onto the 7-name catalog; `n_kc` must match the file. Gain is refit from published fan-in (`default_syn_gain`). Types outside the catalog stay unmatched. Without `connectivity_path`, weights stay random.
-2. **Brian2 C++ codegen**: Implemented as opt-in `codegen_target="cpp_standalone"`. Default remains numpy. Hosts without a compiler keep numpy; tests skip cleanly. First-step compile and a local `--cpp` benchmark are still required to quote a machine-specific latency number.
+### In-repo (partial / opt-in)
+
+1. **MaleCNS connectivity (partial)**: Published KC→MBON weights load from `data/malecns/kc_mbon_connectivity.feather`. Mapping is the curated Aso 2014 table onto the 7-name catalog; `n_kc` must match the file. Counts are scaled into LIF `w_max` before `learn()`; gain is refit from the scaled fan-in (`default_syn_gain`). Types outside the catalog stay unmatched. Without `connectivity_path`, weights stay random. HDF5 is still a stub. No invented Hige IDs.
+2. **Brian2 C++ codegen (opt-in)**: Implemented as `codegen_target="cpp_standalone"`. Default remains numpy. Hosts without a compiler keep numpy; tests skip cleanly. A local `--cpp` snapshot at 200/2000/5000 KC is in [BENCHMARKS.md](BENCHMARKS.md); other machines must re-run `--cpp` rather than copy those numbers.
+
+### Still blocked on a host or secrets
+
 3. **Production LLM**: `DualPathEncoder.from_llm()` hook exists; requires API keys and secrets. Do **not** add fake LLM stubs that pretend to call OpenAI/Anthropic.
 4. **Semantic embedder in CI**: `SentenceTransformerEmbedder` (`--extra embed`) downloads MiniLM. Kept optional to avoid network in default CI.
-5. **Phase 6 empirics**: Measurement protocol, L3 calibrator, and host-study runner (`python -m affective_fly study`) are in-repo ([PHASE6_MEASUREMENT.md](PHASE6_MEASUREMENT.md)). Fitted τ, approach-denominator change, and threshold retunes stay blocked on a real human/host session. Do not invent Hige IDs or fake traces.
+5. **Phase 6 empirics**: Measurement protocol, L3 calibrator, and host-study runner (`python -m affective_fly study`) are in-repo ([PHASE6_MEASUREMENT.md](PHASE6_MEASUREMENT.md)). Fitted τ, approach-denominator change, and threshold retunes stay blocked on a real human/host session. Trained-regime saturation (~70% `|approach|=1`) and the Phase 6 replay (~39% on 28 little-trained ticks) are different conditions; neither is a new default. Do not invent Hige IDs or fake traces.
 
 See [ROADMAP.md](ROADMAP.md) Open section for full list.
 

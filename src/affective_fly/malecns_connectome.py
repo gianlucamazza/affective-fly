@@ -418,6 +418,35 @@ def resolve_aso_name(meta: dict[str, Any], aso_names: list[str]) -> str | None:
     return None
 
 
+def scale_published_weights_to_band(
+    weights: np.ndarray,
+    w_max: float,
+    *,
+    w_min: float = 0.0,
+) -> tuple[np.ndarray, float]:
+    """Uniformly scale published synapse counts into ``[w_min, w_max]``.
+
+    MaleCNS KC→MBON exports are synapse counts (typically 1–152). The LIF
+    plasticity band ``w_max`` (default 0.15) was chosen for uniform init on
+    ``[0, w_max]``. Passing raw counts into ``learn()`` would clip almost
+    every published edge to the ceiling and flatten anatomy.
+
+    This is a **homogeneous scale only**: relative counts are preserved, zeros
+    stay zero, and no Hige / Aso identities are invented. Returns
+    ``(scaled, scale)``. ``scale`` is ``1.0`` when the matrix is already in
+    band, empty, or all-zero.
+    """
+    arr = np.asarray(weights, dtype=float)
+    if arr.size == 0:
+        return arr.copy(), 1.0
+    peak = float(np.max(arr))
+    ceiling = float(w_max)
+    if peak <= 0.0 or ceiling <= float(w_min) or peak <= ceiling:
+        return arr.copy(), 1.0
+    scale = ceiling / peak
+    return np.asarray(arr * scale, dtype=float), float(scale)
+
+
 def map_to_aso_names(
     connectivity: ConnectivityData,
     aso_names: list[str],

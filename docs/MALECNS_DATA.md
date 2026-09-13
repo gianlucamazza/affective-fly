@@ -57,6 +57,8 @@ circuit = MaleCNSCircuit(backend="lif", n_kc=n_kc, connectivity_path=path)
 
 Mapping onto the 7-name `ASO_CATALOG` uses the curated Aso 2014 (eLife e04580 Table 1) short-name table. Types outside that table, and `*-like` MaleCNS labels, stay unmatched — we do not invent Aso identities. `named_rates()` is a **population alias** (approach/avoid/DAN rate repeated per name), not a per-cell readout.
 
+Published synapse counts sit far above the LIF plasticity ceiling (`w_max` = 0.15). At load, `MaleCNSCircuit` applies a **homogeneous** scale (`scale_published_weights_to_band`) so the peak count maps to `w_max`. Relative anatomy is preserved; `learn()` can then potentiate without flattening every published edge to the ceiling. Assigning raw counts onto `w_kc_mbon` and calling `learn()` raises `ValueError`. This is not a Hige depression table and does not invent body IDs. `circuit.anatomy_scale` and `circuit.published_weight_peak` record the choice.
+
 ### Option 2: Test fixtures (synthetic weights or top-200)
 
 `tests/fixtures/malecns_real_ids.{json,feather,parquet}` have **REAL body IDs** from MaleCNS v1.0 and **SYNTHETIC weights**.
@@ -215,6 +217,6 @@ pip install pyarrow>=14.0.0
 
 ## Phase 4 Status
 
-**Partial.** Published KC→MBON weights load end-to-end from `data/malecns/kc_mbon_connectivity.feather` (or a user rebuild). Mapping is the curated Aso 2014 short-name table onto the 7-name catalog. KC-count mismatch fails unless overridden. `syn_gain` is refit from published KC→MBON fan-in (`default_syn_gain`); pass `syn_gain` to override.
+**Partial.** Published KC→MBON weights load end-to-end from `data/malecns/kc_mbon_connectivity.feather` (or a user rebuild). Mapping is the curated Aso 2014 short-name table onto the 7-name catalog. KC-count mismatch fails unless overridden. Counts are scaled into LIF `w_max` before `learn()`. `syn_gain` is refit from the scaled KC→MBON fan-in (`default_syn_gain`); pass `syn_gain` to override.
 
 See `ROADMAP.md` and `MALECNS_TOP200_MAPPING.md`.

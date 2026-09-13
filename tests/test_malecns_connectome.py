@@ -11,10 +11,12 @@ from affective_fly import (
     ConnectivityData,
     ConnectomeLoadError,
     MaleCNSCircuit,
+    ensure_weights_in_plasticity_band,
     load_connectome,
     malecns_mbon_short_name,
     map_to_aso_names,
     resolve_aso_name,
+    scale_published_weights_to_band,
 )
 
 FIXTURE_PATH = Path(__file__).parent / "fixtures" / "malecns_mini.json"
@@ -300,6 +302,68 @@ def test_named_rates_are_population_aliases():
     assert len(set(rates[name] for name in avoid_names)) == 1
     assert index_rates == [rates[name] for name in ASO_CATALOG.mbon_names]
     assert circuit.dan_index_rates() == [rates[name] for name in ASO_CATALOG.dan_names]
+
+
+def test_scale_published_weights_preserves_ratios_and_is_noop_in_band():
+    raw = np.array([[12.0, 0.0], [8.0, 15.0], [5.0, 0.0]])
+    scaled, scale = scale_published_weights_to_band(raw, w_max=0.15)
+    assert scale == pytest.approx(0.15 / 15.0)
+    assert scaled.max() == pytest.approx(0.15)
+    assert scaled[0, 0] / scaled[1, 1] == pytest.approx(12.0 / 15.0)
+    assert scaled[1, 0] / scaled[1, 1] == pytest.approx(8.0 / 15.0)
+    already = np.array([[0.05, 0.15], [0.0, 0.1]])
+    same, scale_one = scale_published_weights_to_band(already, w_max=0.15)
+    assert scale_one == 1.0
+    assert np.array_equal(same, already)
+    empty, empty_scale = scale_published_weights_to_band(np.zeros((0, 2)), w_max=0.15)
+    assert empty_scale == 1.0
+    assert empty.shape == (0, 2)
+
+
+def test_loaded_published_counts_fit_under_w_max_and_learn_does_not_flatten():
+    """Raw fixture counts are 5–15; LIF w_max is 0.15. Scale, then learn."""
+    connectivity = load_connectome(FIXTURE_PATH)
+    mapped, _ = map_to_aso_names(connectivity, list(ASO_CATALOG.mbon_names))
+    raw_peak = float(mapped.max())
+    assert raw_peak > 0.15
+
+    circuit = MaleCNSCircuit(backend="lif", n_kc=3, seed=1, connectivity_path=FIXTURE_PATH)
+    weights = circuit.backend.w_kc_mbon
+    assert circuit.published_weight_peak == pytest.approx(raw_peak)
+    assert circuit.anatomy_scale == pytest.approx(circuit.backend.w_max / raw_peak)
+    assert weights.max() <= circuit.backend.w_max + 1e-12
+    # Relative anatomy: the three published approach/avoid columns keep ratios.
+    aso = list(ASO_CATALOG.mbon_names)
+    col_g5 = aso.index("MBON-gamma5beta'2a")
+    col_g2 = aso.index("MBON-gamma2alpha'1")
+    col_b2 = aso.index("MBON-beta'2mp")
+    assert weights[0, col_g5] / weights[2, col_g2] == pytest.approx(12.0 / 15.0)
+    assert weights[1, col_g5] / weights[2, col_g2] == pytest.approx(8.0 / 15.0)
+    assert weights[0, col_b2] / weights[2, col_g2] == pytest.approx(5.0 / 15.0)
+
+    circuit.step(np.ones(16) * 0.7, dt=0.05)
+    before = weights.copy()
+    result = circuit.learn(1.0)
+    assert result is not None
+    after = circuit.backend.w_kc_mbon
+    assert after.max() <= circuit.backend.w_max + 1e-12
+    # First learn must not flatten every published edge to the same ceiling.
+    published = after[[0, 1, 2, 0], [col_g5, col_g5, col_g2, col_b2]]
+    assert not np.allclose(published, circuit.backend.w_max)
+    # Approach columns (g5, beta'2mp) can still potentiate if they sat under w_max.
+    app_before = float(before[0, col_g5])
+    if app_before < circuit.backend.w_max - 1e-9:
+        assert float(after[0, col_g5]) >= app_before
+
+
+def test_learn_refuses_raw_published_counts_above_w_max():
+    circuit = MaleCNSCircuit(backend="lif", n_kc=3, seed=1)
+    circuit.step(np.ones(16) * 0.7, dt=0.05)
+    circuit.backend.w_kc_mbon[:] = 12.0
+    with pytest.raises(ValueError, match="flatten anatomy"):
+        circuit.learn(1.0)
+    with pytest.raises(ValueError, match="flatten anatomy"):
+        ensure_weights_in_plasticity_band(np.array([[12.0]]), 0.15)
 
 
 def test_feather_without_pyarrow_raises_importerror():
