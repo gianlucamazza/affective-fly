@@ -1,4 +1,4 @@
-.PHONY: install test lint format demo benchmark figures journal clean
+.PHONY: install test lint format demo benchmark figures journal calibrate clean
 
 install:
 	uv sync --all-extras
@@ -42,9 +42,12 @@ figures:
 journal:
 	uv run python -m affective_fly journal $(JOURNAL)
 
+calibrate:
+	uv run python -m affective_fly calibrate $(MEASURE)
+
 clean:
 	rm -rf __pycache__ .pytest_cache .mypy_cache .ruff_cache
 	rm -rf src/**/__pycache__ tests/**/__pycache__ examples/**/__pycache__
 	rm -rf *.egg-info build dist
 	rm -f .coverage
-	rm -f affective_fly.db affective_fly.mood.json journal.jsonl
+	rm -f affective_fly.db affective_fly.mood.json journal.jsonl measure.jsonl host_journal.jsonl

@@ -57,11 +57,12 @@ make test
 python -m affective_fly version
 python -m affective_fly demo persist
 python -m affective_fly run --interval 2    # live ticks; Ctrl-C to stop
+python -m affective_fly calibrate measure.jsonl  # L3 summary; no invented fits
 make benchmark    # LIF vs Brian2 ms/step sweep (docs/BENCHMARKS.md)
 make figures      # regenerate docs/figures/ (needs viz extra)
 ```
 
-`python -m affective_fly run` uses lab mood taus (8 / 4 / 5 s) so valence moves in seconds. `MoodField()` defaults (300 / 60 / 180 s) are unvalidated hypotheses — see [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+`python -m affective_fly run` uses lab mood taus (8 / 4 / 5 s) so valence moves in seconds and writes `measure.jsonl`. `MoodField()` defaults (300 / 60 / 180 s) are unvalidated hypotheses — see [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) and [`docs/PHASE6_MEASUREMENT.md`](docs/PHASE6_MEASUREMENT.md).
 
 A demo episode: sustained approach opens the launch gate (shaded), then failed reviews pull valence down and memory-driven avoidance yields SKIP. Regenerate with `make figures`.
 

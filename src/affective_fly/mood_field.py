@@ -8,8 +8,8 @@ not just a spike-and-gone response.
 Two τ sets live in this module and must not be confused:
 
 - **Hypothesis** (``MoodField`` defaults: 300 / 60 / 180 s). Documented
-  working values. Unvalidated; Phase 6 needs a real host study. Do not
-  replace them without that study.
+  working values. Unvalidated; Phase 6 needs a real host study
+  (``docs/PHASE6_MEASUREMENT.md``). Do not replace them without that study.
 - **Lab** (8 / 4 / 5 s via ``lab_mood_field()``). Compressed so CLI ticks
   and demos move mood in seconds. ``python -m affective_fly run`` is a
   lab runner, not a measurement of τ_valence = 300 s.

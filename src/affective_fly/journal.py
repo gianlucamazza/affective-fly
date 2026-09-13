@@ -2,12 +2,17 @@
 Action journal: log every decision with circumplex coordinates + mood.
 
 Provides visualization-ready output for AFT circumplex plots.
+Phase 6 hosts also get instant (pre-EMA) affect, MBON rates, and the
+τ triple actually used — see ``docs/PHASE6_MEASUREMENT.md``.
 """
 
+from __future__ import annotations
+
 import json
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, fields
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 from .policy import PolicyDecision
 
@@ -32,10 +37,32 @@ class JournalEntry:
     reconsolidated: bool | None = None
     appraisal_novelty: float | None = None
     td_delta: float | None = None
+    # Phase 6 extras (optional so pre-0.2.6 journals still load)
+    instant_valence: float | None = None
+    instant_arousal: float | None = None
+    instant_approach: float | None = None
+    mbon_approach_hz: float | None = None
+    mbon_avoid_hz: float | None = None
+    dan_hz: float | None = None
+    approach_saturated: bool | None = None
+    mood_dt: float | None = None
+    tau_valence: float | None = None
+    tau_arousal: float | None = None
+    tau_approach: float | None = None
+    tau_set: str | None = None
+    gate_consecutive_ticks: int | None = None
+    store_size: int | None = None
+    approach_denominator: float | None = None
 
     def to_dict(self) -> dict:
         """Export as dictionary."""
         return asdict(self)
+
+    @classmethod
+    def from_mapping(cls, data: dict[str, Any]) -> JournalEntry:
+        """Load one entry, ignoring unknown keys and defaulting extras."""
+        known = {f.name for f in fields(cls)}
+        return cls(**{k: v for k, v in data.items() if k in known})
 
 
 class ActionJournal:
@@ -67,6 +94,21 @@ class ActionJournal:
         reconsolidated: bool | None = None,
         appraisal_novelty: float | None = None,
         td_delta: float | None = None,
+        instant_valence: float | None = None,
+        instant_arousal: float | None = None,
+        instant_approach: float | None = None,
+        mbon_approach_hz: float | None = None,
+        mbon_avoid_hz: float | None = None,
+        dan_hz: float | None = None,
+        approach_saturated: bool | None = None,
+        mood_dt: float | None = None,
+        tau_valence: float | None = None,
+        tau_arousal: float | None = None,
+        tau_approach: float | None = None,
+        tau_set: str | None = None,
+        gate_consecutive_ticks: int | None = None,
+        store_size: int | None = None,
+        approach_denominator: float | None = None,
     ) -> None:
         """
         Log a policy decision.
@@ -80,6 +122,15 @@ class ActionJournal:
             reconsolidated: True if this step updated a labile memory
             appraisal_novelty: Slow-path novelty in [-1, 1]
             td_delta: Rescorla–Wagner residual r − V if an outcome was present
+            instant_*: Circuit readout before MoodField EMA (Phase 6)
+            mbon_* / dan_hz: Population rates for saturation analysis
+            approach_saturated: |instant_approach| at the clip
+            mood_dt: Seconds passed to MoodField.update
+            tau_*: Taus actually used this tick
+            tau_set: hypothesis / lab / custom
+            gate_consecutive_ticks: LaunchGate counter
+            store_size: Memories after this encode
+            approach_denominator: 2 × mbon_baseline (frozen, section 1.4)
         """
         entry = JournalEntry(
             timestamp=datetime.now().isoformat(),
@@ -98,6 +149,21 @@ class ActionJournal:
             reconsolidated=reconsolidated,
             appraisal_novelty=appraisal_novelty,
             td_delta=td_delta,
+            instant_valence=instant_valence,
+            instant_arousal=instant_arousal,
+            instant_approach=instant_approach,
+            mbon_approach_hz=mbon_approach_hz,
+            mbon_avoid_hz=mbon_avoid_hz,
+            dan_hz=dan_hz,
+            approach_saturated=approach_saturated,
+            mood_dt=mood_dt,
+            tau_valence=tau_valence,
+            tau_arousal=tau_arousal,
+            tau_approach=tau_approach,
+            tau_set=tau_set,
+            gate_consecutive_ticks=gate_consecutive_ticks,
+            store_size=store_size,
+            approach_denominator=approach_denominator,
         )
         self.entries.append(entry)
         self.step_counter += 1
@@ -117,7 +183,7 @@ class ActionJournal:
         with open(self.filepath) as f:
             for line in f:
                 data = json.loads(line)
-                entry = JournalEntry(**data)
+                entry = JournalEntry.from_mapping(data)
                 self.entries.append(entry)
 
         if self.entries:

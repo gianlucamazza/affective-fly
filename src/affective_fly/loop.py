@@ -15,6 +15,14 @@ from .dual_path import DualPathEncoder
 from .fly_circuit import FlyAffectReadout
 from .journal import ActionJournal
 from .launch_gate import LaunchGate, LaunchGateState
+from .measure import (
+    SATURATION_ABS,
+    MeasurementLog,
+    MeasurementRecord,
+    approach_denominator,
+    classify_tau_set,
+    now_timestamp,
+)
 from .mood_field import MoodField
 from .policy import Action, Policy, PolicyDecision
 from .reconsolidate import Reconsolidator, stimulus_key
@@ -89,6 +97,7 @@ class AffectiveLoop:
         reconsolidator: Reconsolidator | None = None,
         td_sequential: bool = False,
         td_prediction_error: bool = False,
+        measurement_log: MeasurementLog | None = None,
     ):
         """
         Initialize loop with all components.
@@ -115,6 +124,9 @@ class AffectiveLoop:
                 that writes onto the previous odor's eligibility.
             td_prediction_error: If True, DAN drive is r − V (Rescorla–Wagner).
                 Default False: the US *is* the DAN (PAM if r>0, PPL1 if r<0).
+            measurement_log: Optional Phase 6 JSONL (mood/gate/approach + rates).
+                The action journal also receives the same fields. Pass a log so
+                a host can collect data; do not invent outcomes or fitted taus.
         """
         self.fly_circuit = fly_circuit
         self.emotional_memory = emotional_memory
@@ -129,18 +141,21 @@ class AffectiveLoop:
         self.reconsolidator = reconsolidator or Reconsolidator()
         self.td_sequential = td_sequential
         self.td_prediction_error = td_prediction_error
+        self.measurement_log = measurement_log
 
         self.step_count = 0
         self.last_gate_state: LaunchGateState | None = None
         self.last_appraisal: AppraisalVector | None = None
         self.last_reconsolidated = False
         self.last_td: TDResult | None = None
+        self.last_measurement: MeasurementRecord | None = None
 
     def step(
         self,
         sensory_frame: SensoryFrame,
         encode_memory: bool = True,
         retrieve_top_k: int = 5,
+        mood_dt: float = 1.0,
     ) -> PolicyDecision:
         """
         Execute one loop iteration.
@@ -149,6 +164,9 @@ class AffectiveLoop:
             sensory_frame: Input frame
             encode_memory: Whether to encode this frame into memory
             retrieve_top_k: Number of memories to retrieve
+            mood_dt: Seconds passed to ``MoodField.update``. Default 1.0 is
+                the lab convention. A real host study must pass wall-clock
+                time between ticks; the live runner does not infer it.
 
         Returns:
             PolicyDecision
@@ -172,7 +190,7 @@ class AffectiveLoop:
         valence, arousal, approach = float(valence), float(arousal), float(approach)
 
         # 3. Update mood (slow EMA)
-        mood = self.mood_field.update(valence, arousal, approach, dt=1.0)
+        mood = self.mood_field.update(valence, arousal, approach, dt=mood_dt)
 
         # 4. Set current affect in EmotionalMemory
         self.emotional_memory.set_affect(core_affect)
@@ -244,7 +262,64 @@ class AffectiveLoop:
                 reason=(f"Launch gate blocked {decision.action.value}: {gate_state.reason}"),
             )
 
-        # 9. Log to journal
+        # 9. Log to journal + Phase 6 measurement
+        denom = approach_denominator(self.affect_bridge.mbon_baseline)
+        net_hz = float(mbon_dan_state.mbon_approach_rate) - float(
+            mbon_dan_state.mbon_avoid_rate
+        )
+        tau_set = classify_tau_set(
+            self.mood_field.tau_valence,
+            self.mood_field.tau_arousal,
+            self.mood_field.tau_approach,
+        )
+        store_size = self._store_size()
+        saturated = abs(approach) >= SATURATION_ABS
+        blocked = (not gate_state.is_open) and "Launch gate blocked" in decision.reason
+        raw_elig = getattr(self.fly_circuit, "elig_tau", None)
+        elig_tau = float(raw_elig) if raw_elig is not None else None
+        record = MeasurementRecord(
+            timestamp=now_timestamp(),
+            step=self.step_count,
+            mood_dt=float(mood_dt),
+            instant_valence=valence,
+            instant_arousal=arousal,
+            instant_approach=approach,
+            mood_valence=float(mood.valence),
+            mood_arousal=float(mood.arousal),
+            mood_approach=float(mood.approach_tendency),
+            mbon_approach_hz=float(mbon_dan_state.mbon_approach_rate),
+            mbon_avoid_hz=float(mbon_dan_state.mbon_avoid_rate),
+            dan_hz=float(mbon_dan_state.dan_reinforcement_rate),
+            approach_saturated=saturated,
+            approach_denominator=denom,
+            net_drive_hz=net_hz,
+            tau_valence=float(self.mood_field.tau_valence),
+            tau_arousal=float(self.mood_field.tau_arousal),
+            tau_approach=float(self.mood_field.tau_approach),
+            tau_set=tau_set,
+            gate_open=gate_state.is_open,
+            gate_consecutive_ticks=gate_state.consecutive_ticks,
+            gate_reason=gate_state.reason,
+            gate_blocked=blocked,
+            action=decision.action.value,
+            reason=decision.reason,
+            threshold_act=float(self.policy.threshold_act),
+            threshold_approach=float(self.launch_gate.threshold_approach),
+            threshold_calm=float(self.policy.threshold_calm),
+            retrieved_count=len(retrieved_dicts),
+            store_size=store_size,
+            reconsolidated=self.last_reconsolidated,
+            td_delta=self.last_td.delta if self.last_td is not None else None,
+            prediction_error=self.td_prediction_error,
+            elig_tau=elig_tau,
+            labile_window_seconds=float(self.reconsolidator.labile_window_seconds),
+            blend=float(self.reconsolidator.blend),
+            sensory_context=dict(sensory_frame.context),
+        )
+        self.last_measurement = record
+        if self.measurement_log is not None:
+            self.measurement_log.append(record)
+
         self.journal.log(
             decision,
             sensory_frame.context,
@@ -256,6 +331,21 @@ class AffectiveLoop:
                 self.last_appraisal.novelty if self.last_appraisal is not None else None
             ),
             td_delta=self.last_td.delta if self.last_td is not None else None,
+            instant_valence=valence,
+            instant_arousal=arousal,
+            instant_approach=approach,
+            mbon_approach_hz=float(mbon_dan_state.mbon_approach_rate),
+            mbon_avoid_hz=float(mbon_dan_state.mbon_avoid_rate),
+            dan_hz=float(mbon_dan_state.dan_reinforcement_rate),
+            approach_saturated=saturated,
+            mood_dt=float(mood_dt),
+            tau_valence=float(self.mood_field.tau_valence),
+            tau_arousal=float(self.mood_field.tau_arousal),
+            tau_approach=float(self.mood_field.tau_approach),
+            tau_set=tau_set,
+            gate_consecutive_ticks=gate_state.consecutive_ticks,
+            store_size=store_size,
+            approach_denominator=denom,
         )
 
         self.step_count += 1
@@ -271,4 +361,12 @@ class AffectiveLoop:
         self.last_appraisal = None
         self.last_reconsolidated = False
         self.last_td = None
+        self.last_measurement = None
         self.step_count = 0
+
+    def _store_size(self) -> int | None:
+        """Memory count after this tick, if the store can list."""
+        try:
+            return len(list(self.store.list_all()))
+        except Exception:
+            return None

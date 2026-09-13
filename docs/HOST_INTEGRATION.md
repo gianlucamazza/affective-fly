@@ -404,12 +404,36 @@ HostAdapter.save_journal([host_frame], "journal.jsonl")
 
 `SensoryFrame.from_dict()` remains supported but HostFrame is the recommended integration path.
 
+## Phase 6: measurement log
+
+A host study writes `measure.jsonl` (mood, gate, approach, MBON rates) so
+`python -m affective_fly calibrate` can summarize it. Protocol:
+[PHASE6_MEASUREMENT.md](PHASE6_MEASUREMENT.md).
+
+```python
+from affective_fly import MeasurementLog, MoodField
+
+log = MeasurementLog("measure.jsonl")
+loop = AffectiveLoop(
+    ...,
+    mood_field=MoodField(),  # hypothesis 300/60/180 — not lab_mood_field()
+    measurement_log=log,
+)
+decision = loop.step(frame.to_sensory_frame(), mood_dt=elapsed_seconds)
+log.save()
+```
+
+`mood_dt` must be wall-clock seconds between ticks. Lab `run` uses 8/4/5 s
+taus and `mood_dt=1.0`; that log cannot validate the hypothesis. Do not
+invent outcomes, fitted τ, or Hige IDs.
+
 ## See Also
 
 - `examples/demo_host_replay.py` — Full replay demonstration
 - `tests/test_host_adapter.py` — Comprehensive test suite
 - `docs/ARCHITECTURE_COMPLETE.md` — System architecture
 - `docs/ROADMAP.md` — Development phases
+- `docs/PHASE6_MEASUREMENT.md` — Host study protocol and L3 calibrator
 
 ## Phase 3: LLM and Embedder Configuration
 

@@ -226,9 +226,11 @@ The gate always runs; the loop overwrites CLICK/TYPE with WAIT if the gate is cl
 `ActionJournal` logs every decision to JSONL with:
 
 - Step, timestamp, action, target, confidence, reason.
-- Mood (valence, arousal, approach).
-- Gate state (open, ticks, reason).
-- Reconsolidation flag, appraisal novelty, TD delta.
+- Mood (valence, arousal, approach) and, for Phase 6, instant (pre-EMA) affect, MBON/DAN rates, τ triple, saturation flag.
+- Gate state (open, consecutive ticks, reason).
+- Reconsolidation flag, appraisal novelty, TD delta, store size.
+
+A dedicated `MeasurementLog` (`measure.jsonl`) is the host-study schema; see [PHASE6_MEASUREMENT.md](PHASE6_MEASUREMENT.md).
 
 `viz.plot_journal()` renders the circumplex (valence × arousal) with mood trajectory, launch gate markers, and reconsolidation events (`--extra viz` for matplotlib).
 
@@ -265,8 +267,9 @@ See `examples/demo_persist.py` and `python -m affective_fly demo persist`.
 
 - `version`: Print version.
 - `demo persist`: Run persistence demo (SQLite + mood).
-- `run --interval <seconds> [--ticks <n>]`: Live loop with random frames. Persists db + journal on Ctrl-C.
+- `run --interval <seconds> [--ticks <n>]`: Live loop with random frames. Persists db + journal + `measure.jsonl` on Ctrl-C. Lab taus (8/4/5).
 - `journal <path>`: Parse and display a journal file.
+- `calibrate <path>`: L3 summary of a measurement/journal JSONL. No invented fitted τ.
 
 ## Blocked Features
 
@@ -276,6 +279,7 @@ These require external data or production infrastructure and are **explicitly bl
 2. **Brian2 C++ codegen**: Implemented as opt-in `codegen_target="cpp_standalone"`. Default remains numpy. Hosts without a compiler keep numpy; tests skip cleanly. First-step compile and a local `--cpp` benchmark are still required to quote a machine-specific latency number.
 3. **Production LLM**: `DualPathEncoder.from_llm()` hook exists; requires API keys and secrets. Do **not** add fake LLM stubs that pretend to call OpenAI/Anthropic.
 4. **Semantic embedder in CI**: `SentenceTransformerEmbedder` (`--extra embed`) downloads MiniLM. Kept optional to avoid network in default CI.
+5. **Phase 6 empirics**: Measurement protocol and L3 calibrator are in-repo ([PHASE6_MEASUREMENT.md](PHASE6_MEASUREMENT.md)). Fitted τ, approach-denominator change, and threshold retunes stay blocked on a real host study. Do not invent Hige IDs or fake traces.
 
 See [ROADMAP.md](ROADMAP.md) Open section for full list.
 
@@ -287,14 +291,14 @@ Where the gap is, layer by layer. Today = v0.2.5.
 |---|---|---|
 | **L0 Sensing** | `HostFrame` v1.0 schema with stable JSON contract; `HostAdapter` for journal save/load/replay; `SensoryFrame.from_dict` remains for direct use; host supplies reward/outcome/pnl via context fields | Production embedders (screenshot → vector, DOM structure → vector); real-time event bus adapters; stable schema version across breaking changes |
 | **L1 Circuit** | Mock, LIF, Brian2 (numpy default, `cpp_standalone` opt-in), MaleCNS (Aso names + published KC→MBON when `connectivity_path` is set); `get_circuit(name)` registry; all backends calibrated to one rate band; LIF `syn_gain` from `n_kc` and KC→MBON fan-in, Brian2 band held by `w_max` | Host-measured C++ latency at large KC |
-| **L2 Plasticity** | Three-factor `learn`, delayed US (`td_sequential`), optional r−V | Eligibility τ calibrated from usage; online PE mode documented; no invented Hige identity |
-| **L3 Affect bridge** | Fixed MBON/DAN → CoreAffect map; valence (relative) and approach (absolute) are distinct axes; arousal on `[0, 1]` | Same map (frozen) + calibration notebook; approach saturation resolved; honesty labels unchanged |
-| **L4 Mood** | MoodField EMA + SQLite `fly_mood`; hypothesis τ (300/60/180) vs lab τ (8/4/5) documented | Cross-process reopen proven; τ_* treated as **hypotheses** until real agent data |
+| **L2 Plasticity** | Three-factor `learn`, delayed US (`td_sequential`), optional r−V (`td_prediction_error=True`); eligibility τ = 1 s logged, not calibrated | Eligibility τ calibrated from usage; no invented Hige identity |
+| **L3 Affect bridge** | Fixed MBON/DAN → CoreAffect map; valence (relative) and approach (absolute) are distinct axes; arousal on `[0, 1]`; L3 calibrator reads host logs (`measure.py`, `python -m affective_fly calibrate`) and **does not invent fitted values** | Same map (frozen) + host-fitted notebook output; approach saturation resolved from study data; honesty labels unchanged |
+| **L4 Mood** | MoodField EMA + SQLite `fly_mood`; hypothesis τ (300/60/180) vs lab τ (8/4/5) documented; per-tick mood logged for a host study | Cross-process reopen proven; τ_* treated as **hypotheses** until real agent data |
 | **L5 Memory (EM)** | encode / reconsolidate / retrieve / resonance | Production store path; `retrieval_with_explanations` optional; resonance on by default when EM enables it |
 | **L6 Dual path** | HeuristicAppraisalEngine + `from_llm` hook | Real LLMAppraisalEngine behind env; skip-clean without keys |
 | **L7 Policy + Gate** | Fixed thresholds + LaunchGate; avoidance evaluated before the arousal gate | Host-pluggable Policy; gate metrics; no impulsive CLICK/TYPE |
-| **L8 Observability** | JSONL journal + viz PNG | Structured metrics (gate blocks, TD delta, reconsolidate rate); optional OTEL via EM telemetry |
-| **L9 Runtime** | CLI `run` / `journal` / `demo` | Long-lived service optional; host owns the process; package stays library-first |
+| **L8 Observability** | JSONL journal + viz PNG + Phase 6 `measure.jsonl` (mood, gate, approach, rates, saturation) | Structured metrics (gate blocks, TD delta, reconsolidate rate) from a real host; optional OTEL via EM telemetry |
+| **L9 Runtime** | CLI `run` / `journal` / `demo` / `calibrate` | Long-lived service optional; host owns the process; package stays library-first |
 
 ## Deployment Topologies
 
