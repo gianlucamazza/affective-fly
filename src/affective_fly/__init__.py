@@ -20,6 +20,8 @@ from .host_adapter import (
     SCHEMA_VERSION,
     HostAdapter,
     HostFrame,
+    mood_dts_from_timestamps,
+    parse_host_timestamp,
     sensory_frame_to_host_frame,
 )
 from .journal import ActionJournal, JournalEntry
@@ -62,6 +64,7 @@ from .mood_field import (
 from .persist import load_mood, save_mood
 from .policy import Policy, PolicyDecision
 from .reconsolidate import Reconsolidator, stimulus_key
+from .study import host_study_loop, hypothesis_mood
 from .swarm import Swarm
 from .td import (
     PlasticityTrace,
@@ -122,7 +125,11 @@ __all__ = [
     "HostAdapter",
     "HostFrame",
     "SCHEMA_VERSION",
+    "mood_dts_from_timestamps",
+    "parse_host_timestamp",
     "sensory_frame_to_host_frame",
+    "host_study_loop",
+    "hypothesis_mood",
     "MoodField",
     "lab_mood_field",
     "HYPOTHESIS_TAU_VALENCE",

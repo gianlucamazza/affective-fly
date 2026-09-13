@@ -56,13 +56,14 @@ make demo    # writes demo_loop.png (circumplex + mood/gate; needs viz extra)
 make test
 python -m affective_fly version
 python -m affective_fly demo persist
-python -m affective_fly run --interval 2    # live ticks; Ctrl-C to stop
+python -m affective_fly run --interval 2    # lab ticks (8/4/5, mood_dt=1.0); Ctrl-C to stop
+python -m affective_fly study --replay host_journal.jsonl  # hypothesis 300/60/180 + wall-clock mood_dt
 python -m affective_fly calibrate measure.jsonl  # L3 summary; no invented fits
 make benchmark    # LIF vs Brian2 ms/step sweep (docs/BENCHMARKS.md)
 make figures      # regenerate docs/figures/ (needs viz extra)
 ```
 
-`python -m affective_fly run` uses lab mood taus (8 / 4 / 5 s) so valence moves in seconds and writes `measure.jsonl`. `MoodField()` defaults (300 / 60 / 180 s) are unvalidated hypotheses — see [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) and [`docs/PHASE6_MEASUREMENT.md`](docs/PHASE6_MEASUREMENT.md).
+`python -m affective_fly run` uses lab mood taus (8 / 4 / 5 s) so valence moves in seconds and writes `measure.jsonl` with `mood_dt=1.0`. `python -m affective_fly study` uses `MoodField()` defaults (300 / 60 / 180 s) and wall-clock `mood_dt`. Those taus stay unvalidated hypotheses until a real host session — see [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) and [`docs/PHASE6_MEASUREMENT.md`](docs/PHASE6_MEASUREMENT.md).
 
 A demo episode: sustained approach opens the launch gate (shaded), then failed reviews pull valence down and memory-driven avoidance yields SKIP. Regenerate with `make figures`.
 

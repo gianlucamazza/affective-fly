@@ -23,22 +23,31 @@ Do not change these from a desk analysis:
 | Labile window / blend | 600 s / α = 0.4 | Measure duplicates vs blend on a growing store |
 | Hige / MaleCNS identities | published export only | Do not invent body IDs or a Hige depression table |
 
-`python -m affective_fly run` uses **lab** taus. Treat that log as a
-schema check, not as evidence for or against 300 / 60 / 180.
+`python -m affective_fly run` uses **lab** taus and `mood_dt=1.0`. Treat
+that log as a schema check, not as evidence for or against 300 / 60 / 180.
+
+`python -m affective_fly study` is the in-repo host-study runner:
+hypothesis taus and wall-clock `mood_dt` (live monotonic clock, or
+HostFrame timestamp deltas via `--replay`). emotional-memory is the
+in-process store, not a separate product host — the study loop already
+encodes/retrieves through `EmotionalMemory`. A CLI or synthetic session
+still does **not** retune defaults.
 
 ## What the host must log
 
-Each tick, write a JSONL line (`measure.jsonl` from `live_loop`, or the
-enriched action journal). The loop fills this when you pass a
-`MeasurementLog` or just run the live runner.
+Each tick, write a JSONL line (`measure.jsonl` from `host_study_loop` or
+`live_loop`, or the enriched action journal). The loop fills this when
+you pass a `MeasurementLog`. Prefer `python -m affective_fly study` for
+a hypothesis-tau session.
 
 Required for τ and saturation analysis:
 
 - **Instant** circuit readout (pre-EMA): `instant_valence`, `instant_arousal`, `instant_approach`
 - **Mood** (post-EMA): `mood_valence`, `mood_arousal`, `mood_approach`
 - **`mood_dt`**: wall-clock seconds since the previous tick. Default in
-  `AffectiveLoop.step` is `1.0` (lab convention). A study **must** pass
-  real elapsed time; the live runner does not infer it from `--interval`.
+  `AffectiveLoop.step` is `1.0` (lab convention). `study` passes
+  monotonic elapsed time or HostFrame timestamp deltas; it does **not**
+  copy `--interval` into `mood_dt`. The lab `run` runner stays at 1.0.
 - **Rates**: `mbon_approach_hz`, `mbon_avoid_hz`, `dan_hz`, `net_drive_hz`
 - **Saturation**: `approach_saturated` (`|instant_approach|` at the clip)
   and `approach_denominator` (logged, not changed)
@@ -54,6 +63,15 @@ Required for τ and saturation analysis:
   them. Log the creation `visual_hash` on `HostFrame` if you need replay.
 
 Schema: `MeasurementRecord` in `src/affective_fly/measure.py`.
+
+```python
+from affective_fly import host_study_loop
+
+loop = host_study_loop(replay_path="host_journal.jsonl", measure_path="measure.jsonl")
+# or live: host_study_loop(ticks=20, interval=30, measure_path="measure.jsonl")
+```
+
+A host that already owns the loop can still do this by hand:
 
 ```python
 from affective_fly import AffectiveLoop, MeasurementLog, MoodField
@@ -75,8 +93,11 @@ growth studies use `SentenceTransformerEmbedder` (`--extra embed`).
 ## L3 calibration (reads logs only)
 
 ```bash
+python -m affective_fly study --replay host_journal.jsonl
+python -m affective_fly study --ticks 20 --interval 30
 python -m affective_fly calibrate measure.jsonl
 python scripts/calibrate_from_logs.py measure.jsonl
+python scripts/host_study.py --replay host_journal.jsonl
 ```
 
 `summarize_measurements` reports saturation fraction, gate open/block
@@ -95,7 +116,10 @@ Do not commit fitted numbers that did not come from a host study.
 
 ## Questions still blocked on a real host
 
-1. Are 300 / 60 / 180 s the right mood taus? (Need wall-clock `mood_dt` and hypothesis taus, not the CLI.)
+1. Are 300 / 60 / 180 s the right mood taus? (Need a **human or production
+   host** session: wall-clock `mood_dt` + hypothesis taus, span ≥ 2×60 s
+   with enough EMA innovations. `study` writes the schema; a short
+   synthetic/CLI run is not that session.)
 2. Should valence stay linear? (Same map; notebook/script only describes the log.)
 3. Is the 600 s labile window / α = 0.4 right as the store grows? (Duplicates vs blend.)
 4. How does retrieve behave at production store size? (Host + MiniLM; not CI.)

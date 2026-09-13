@@ -267,7 +267,8 @@ See `examples/demo_persist.py` and `python -m affective_fly demo persist`.
 
 - `version`: Print version.
 - `demo persist`: Run persistence demo (SQLite + mood).
-- `run --interval <seconds> [--ticks <n>]`: Live loop with random frames. Persists db + journal + `measure.jsonl` on Ctrl-C. Lab taus (8/4/5).
+- `run --interval <seconds> [--ticks <n>]`: Live loop with random frames. Persists db + journal + `measure.jsonl` on Ctrl-C. Lab taus (8/4/5) and `mood_dt=1.0`.
+- `study [--replay host.jsonl] [--ticks n]`: Hypothesis taus (300/60/180) and wall-clock `mood_dt` (monotonic or HostFrame timestamps). Writes `measure.jsonl`. Does not retune defaults.
 - `journal <path>`: Parse and display a journal file.
 - `calibrate <path>`: L3 summary of a measurement/journal JSONL. No invented fitted τ.
 
@@ -279,7 +280,7 @@ These require external data or production infrastructure and are **explicitly bl
 2. **Brian2 C++ codegen**: Implemented as opt-in `codegen_target="cpp_standalone"`. Default remains numpy. Hosts without a compiler keep numpy; tests skip cleanly. First-step compile and a local `--cpp` benchmark are still required to quote a machine-specific latency number.
 3. **Production LLM**: `DualPathEncoder.from_llm()` hook exists; requires API keys and secrets. Do **not** add fake LLM stubs that pretend to call OpenAI/Anthropic.
 4. **Semantic embedder in CI**: `SentenceTransformerEmbedder` (`--extra embed`) downloads MiniLM. Kept optional to avoid network in default CI.
-5. **Phase 6 empirics**: Measurement protocol and L3 calibrator are in-repo ([PHASE6_MEASUREMENT.md](PHASE6_MEASUREMENT.md)). Fitted τ, approach-denominator change, and threshold retunes stay blocked on a real host study. Do not invent Hige IDs or fake traces.
+5. **Phase 6 empirics**: Measurement protocol, L3 calibrator, and host-study runner (`python -m affective_fly study`) are in-repo ([PHASE6_MEASUREMENT.md](PHASE6_MEASUREMENT.md)). Fitted τ, approach-denominator change, and threshold retunes stay blocked on a real human/host session. Do not invent Hige IDs or fake traces.
 
 See [ROADMAP.md](ROADMAP.md) Open section for full list.
 

@@ -46,6 +46,7 @@ htmlcov/
 /swarm_journal.jsonl
 /test_journal.jsonl
 /host_journal.jsonl
+/measure.jsonl
 
 # Virtual environments
 venv/

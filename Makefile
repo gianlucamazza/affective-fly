@@ -1,4 +1,4 @@
-.PHONY: install test lint format demo benchmark figures journal calibrate clean
+.PHONY: install test lint format demo benchmark figures journal calibrate study clean
 
 install:
 	uv sync --all-extras
@@ -44,6 +44,9 @@ journal:
 
 calibrate:
 	uv run python -m affective_fly calibrate $(MEASURE)
+
+study:
+	uv run python -m affective_fly study $(STUDY_ARGS)
 
 clean:
 	rm -rf __pycache__ .pytest_cache .mypy_cache .ruff_cache
