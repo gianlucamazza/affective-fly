@@ -12,6 +12,20 @@ A host integration consists of three parts:
 
 **No NullHost stubs**: A host integration must be based on real frames and real outcomes, not invented data.
 
+## Who owns the loop
+
+emotional-memory is the host; affective-fly is the affect source.
+
+The host owns wall-clock or `HostFrame` time (`mood_dt`), constructs
+`EmotionalMemory`, and each tick calls `AffectiveLoop` / `HostAdapter` /
+the circuit for valence, arousal, and approach/avoid.
+
+`python -m affective_fly run` and `study` invert this for the lab: they
+own the tick loop and construct `EmotionalMemory` inside this package.
+Do not copy that shape into a product host.
+
+See `examples/host_owns_loop.py`.
+
 ## HostFrame Schema (Version 1.0)
 
 `HostFrame` is the stable contract between a host system and Affective Fly. It is JSON-serializable and can be logged, streamed, or replayed.
@@ -438,6 +452,7 @@ fitted τ, or Hige IDs. Do not commit fitted defaults from a CLI run.
 
 ## See Also
 
+- `examples/host_owns_loop.py` — Host owns time and EmotionalMemory; fly returns affect
 - `examples/demo_host_replay.py` — Full replay demonstration
 - `tests/test_host_adapter.py` — Comprehensive test suite
 - `docs/ARCHITECTURE_COMPLETE.md` — System architecture
