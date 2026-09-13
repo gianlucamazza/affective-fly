@@ -4,7 +4,7 @@
 
 ## Unreleased
 
-MaleCNS published synapse counts (typically 1–152) are uniformly scaled into the LIF `w_max` band at load (`scale_published_weights_to_band`) so `learn()` cannot flatten anatomy; `learn()` raises if raw counts are assigned later. Docs distinguish trained-regime approach saturation (~70% `|approach|=1`) from the Phase 6 host replay (~39% on 28 little-trained ticks). Stale “Blocked” headings for the MaleCNS loader and Brian2 C++ opt-in are split into in-repo remaining limits vs host/secrets gaps. Approach denominator, taus, and Policy/LaunchGate thresholds are unchanged.
+MaleCNS published synapse counts (typically 1–152) are uniformly scaled into the LIF `w_max` band at load (`scale_published_weights_to_band`) so `learn()` cannot flatten anatomy; `learn()` raises if raw counts are assigned later. Docs distinguish trained-regime approach saturation (~70% `|approach|=1`) from the Phase 6 host replay (~39% on 28 little-trained ticks). Stale “Blocked” headings for the MaleCNS loader and Brian2 C++ opt-in are split into in-repo remaining limits vs host/secrets gaps. [BENCHMARKS.md](BENCHMARKS.md) now has one local `--cpp` snapshot at 200/2000/5000 KC (this machine only). Approach denominator, taus, and Policy/LaunchGate thresholds are unchanged.
 
 Docs and tooling (earlier). `benchmark_brian2_codegen.py` now sweeps KC size (default 500/1000/2000/5000) instead of a single 2000-KC point, writes machine-readable JSON alongside the text results, and is driven by `make benchmark`; the committed reference table and methodology live in [BENCHMARKS.md](BENCHMARKS.md) (the raw `.txt`/`.json` stay git-ignored, local-only). `examples/make_figures.py` (`make figures`) regenerates two committed figures under `docs/figures/`: the demo circumplex/mood readout and the LIF-vs-Brian2 scaling plot. Added a documentation index ([docs/README.md](README.md)) cross-linking every doc.
 
@@ -42,7 +42,7 @@ v0.2.0 plus: MoodField JSON round-trip, delayed US through `AffectiveLoop`, `mak
 **In-repo, remaining limits** (not blocked — the loaders exist):
 
 - **MaleCNS connectivity (partial)**: Loader implemented (`malecns_connectome.py`) for JSON/Feather/Parquet (HDF5 stub). `data/malecns/kc_mbon_connectivity.feather` is the published KC→MBON export (61,210 edges). `MaleCNSCircuit(connectivity_path=..., n_kc=...)` requires `n_kc` to match the file unless `allow_kc_mismatch=True`. Mapping uses the curated Aso 2014 short-name table (`PUBLISHED_MBON_SHORT_TO_ASO`); unmatched types stay zero. Published synapse counts are uniformly scaled into the LIF `w_max` band before `learn()` so anatomy is not silently clipped. Without `connectivity_path`, weights remain random (NOT connectome-backed). Catalog is still the 7 Aso names. See Phase 4 and `docs/MALECNS_DATA.md`.
-- **Brian2 C++ codegen (opt-in)**: `codegen_target="cpp_standalone"` is implemented. Default remains numpy. Machine-specific latency at 2000/5000 KC is only quoted after a local `--cpp` compile — see [BENCHMARKS.md](BENCHMARKS.md).
+- **Brian2 C++ codegen (opt-in)**: `codegen_target="cpp_standalone"` is implemented. Default remains numpy. One local `--cpp` snapshot at 200/2000/5000 KC is in [BENCHMARKS.md](BENCHMARKS.md); other hosts must compile locally rather than copy those numbers.
 
 **Still blocked on a host or secrets**:
 

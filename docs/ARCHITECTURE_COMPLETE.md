@@ -279,7 +279,7 @@ These are **not** missing loaders. MaleCNS load and Brian2 C++ codegen are in-re
 ### In-repo (partial / opt-in)
 
 1. **MaleCNS connectivity (partial)**: Published KC→MBON weights load from `data/malecns/kc_mbon_connectivity.feather`. Mapping is the curated Aso 2014 table onto the 7-name catalog; `n_kc` must match the file. Counts are scaled into LIF `w_max` before `learn()`; gain is refit from the scaled fan-in (`default_syn_gain`). Types outside the catalog stay unmatched. Without `connectivity_path`, weights stay random. HDF5 is still a stub. No invented Hige IDs.
-2. **Brian2 C++ codegen (opt-in)**: Implemented as `codegen_target="cpp_standalone"`. Default remains numpy. Hosts without a compiler keep numpy; tests skip cleanly. First-step compile and a local `--cpp` benchmark are still required to quote a machine-specific latency number.
+2. **Brian2 C++ codegen (opt-in)**: Implemented as `codegen_target="cpp_standalone"`. Default remains numpy. Hosts without a compiler keep numpy; tests skip cleanly. A local `--cpp` snapshot at 200/2000/5000 KC is in [BENCHMARKS.md](BENCHMARKS.md); other machines must re-run `--cpp` rather than copy those numbers.
 
 ### Still blocked on a host or secrets
 

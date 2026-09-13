@@ -46,9 +46,28 @@ Python 3.11.16 on Linux x86_64.
 - The overhead is the numpy code-generation runtime, not the neuron count. Phase 5 adds
   `codegen_target="cpp_standalone"` to close that overhead after a cached build. Latency
   budget: after the first compile, a 2000-KC `step()` should sit inside the 50 ms simulated
-  tick. First compile is outside the budget. At these sizes `LIFCircuit` already keeps a
-  full loop tick well inside interactive latency, so Brian2 remains a
-  correctness/validation backend unless a host opts into C++.
+  tick. First compile is outside the budget. A local `--cpp` snapshot on this machine is
+  below. At these sizes `LIFCircuit` already keeps a full loop tick well inside interactive
+  latency, so Brian2 remains a correctness/validation backend unless a host opts into C++.
+
+## Local C++ snapshot (this machine)
+
+Python 3.11.16, Linux x86_64, g++ 13.3.0. Same script as above, `--cpp`, **20 steps**,
+`dt = 1 ms`. First-step compile excluded from the timed loop. Each KC size ran in its own
+process (Brian2 `cpp_standalone` is a process-wide device). These are **this host only** —
+not a new default and not a substitute for the numpy table above.
+
+| KC | C++ `step()` (ms/step) |
+|---:|---:|
+| 200 | 23.966 |
+| 2000 | 18.686 |
+| 5000 | 20.532 |
+
+2000-KC C++ sat inside the 50 ms simulated-tick budget after compile. LIF on the same
+machine, without a C++ compile in-process, remains ~0.08–0.24 ms/step (5000 KC LIF-only
+re-time: 0.237 ms/step). A `--cpp` process that also compiles can leave the in-process LIF
+number noisy (one 5000-KC run read 19.4 ms LIF); do not replace the reference LIF column
+from a loaded compile job.
 
 ## Reproduce
 
