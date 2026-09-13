@@ -94,7 +94,8 @@ frame = HostFrame(context={
     "query": "successful debugging session notes",
 })
 
-decision = loop.step(frame.to_sensory_frame(), encode_memory=True)
+# Host owns mood_dt (0.0 on the first tick; later: wall-clock or timestamp delta).
+decision = loop.step(frame.to_sensory_frame(), encode_memory=True, mood_dt=0.0)
 
 # Report outcome for three-factor learning
 outcome_frame = HostFrame(context={
@@ -104,8 +105,8 @@ outcome_frame = HostFrame(context={
     "reward": -0.8,  # Triggers KC→MBON plasticity
 })
 
-decision = loop.step(outcome_frame.to_sensory_frame())
-print(decision.action, decision.mood_valence, decision.reason)
+decision = loop.step(outcome_frame.to_sensory_frame(), mood_dt=180.0)
+print(decision.mood_valence, decision.mood_arousal, decision.approach_tendency)
 ```
 
 ### Alternative: Direct SensoryFrame (still supported)
@@ -133,6 +134,8 @@ decision = loop.step(
     encode_memory=True,
 )
 ```
+
+The host owns time (`mood_dt`) and constructs `EmotionalMemory`. Each tick it calls the fly for valence, arousal, and approach/avoid — see [`examples/host_owns_loop.py`](examples/host_owns_loop.py). The CLI `run` / `study` invert that ownership for lab and measurement use.
 
 `sentiment` is added to the sensory vector. `reward`, `outcome`, or `pnl` call `learn()` (PAM if positive, PPL1 if negative).
 
