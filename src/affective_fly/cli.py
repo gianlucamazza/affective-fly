@@ -11,6 +11,7 @@ from . import __version__
 from .journal import main as journal_main
 from .measure import format_summary, load_measurement_records, summarize_measurements
 from .run import live_loop
+from .study import host_study_loop
 
 _DEMOS = {
     "loop": "examples/demo_loop.py",
@@ -53,6 +54,29 @@ def main(argv: list[str] | None = None) -> int:
     run.add_argument("--db", default="affective_fly.db")
     run.add_argument("--journal", default="journal.jsonl")
     run.add_argument("--measure", default="measure.jsonl", help="Phase 6 measurement JSONL")
+
+    study = sub.add_parser(
+        "study",
+        help="Phase 6 host study (hypothesis 300/60/180 + wall-clock mood_dt)",
+    )
+    study.add_argument(
+        "--interval",
+        type=float,
+        default=0.0,
+        help="Sleep seconds between live ticks (not copied into mood_dt)",
+    )
+    study.add_argument(
+        "--ticks", type=int, default=0, help="0 = until interrupt / all replay frames"
+    )
+    study.add_argument("--db", default="affective_fly.db")
+    study.add_argument("--journal", default="journal.jsonl")
+    study.add_argument("--measure", default="measure.jsonl", help="Phase 6 measurement JSONL")
+    study.add_argument("--host-journal", default="host_journal.jsonl")
+    study.add_argument(
+        "--replay",
+        default=None,
+        help="HostFrame JSONL; mood_dt from timestamps (preferred host path)",
+    )
 
     calibrate = sub.add_parser(
         "calibrate",
@@ -97,6 +121,34 @@ def main(argv: list[str] | None = None) -> int:
                 interval=args.interval,
                 ticks=args.ticks,
                 on_tick=_print,
+            )
+        except KeyboardInterrupt:
+            print("stopped")
+        return 0
+    if args.cmd == "study":
+
+        def _print_study(i: int, decision: object) -> None:
+            from .policy import PolicyDecision
+
+            d = decision if isinstance(decision, PolicyDecision) else None
+            if d is None:
+                print(i, decision)
+                return
+            print(
+                f"{i:04d}  {d.action.value:<5}  V={d.mood_valence:+.2f}  "
+                f"App={d.approach_tendency:+.2f}  {d.reason}"
+            )
+
+        try:
+            host_study_loop(
+                db_path=args.db,
+                journal_path=args.journal,
+                host_journal_path=args.host_journal,
+                measure_path=args.measure,
+                interval=args.interval,
+                ticks=args.ticks,
+                replay_path=args.replay,
+                on_tick=_print_study,
             )
         except KeyboardInterrupt:
             print("stopped")

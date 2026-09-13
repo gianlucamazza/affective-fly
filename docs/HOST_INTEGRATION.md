@@ -424,8 +424,17 @@ log.save()
 ```
 
 `mood_dt` must be wall-clock seconds between ticks. Lab `run` uses 8/4/5 s
-taus and `mood_dt=1.0`; that log cannot validate the hypothesis. Do not
-invent outcomes, fitted τ, or Hige IDs.
+taus and `mood_dt=1.0`; that log cannot validate the hypothesis.
+
+```bash
+python -m affective_fly study --replay host_journal.jsonl
+python -m affective_fly calibrate measure.jsonl
+```
+
+`study` uses `MoodField()` (300/60/180) and timestamp or monotonic
+`mood_dt`. emotional-memory supplies the store/retrieve engine inside
+that loop; it is not a separate journal host. Do not invent outcomes,
+fitted τ, or Hige IDs. Do not commit fitted defaults from a CLI run.
 
 ## See Also
 

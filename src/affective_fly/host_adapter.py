@@ -10,8 +10,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Sequence
 from dataclasses import asdict, dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -20,6 +21,45 @@ import numpy as np
 from .loop import SensoryFrame
 
 SCHEMA_VERSION = "1.0"
+
+
+def parse_host_timestamp(value: str) -> datetime | None:
+    """Parse a HostFrame ISO-8601 timestamp. Naive values are treated as UTC."""
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except (TypeError, ValueError):
+        return None
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=UTC)
+    return parsed
+
+
+def mood_dts_from_timestamps(
+    frames: Sequence[HostFrame],
+    *,
+    strict: bool = False,
+) -> list[float]:
+    """Wall-clock seconds between consecutive HostFrame timestamps.
+
+    The first frame is 0.0 (no previous tick). Unparseable timestamps yield
+    0.0 unless ``strict`` is True, in which case they raise. Negative deltas
+    (out-of-order stamps) are clamped to 0.0 — we do not invent a dt.
+    """
+    dts: list[float] = []
+    prev: datetime | None = None
+    for frame in frames:
+        current = parse_host_timestamp(frame.timestamp)
+        if current is None:
+            if strict:
+                raise ValueError(f"unparseable HostFrame timestamp: {frame.timestamp!r}")
+            dts.append(0.0)
+            continue
+        if prev is None:
+            dts.append(0.0)
+        else:
+            dts.append(max(0.0, (current - prev).total_seconds()))
+        prev = current
+    return dts
 
 
 @dataclass
@@ -170,6 +210,7 @@ class HostAdapter:
         loop: Any,  # AffectiveLoop (avoid circular import)
         encode_memory: bool = True,
         retrieve_top_k: int = 5,
+        mood_dts: Sequence[float] | None = None,
     ) -> list[Any]:  # list[PolicyDecision]
         """
         Replay a sequence of HostFrames through an AffectiveLoop.
@@ -179,18 +220,26 @@ class HostAdapter:
             loop: AffectiveLoop instance
             encode_memory: Whether to encode memories during replay
             retrieve_top_k: Number of memories to retrieve per step
+            mood_dts: Per-frame seconds for ``MoodField.update``. Default
+                ``None`` keeps the lab ``step`` convention (``mood_dt=1.0``).
+                A host study should pass timestamp deltas from
+                ``mood_dts_from_timestamps``.
 
         Returns:
             List of PolicyDecision objects, one per frame
         """
+        if mood_dts is not None and len(mood_dts) != len(frames):
+            raise ValueError(f"mood_dts length {len(mood_dts)} != frames length {len(frames)}")
         decisions = []
-        for frame in frames:
+        for i, frame in enumerate(frames):
             sensory_frame = frame.to_sensory_frame()
-            decision = loop.step(
-                sensory_frame,
-                encode_memory=encode_memory,
-                retrieve_top_k=retrieve_top_k,
-            )
+            kwargs: dict[str, Any] = {
+                "encode_memory": encode_memory,
+                "retrieve_top_k": retrieve_top_k,
+            }
+            if mood_dts is not None:
+                kwargs["mood_dt"] = float(mood_dts[i])
+            decision = loop.step(sensory_frame, **kwargs)
             decisions.append(decision)
         return decisions
 

@@ -1,6 +1,5 @@
 """Tests for host adapter: schema, replay, and outcome reporting."""
 
-
 import numpy as np
 from emotional_memory import EmotionalMemory, InMemoryStore
 
@@ -116,7 +115,7 @@ def test_host_adapter_load_skips_invalid_lines(tmp_path):
     journal_path = tmp_path / "journal.jsonl"
     with open(journal_path, "w") as f:
         f.write('{"schema_version": "1.0", "context": {"note_id": "good"}}\n')
-        f.write('invalid json line\n')
+        f.write("invalid json line\n")
         f.write('{"schema_version": "1.0", "context": {"note_id": "also-good"}}\n')
 
     loaded = HostAdapter.load_journal(journal_path)
@@ -136,6 +135,47 @@ def test_host_adapter_warns_on_version_mismatch(tmp_path, capsys):
 
     captured = capsys.readouterr()
     assert "schema_version 0.9" in captured.out.lower()
+
+
+def test_mood_dts_from_timestamps_and_replay_override():
+    """Study replay passes timestamp deltas; default replay keeps mood_dt=1.0."""
+    from affective_fly import mood_dts_from_timestamps
+
+    frames = [
+        HostFrame(
+            timestamp="2026-09-12T12:00:00Z",
+            context={"context": "journal", "note_id": "e1", "sentiment": 0.2},
+        ),
+        HostFrame(
+            timestamp="2026-09-12T12:02:00Z",
+            context={"context": "journal", "note_id": "e1", "sentiment": 0.3},
+        ),
+    ]
+    dts = mood_dts_from_timestamps(frames)
+    assert dts == [0.0, 120.0]
+
+    store = InMemoryStore()
+    embedder = FakeEmbedder()
+    study_loop = AffectiveLoop(
+        fly_circuit=MockFlyCircuit(seed=42),
+        emotional_memory=EmotionalMemory(store=store, embedder=embedder),
+        store=store,
+        embedder=embedder,
+    )
+    HostAdapter.replay(frames, study_loop, mood_dts=dts)
+    assert study_loop.last_measurement is not None
+    assert study_loop.last_measurement.mood_dt == 120.0
+
+    lab_store = InMemoryStore()
+    lab_loop = AffectiveLoop(
+        fly_circuit=MockFlyCircuit(seed=42),
+        emotional_memory=EmotionalMemory(store=lab_store, embedder=embedder),
+        store=lab_store,
+        embedder=embedder,
+    )
+    HostAdapter.replay(frames[:1], lab_loop)
+    assert lab_loop.last_measurement is not None
+    assert lab_loop.last_measurement.mood_dt == 1.0
 
 
 def test_host_adapter_replay_with_mock_circuit():
@@ -212,7 +252,9 @@ def test_host_adapter_replay_journal_to_loop(tmp_path):
     """Full path: save HostFrames → load → replay through loop."""
     frames = [
         HostFrame(context={"context": "journal", "note_id": "exp-001", "sentiment": 1.0}),
-        HostFrame(context={"context": "review", "note_id": "exp-001", "sentiment": -0.9, "reward": -0.8}),
+        HostFrame(
+            context={"context": "review", "note_id": "exp-001", "sentiment": -0.9, "reward": -0.8}
+        ),
     ]
 
     journal_path = tmp_path / "frames.jsonl"
