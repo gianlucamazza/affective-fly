@@ -426,6 +426,7 @@ class Brian2Circuit(FlyAffectReadout):
         from .td import (
             TDResult,
             apply_three_factor,
+            ensure_weights_in_plasticity_band,
             rescorla_wagner,
             teaching_signal,
             value_from_state,
@@ -443,6 +444,7 @@ class Brian2Circuit(FlyAffectReadout):
             eligibility = self.last_eligibility
         pe = self.prediction_error if prediction_error is None else prediction_error
         pam, ppl1 = teaching_signal(reward, value, prediction_error=pe)
+        ensure_weights_in_plasticity_band(self.w_kc_mbon, self.w_max)
         self.w_kc_mbon = apply_three_factor(
             self.w_kc_mbon,
             eligibility,

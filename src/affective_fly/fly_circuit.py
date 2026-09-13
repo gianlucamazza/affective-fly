@@ -42,11 +42,13 @@ def default_syn_gain(
     """Default ``syn_gain`` from ``n_kc`` and optional real KC→post fan-in.
 
     The v0.2.5 law ``950 · n_kc^(−0.70)`` keeps untrained random-weight
-    circuits near ~20 Hz total MBON. Published MaleCNS synapse counts have
-    ~80× that column fan-in after Aso mapping, so the same law is scaled by
-    ``(n_kc · w_max / 2) / mean_column_fan_in(weights)``. Uniform init on
-    ``[0, w_max]`` recovers the original law. Pass ``syn_gain`` on the
-    circuit to override.
+    circuits near ~20 Hz total MBON. After a published MaleCNS load the
+    counts are first scaled into ``[0, w_max]``; this law then tracks the
+    *scaled* column fan-in via
+    ``(n_kc · w_max / 2) / mean_column_fan_in(weights)``. A uniform scale
+    leaves ``w · syn_gain`` unchanged, so untrained rates stay in band.
+    Uniform init on ``[0, w_max]`` recovers the original law. Pass
+    ``syn_gain`` on the circuit to override.
     """
     g0 = float(SYN_GAIN_PREFACTOR * float(n_kc) ** SYN_GAIN_EXPONENT)
     if weights is None:
@@ -499,6 +501,7 @@ class LIFCircuit(FlyAffectReadout):
         from .td import (
             TDResult,
             apply_three_factor,
+            ensure_weights_in_plasticity_band,
             rescorla_wagner,
             teaching_signal,
             value_from_state,
@@ -516,6 +519,7 @@ class LIFCircuit(FlyAffectReadout):
             eligibility = self.last_eligibility
         pe = self.prediction_error if prediction_error is None else prediction_error
         pam, ppl1 = teaching_signal(reward, value, prediction_error=pe)
+        ensure_weights_in_plasticity_band(self.w_kc_mbon, self.w_max)
         self.w_kc_mbon = apply_three_factor(
             self.w_kc_mbon,
             eligibility,

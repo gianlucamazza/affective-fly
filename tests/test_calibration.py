@@ -248,8 +248,11 @@ def test_top200_published_fanout_stays_in_band():
     circuit = MaleCNSCircuit(
         backend="lif", n_kc=185, seed=42, connectivity_path=TOP200_CONNECTOME
     )
-    g0 = default_syn_gain(185)
-    assert circuit.backend.syn_gain < g0
+    assert circuit.backend.w_kc_mbon.max() <= circuit.backend.w_max + 1e-12
+    assert circuit.anatomy_scale <= 1.0
+    assert circuit.backend.syn_gain == pytest.approx(
+        default_syn_gain(185, weights=circuit.backend.w_kc_mbon, w_max=circuit.backend.w_max)
+    )
     rates = _drive(circuit, seed=42)
     mbon_total, dan = rates[:, 0].mean(), rates[:, 1].mean()
     assert 1.0 < mbon_total <= MBON_MAX, f"MBON {mbon_total:.1f} Hz outside band"
@@ -271,12 +274,15 @@ def test_published_malecns_fanout_stays_in_band():
         backend="lif", n_kc=4063, seed=1, connectivity_path=PUBLISHED_CONNECTOME
     )
     g0 = default_syn_gain(4063)
+    assert circuit.backend.w_kc_mbon.max() <= circuit.backend.w_max + 1e-12
+    assert circuit.anatomy_scale < 1.0
+    assert circuit.published_weight_peak is not None
+    assert circuit.published_weight_peak > circuit.backend.w_max
     assert circuit.backend.syn_gain == pytest.approx(
         default_syn_gain(
             4063, weights=circuit.backend.w_kc_mbon, w_max=circuit.backend.w_max
         )
     )
-    assert circuit.backend.syn_gain < g0 / 10.0
     # DAN weights stay random, so they keep the n_kc-scale gain.
     assert circuit.backend.dan_syn_gain == pytest.approx(g0, rel=0.05)
     rates = _drive(circuit, seed=1)

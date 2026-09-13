@@ -123,8 +123,11 @@ Do not commit fitted numbers that did not come from a host study.
 2. Should valence stay linear? (Same map; notebook/script only describes the log.)
 3. Is the 600 s labile window / α = 0.4 right as the store grows? (Duplicates vs blend.)
 4. How does retrieve behave at production store size? (Host + MiniLM; not CI.)
-5. Approach saturation (~70% `|approach|=1` once trained) vs
-   `threshold_act` / `threshold_approach` — retune **together** after measuring.
+5. Approach saturation vs `threshold_act` / `threshold_approach` — retune
+   **together** after measuring. Two logged numbers, two conditions: trained
+   LIF ~70% `|approach|=1` (ROADMAP v0.2.5); Phase 6 host replay
+   (emotional-memory `#137`, 28 ticks, little-trained `LIFCircuit`)
+   `approach_saturated_fraction ≈ 0.393`. Neither is a new default.
 6. Eligibility τ = 1 s and online PE (`r−V`) — document usage; calibrate from traces.
 
 Never pass `appraisal=` to `encode()`.

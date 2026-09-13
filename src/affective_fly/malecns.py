@@ -33,11 +33,14 @@ class MaleCNSCircuit(FlyAffectReadout):
         seed: Random seed (used only when connectivity_path is None)
         connectivity_path: Path to connectome file (JSON/Feather/Parquet).
             When None, weights are random (NOT connectome-backed).
-            When provided, KC→MBON weights are loaded from the file.
+            When provided, KC→MBON synapse counts are loaded and uniformly
+            scaled into the backend ``w_max`` band so ``learn()`` cannot
+            flatten published anatomy. Relative counts are preserved.
         allow_kc_mismatch: If False (default), raise when the file's KC count
             differs from ``n_kc``. If True, truncate extra KCs or pad with zeros.
         syn_gain: Override LIF ``syn_gain``. ``None`` (default) refits from
-            KC→MBON fan-in after a connectome load. Ignored by Brian2
+            KC→MBON fan-in after a connectome load (after the published
+            counts are scaled into ``w_max``). Ignored by Brian2
             (band held by ``w_max``; pass ``syn_gain`` on ``Brian2Circuit``).
         codegen_target: Passed to ``Brian2Circuit`` when ``backend="brian2"``.
             ``numpy`` (default) needs no compiler; ``cpp_standalone`` is opt-in.
@@ -66,6 +69,10 @@ class MaleCNSCircuit(FlyAffectReadout):
         self.matched_mbon_names: list[str] = []
         self.allow_kc_mismatch = allow_kc_mismatch
         self.kc_rows_in_file: int | None = None
+        # Homogeneous scale of published synapse counts into the backend
+        # plasticity band. 1.0 means already in band (or no connectome).
+        self.anatomy_scale: float = 1.0
+        self.published_weight_peak: float | None = None
 
         if isinstance(backend, FlyAffectReadout):
             self.backend = backend
@@ -167,11 +174,18 @@ class MaleCNSCircuit(FlyAffectReadout):
     def _load_connectivity(self) -> None:
         """Load KC→MBON weights from connectivity_path.
 
-        Updates backend.w_kc_mbon with loaded weights.
-        Raises ConnectomeLoadError if file is missing/unreadable or if the
-        file KC count does not match the backend and allow_kc_mismatch is False.
+        Updates backend.w_kc_mbon with loaded weights, uniformly scaled into
+        the backend ``w_max`` band so ``learn()`` cannot flatten published
+        synapse counts. Raises ConnectomeLoadError if file is missing/unreadable
+        or if the file KC count does not match the backend and
+        allow_kc_mismatch is False.
         """
-        from .malecns_connectome import ConnectomeLoadError, load_connectome, map_to_aso_names
+        from .malecns_connectome import (
+            ConnectomeLoadError,
+            load_connectome,
+            map_to_aso_names,
+            scale_published_weights_to_band,
+        )
 
         if self.connectivity_path is None:
             return
@@ -228,7 +242,12 @@ class MaleCNSCircuit(FlyAffectReadout):
                     mapped_weights = np.vstack(
                         [mapped_weights, np.zeros((pad_rows, mapped_weights.shape[1]))]
                     )
-            self.backend.w_kc_mbon = mapped_weights
+            w_max = float(getattr(self.backend, "w_max", 0.15))
+            peak = float(np.max(mapped_weights)) if mapped_weights.size else 0.0
+            self.published_weight_peak = peak
+            scaled, scale = scale_published_weights_to_band(mapped_weights, w_max)
+            self.anatomy_scale = scale
+            self.backend.w_kc_mbon = scaled
             self.connectivity_loaded = True
             refresh = getattr(self.backend, "refresh_default_syn_gain", None)
             if callable(refresh):
