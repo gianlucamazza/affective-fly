@@ -87,4 +87,4 @@ uv run pytest tests/test_space_demo.py -v
 MIT, matching the repository. See
 [LICENSE](https://github.com/gianlucamazza/affective-fly/blob/main/LICENSE).
 
-**Author**: [Gianluca Mazza](https://gianlucamazza.it). I take LLM systems into production: state, recovery, eval, cost.
+- **Author**: [Gianluca Mazza](https://gianlucamazza.it). I take LLM systems into production: state, recovery, eval, cost.
