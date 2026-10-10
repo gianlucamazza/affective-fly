@@ -26,6 +26,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from ._legacy import LEGACY_GATE_BLOCKED_MARKER
 from .affect_bridge import AffectBridge
 from .mood_field import (
     HYPOTHESIS_TAU_APPROACH,
@@ -37,7 +38,20 @@ from .mood_field import (
 )
 from .policy import Policy
 
-# Section 1.4: do not change this scale without retuning Policy/LaunchGate.
+ACTION_GATE_BLOCKED_MARKER = "action gate blocked"
+
+
+def _reason_is_gate_blocked(reason: object) -> bool:
+    """True when a journal reason records a blocked action.
+
+    Accepts the current ``Action gate blocked …`` spelling and the
+    historical marker from ``_legacy``.
+    """
+    text = str(reason).lower()
+    return ACTION_GATE_BLOCKED_MARKER in text or LEGACY_GATE_BLOCKED_MARKER in text
+
+
+# Section 1.4: do not change this scale without retuning Policy/ActionGate.
 APPROACH_DENOMINATOR_FACTOR = 2.0
 
 # Eligibility τ on LIF/Brian2. Works; not calibrated from usage (L2).
@@ -173,7 +187,7 @@ class MeasurementRecord:
         raw.setdefault("gate_open", False)
         raw.setdefault("gate_consecutive_ticks", 0)
         raw.setdefault("gate_reason", data.get("gate_reason"))
-        raw.setdefault("gate_blocked", "launch gate blocked" in str(data.get("reason", "")).lower())
+        raw.setdefault("gate_blocked", _reason_is_gate_blocked(data.get("reason", "")))
         raw.setdefault("action", data.get("action", ""))
         raw.setdefault("reason", data.get("reason", ""))
         raw.setdefault("threshold_act", Policy().threshold_act)
@@ -399,9 +413,7 @@ def _maybe_fit_taus(
 ) -> tuple[TauFit | None, list[str]]:
     notes: list[str] = []
     if len(rows) < _MIN_TICKS_FOR_TAU_FIT:
-        notes.append(
-            f"{len(rows)} ticks < {_MIN_TICKS_FOR_TAU_FIT}; tau_fit omitted"
-        )
+        notes.append(f"{len(rows)} ticks < {_MIN_TICKS_FOR_TAU_FIT}; tau_fit omitted")
         return None, notes
     if span <= 0:
         notes.append("non-positive span; tau_fit omitted")
@@ -427,8 +439,7 @@ def _maybe_fit_taus(
         notes.append("EMA innovations too small or too few; tau_fit omitted")
         return None, notes
     warning = (
-        "estimate from this log only; not a recommended default and "
-        "not written into MoodField"
+        "estimate from this log only; not a recommended default and not written into MoodField"
     )
     notes.append(warning)
     return (

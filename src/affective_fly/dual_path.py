@@ -20,6 +20,8 @@ from typing import Any, Protocol, cast
 
 from emotional_memory import AppraisalVector, Memory, MemoryStore
 
+from ._legacy import LEGACY_ITEM_FIELD
+
 _NEGATIVE = ("fail", "failed", "failure", "error", "reject", "decline", "punish", "shock")
 _POSITIVE = ("success", "successful", "breakthrough", "replicate", "confirm", "reward", "novel")
 _CONTROL = ("form", "type", "protocol", "method", "review", "design")
@@ -58,7 +60,8 @@ class HeuristicAppraisalEngine:
 
         key = str(
             ctx.get("note_id")
-            or ctx.get("ticker")
+            or ctx.get("item")
+            or ctx.get(LEGACY_ITEM_FIELD)
             or ctx.get("event")
             or ctx.get("page")
             or event_text
@@ -68,7 +71,13 @@ class HeuristicAppraisalEngine:
         novelty = 0.8 if count == 0 else max(-0.5, 0.8 - 0.4 * count)
 
         goal_relevance = 0.0
-        if ctx.get("note_id") or ctx.get("ticker") or ctx.get("query") or ctx.get("target"):
+        if (
+            ctx.get("note_id")
+            or ctx.get("item")
+            or ctx.get(LEGACY_ITEM_FIELD)
+            or ctx.get("query")
+            or ctx.get("target")
+        ):
             goal_relevance += 0.4
         goal_relevance += 0.5 * sentiment
         if any(w in blob for w in _NEGATIVE):
@@ -89,7 +98,7 @@ class HeuristicAppraisalEngine:
             norm += 0.3
 
         self_relevance = 0.2
-        if ctx.get("note_id") or ctx.get("ticker"):
+        if ctx.get("note_id") or ctx.get("item") or ctx.get(LEGACY_ITEM_FIELD):
             self_relevance += 0.2
         if any(w in blob for w in _SELF):
             self_relevance += 0.4

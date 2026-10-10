@@ -76,7 +76,7 @@ class HostFrame:
     - timestamp: ISO 8601 timestamp
     - context: dict with semantic fields:
         * context: str (required) - semantic context (journal, review, form, etc.)
-        * note_id, ticker, event, page: str (optional) - stimulus identifiers
+        * note_id, item, event, page: str (optional) - stimulus identifiers
         * query: str (optional) - retrieval query
         * sentiment: float (optional) - declared sentiment in [-1, 1]
         * reward, outcome, pnl: float (optional) - outcome signal in [-1, 1]

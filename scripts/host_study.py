@@ -6,7 +6,7 @@ Usage:
     python scripts/host_study.py --replay host_journal.jsonl
     python -m affective_fly study --replay host_journal.jsonl
 
-Does not invent fitted τ or Policy/LaunchGate thresholds. Lab ``run``
+Does not invent fitted τ or Policy/ActionGate thresholds. Lab ``run``
 (8/4/5, mood_dt=1.0) cannot validate 300/60/180.
 """
 

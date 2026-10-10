@@ -12,7 +12,7 @@ This script is not a journal app or UI. It shows the ownership shape:
 3. Each tick the host calls the fly (``AffectiveLoop`` / ``HostAdapter`` /
    circuit) for valence, arousal, and approach/avoid.
 
-Hypothesis MoodField taus (300 / 60 / 180) and Policy / LaunchGate
+Hypothesis MoodField taus (300 / 60 / 180) and Policy / ActionGate
 thresholds stay at library defaults. Do not retune them here.
 """
 

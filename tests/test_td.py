@@ -170,9 +170,9 @@ def test_loop_sequential_trains_previous_frame():
         embedder=embedder,
         td_sequential=True,
     )
-    loop.step(SensoryFrame.from_dict({"ticker": "A", "sentiment": 0.4}))
+    loop.step(SensoryFrame.from_dict({"item": "A", "sentiment": 0.4}))
     assert loop.last_td is None
-    loop.step(SensoryFrame.from_dict({"ticker": "B", "sentiment": -0.2, "reward": 1.0}))
+    loop.step(SensoryFrame.from_dict({"item": "B", "sentiment": -0.2, "reward": 1.0}))
     assert loop.last_td is not None
     assert loop.last_td.sequential is True
     assert loop.last_td.pam == pytest.approx(1.0)

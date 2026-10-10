@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """L3 calibration helper: read a host measurement JSONL and summarize it.
 
-Does not invent fitted τ or Policy/LaunchGate thresholds. Hypothesis
+Does not invent fitted τ or Policy/ActionGate thresholds. Hypothesis
 MoodField taus stay 300/60/180; lab 8/4/5 cannot validate them.
 Approach denominator stays 2 × mbon_baseline (section 1.4).
 

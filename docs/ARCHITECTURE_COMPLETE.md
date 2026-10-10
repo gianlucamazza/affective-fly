@@ -33,7 +33,7 @@ This document provides a comprehensive view of the `affective-fly` architecture,
 
 | Library | Owns | Does not own |
 |---|---|---|
-| `emotional-memory` ≥ 0.18 | Store, embed, retrieve, resonance, MoodField type, CoreAffect, AppraisalVector, decay, elaborate | Fly anatomy, MBON/DAN plasticity, launch gate, host product |
+| `emotional-memory` ≥ 0.18 | Store, embed, retrieve, resonance, MoodField type, CoreAffect, AppraisalVector, decay, elaborate | Fly anatomy, MBON/DAN plasticity, action gate, host product |
 | `affective-fly` | Circuit, TD learning, AffectBridge, loop policy/gate, journal, CLI live runner | Generic semantic memory, the PyPI product surface of EM |
 
 ## Control Plane: One Tick
@@ -52,7 +52,7 @@ SensoryFrame(visual, context)
   │      then DualPath.appraise → DualPath.attach(tag)   # slow path
   ├─6─ emotional_memory.retrieve(query, top_k)
   ├─7─ Policy.decide(mood, retrieved, context)
-  ├─8─ LaunchGate.update(mood); maybe demote CLICK/TYPE → WAIT
+  ├─8─ ActionGate.update(mood); maybe demote CLICK/TYPE → WAIT
   └─9─ Journal.log(…) → PolicyDecision
 ```
 
@@ -116,7 +116,7 @@ Deterministic mock for unit tests. Linear mapping: positive input → approach >
 `AffectBridge.mbon_dan_to_core_affect()` maps MBON/DAN firing rates to emotional-memory's `CoreAffect`:
 
 - **Valence** — *relative* contrast, in [−1, 1]: `(approach − avoid) / (approach + avoid + ε)`, scaled toward neutral when total MBON activity falls below `mbon_min_active` (5 Hz). Without that guard, one spike on an otherwise silent population reads as full-confidence avoidance.
-- **Approach tendency** — *absolute* net drive, in [−1, 1]: `clip((approach − avoid) / (2 · mbon_baseline), −1, 1)`. Same numerator as valence, different denominator: valence says which sign the situation has, approach says how much net push is behind it. Read by both `Policy` and `LaunchGate`, not journal-only.
+- **Approach tendency** — *absolute* net drive, in [−1, 1]: `clip((approach − avoid) / (2 · mbon_baseline), −1, 1)`. Same numerator as valence, different denominator: valence says which sign the situation has, approach says how much net push is behind it. Read by both `Policy` and `ActionGate`, not journal-only.
 - **Arousal** — in **[0, 1]**, not [−1, 1]: `clip((dan − dan_baseline) / (dan_max − dan_baseline), 0, 1)`. `CoreAffect` defines arousal on [0, 1] and clamps silently, so a negative value would never survive `set_affect()`.
 
 See [MAPPING_MBON_DAN.md](MAPPING_MBON_DAN.md) for formulas and rationale.
@@ -129,7 +129,7 @@ See [MAPPING_MBON_DAN.md](MAPPING_MBON_DAN.md) for formulas and rationale.
 
 - **τ_valence = 300 s** (5 min): Slow mood persistence.
 - **τ_arousal = 60 s** (1 min): Faster arousal decay.
-- **τ_approach = 180 s** (3 min): Approach tendency for launch gate.
+- **τ_approach = 180 s** (3 min): Approach tendency for the action gate.
 
 **Lab / CLI** (`lab_mood_field()`, `python -m affective_fly run`, short demos): 8 / 4 / 5 s so mood moves in seconds. That runner is not measuring the hypothesis. Do not replace 300 / 60 / 180 without a host study.
 
@@ -158,10 +158,10 @@ KC→MBON weights update on `learn()` when a reward (US) arrives:
 
 1. **`HeuristicAppraisalEngine`** (default): Offline keyword-based heuristics. No network, no LLM. Deterministic and fast.
    - Novelty: 0.8 on first encounter, decays with repetition.
-   - Goal relevance: sentiment + note_id/query presence ± positive/negative keywords (research/journal paths). Also supports ticker/event/page identifiers.
+   - Goal relevance: sentiment + note_id/query presence ± positive/negative keywords (research/journal paths). Also supports item/event/page identifiers.
    - Coping potential: sentiment + control keywords (review, protocol, form, method) − negative keywords.
    - Norm congruence: sentiment ± keywords.
-   - Self-relevance: note_id presence or keywords (my, experiment, observation, note, review). Also supports ticker (for other domains).
+   - Self-relevance: note_id presence or keywords (my, experiment, observation, note, review). Also supports item (for other domains).
 
 2. **`DualPathEncoder.from_llm(...)`**: Hook for emotional-memory's `LLMAppraisalEngine`. Caller supplies the LLM client (e.g., OpenAI, Anthropic). **Blocked on** production API keys and secrets.
 
@@ -173,7 +173,7 @@ The slow-path appraisal is **attached** to the tag after encoding. Do **not** pa
 
 ## Reconsolidation
 
-`Reconsolidator.find_match()` searches for a labile memory (same note_id/ticker/event/page within 10 min by default) and `update()` blends the new affect with the old (α = 0.4 lerp):
+`Reconsolidator.find_match()` searches for a labile memory (same note_id/item/event/page within 10 min by default) and `update()` blends the new affect with the old (α = 0.4 lerp):
 
 - `tag.core_affect ← lerp(old, new, α)`
 - Increments `tag.reconsolidation_count` and `metadata["reconsolidation_count"]`.
@@ -199,15 +199,15 @@ metadata["reconsolidation_count"]`.
 
 Order matters: avoidance is decided before the arousal gate. Being too calm to act is a reason not to act, never a reason to ignore evidence against acting. The arousal threshold is anchored to the DAN baseline rather than tuned; before v0.2.5 it was −0.5, which `CoreAffect`'s [0, 1] range made unreachable.
 
-## Launch Gate
+## Action Gate
 
-`LaunchGate` blocks impulsive CLICK/TYPE until mood criteria hold for N ticks (default 3):
+`ActionGate` blocks impulsive CLICK/TYPE until mood criteria hold for N ticks (default 3):
 
 - **Open** after `required_ticks` consecutive ticks with approach ≥ 0.2 and valence ≥ −0.1.
 - **Closed** if a tick fails the criteria: the consecutive-tick counter resets and the gate closes even after it has already opened.
 - ``reset()`` also returns the gate to closed. The gate does not latch open.
 
-The gate always runs; the loop overwrites CLICK/TYPE with WAIT if the gate is closed (reason: "Launch gate blocked").
+The gate always runs; the loop overwrites CLICK/TYPE with WAIT if the gate is closed (reason: "Action gate blocked").
 
 ## Memory Integration: EmotionalMemory APIs
 
@@ -232,7 +232,7 @@ The gate always runs; the loop overwrites CLICK/TYPE with WAIT if the gate is cl
 
 A dedicated `MeasurementLog` (`measure.jsonl`) is the host-study schema; see [PHASE6_MEASUREMENT.md](PHASE6_MEASUREMENT.md).
 
-`viz.plot_journal()` renders the circumplex (valence × arousal) with mood trajectory, launch gate markers, and reconsolidation events (`--extra viz` for matplotlib).
+`viz.plot_journal()` renders the circumplex (valence × arousal) with mood trajectory, action gate markers, and reconsolidation events (`--extra viz` for matplotlib).
 
 ## Swarm (Optional)
 
@@ -291,7 +291,7 @@ See [ROADMAP.md](ROADMAP.md) Open section for full list.
 
 ## Layer Map: Today vs Complete
 
-Where the gap is, layer by layer. Today = v0.2.5.
+Where the gap is, layer by layer. Today = v0.2.6.
 
 | Layer | Today | Complete |
 |---|---|---|
@@ -302,7 +302,7 @@ Where the gap is, layer by layer. Today = v0.2.5.
 | **L4 Mood** | MoodField EMA + SQLite `fly_mood`; hypothesis τ (300/60/180) vs lab τ (8/4/5) documented; per-tick mood logged for a host study | Cross-process reopen proven; τ_* treated as **hypotheses** until real agent data |
 | **L5 Memory (EM)** | encode / reconsolidate / retrieve / resonance | Production store path; `retrieval_with_explanations` optional; resonance on by default when EM enables it |
 | **L6 Dual path** | HeuristicAppraisalEngine + `from_llm` hook | Real LLMAppraisalEngine behind env; skip-clean without keys |
-| **L7 Policy + Gate** | Fixed thresholds + LaunchGate; avoidance evaluated before the arousal gate | Host-pluggable Policy; gate metrics; no impulsive CLICK/TYPE |
+| **L7 Policy + Gate** | Fixed thresholds + ActionGate; avoidance evaluated before the arousal gate | Host-pluggable Policy; gate metrics; no impulsive CLICK/TYPE |
 | **L8 Observability** | JSONL journal + viz PNG + Phase 6 `measure.jsonl` (mood, gate, approach, rates, saturation) | Structured metrics (gate blocks, TD delta, reconsolidate rate) from a real host; optional OTEL via EM telemetry |
 | **L9 Runtime** | CLI `run` / `journal` / `demo` / `calibrate` | Long-lived service optional; host owns the process; package stays library-first |
 
@@ -314,7 +314,7 @@ Where the gap is, layer by layer. Today = v0.2.5.
 
 **C. Swarm** — N independent circuits over a shared EM store (`swarm.py`, N≈8). Not a distributed system.
 
-**D. Out of scope** — SaaS, trading or token-launch bots, mating ensembles, swarm N≫8 as a product.
+**D. Out of scope** — SaaS, trading or financial products, mating ensembles, swarm N≫8 as a product.
 
 ## Trust & Scientific Boundaries
 
@@ -383,6 +383,7 @@ A host integration must be a schema plus journal replay of real frames, not a nu
 
 ## Version History
 
+- **v0.2.6**: `ActionGate` / `item` public names; deprecated aliases for the previous gate names and persisted item keys.
 - **v0.2.5**: Every circuit backend calibrated into the documented rate band (LIF sub-stepping, delta synapses, excitatory weights, `n_kc`-derived gain, exact rate window); valence and approach separated into distinct axes; arousal aligned to `CoreAffect`'s `[0, 1]`; `mypy src/` clean with no `type: ignore`. Demo scene changed to research-journal context.
 - **v0.2.4**: Emotional-memory integration test + demo with `LIFCircuit`; `benchmark_brian2_codegen.py` (LIF vs Brian2); `make lint` includes mypy. Removed fake LLM demo (stub logic).
 - **v0.2.3**: Live tick runner (`python -m affective_fly run`); SQLite + journal persistence.

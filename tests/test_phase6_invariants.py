@@ -1,8 +1,8 @@
 """Phase 6 must not silently retune frozen constants."""
 
 from affective_fly import (
+    ActionGate,
     AffectBridge,
-    LaunchGate,
     MoodField,
     Policy,
     lab_mood_field,
@@ -41,8 +41,8 @@ def test_policy_thresholds_unretuned():
     assert policy.threshold_avoid == -0.3
 
 
-def test_launch_gate_threshold_approach_unretuned():
-    gate = LaunchGate()
+def test_action_gate_threshold_approach_unretuned():
+    gate = ActionGate()
     assert gate.threshold_approach == 0.2
     assert gate.threshold_valence == -0.1
 

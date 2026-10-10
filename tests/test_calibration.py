@@ -2,7 +2,7 @@
 
 These are the regression tests for the v0.2.4 calibration pass: before it,
 LIFCircuit ran an order of magnitude below the band and Brian2Circuit an order
-above it, so Policy and LaunchGate were only ever exercised by MockFlyCircuit.
+above it, so Policy and ActionGate were only ever exercised by MockFlyCircuit.
 """
 
 from pathlib import Path
@@ -44,7 +44,9 @@ def _drive(circuit, n=15, dim=64, seed=0):
     return np.array(rows)
 
 
-@pytest.mark.parametrize("n_kc,n_dan,n_mbon", [(40, 6, 8), (80, 8, 16), (200, 20, 34), (2000, 20, 34)])
+@pytest.mark.parametrize(
+    "n_kc,n_dan,n_mbon", [(40, 6, 8), (80, 8, 16), (200, 20, 34), (2000, 20, 34)]
+)
 def test_lif_rates_in_band_at_every_population_size(n_kc, n_dan, n_mbon):
     """syn_gain is derived from n_kc, so a small circuit is not a different model."""
     rates = _drive(LIFCircuit(n_kc=n_kc, n_dan=n_dan, n_mbon=n_mbon, seed=1))
@@ -138,7 +140,12 @@ def _run(circuit, n=40, sentiment=0.8, reward=None):
     )
     actions = []
     for _ in range(n):
-        context = {"context": "journal", "note_id": "exp-001", "sentiment": sentiment, "query": "experiment"}
+        context = {
+            "context": "journal",
+            "note_id": "exp-001",
+            "sentiment": sentiment,
+            "query": "experiment",
+        }
         if reward is not None:
             context["reward"] = reward
         actions.append(loop.step(SensoryFrame.from_dict(context)).action)
@@ -245,9 +252,7 @@ def test_mbon_min_active_still_guards_below_operating_point():
 
 @pytest.mark.skipif(not TOP200_CONNECTOME.exists(), reason="top-200 fixture missing")
 def test_top200_published_fanout_stays_in_band():
-    circuit = MaleCNSCircuit(
-        backend="lif", n_kc=185, seed=42, connectivity_path=TOP200_CONNECTOME
-    )
+    circuit = MaleCNSCircuit(backend="lif", n_kc=185, seed=42, connectivity_path=TOP200_CONNECTOME)
     assert circuit.backend.w_kc_mbon.max() <= circuit.backend.w_max + 1e-12
     assert circuit.anatomy_scale <= 1.0
     assert circuit.backend.syn_gain == pytest.approx(
@@ -269,7 +274,7 @@ def _published_pyarrow_missing() -> bool:
 
 @pytest.mark.skipif(_published_pyarrow_missing(), reason="published feather or pyarrow missing")
 def test_published_malecns_fanout_stays_in_band():
-    """Item 1.3: real KC→MBON fan-out must land in the Policy/LaunchGate band."""
+    """Item 1.3: real KC→MBON fan-out must land in the Policy/ActionGate band."""
     circuit = MaleCNSCircuit(
         backend="lif", n_kc=4063, seed=1, connectivity_path=PUBLISHED_CONNECTOME
     )
@@ -279,9 +284,7 @@ def test_published_malecns_fanout_stays_in_band():
     assert circuit.published_weight_peak is not None
     assert circuit.published_weight_peak > circuit.backend.w_max
     assert circuit.backend.syn_gain == pytest.approx(
-        default_syn_gain(
-            4063, weights=circuit.backend.w_kc_mbon, w_max=circuit.backend.w_max
-        )
+        default_syn_gain(4063, weights=circuit.backend.w_kc_mbon, w_max=circuit.backend.w_max)
     )
     # DAN weights stay random, so they keep the n_kc-scale gain.
     assert circuit.backend.dan_syn_gain == pytest.approx(g0, rel=0.05)

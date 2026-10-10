@@ -55,7 +55,7 @@ The `context` dict provides semantic information about the frame:
 
 #### Stimulus Identifiers (at least one recommended)
 - `note_id`: str — Identifier for journal entries, notes, or documents
-- `ticker`: str — Identifier for financial instruments or tracked entities
+- `item`: str — Identifier for a tracked entity (note, document, or other odor key)
 - `event`: str — Event name or identifier
 - `page`: str — Page identifier in a web context
 

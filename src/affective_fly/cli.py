@@ -15,7 +15,7 @@ from .study import host_study_loop
 
 _DEMOS = {
     "loop": "examples/demo_loop.py",
-    "launch": "examples/demo_mood_launch.py",
+    "gate": "examples/demo_mood_gate.py",
     "swarm": "examples/demo_swarm.py",
     "learn": "examples/demo_td.py",
     "persist": "examples/demo_persist.py",

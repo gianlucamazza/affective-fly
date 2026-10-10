@@ -4,10 +4,10 @@
 from emotional_memory import EmotionalMemory, InMemoryStore
 
 from affective_fly import (
+    ActionGate,
     ActionJournal,
     AffectiveLoop,
     FakeEmbedder,
-    LaunchGate,
     MockFlyCircuit,
     SensoryFrame,
     lab_mood_field,
@@ -18,7 +18,10 @@ SCENARIOS = [
         {"context": "journal", "note_id": "exp-042", "sentiment": 1.0, "query": "success"}
         for _ in range(6)
     ],
-    *[{"context": "review", "note_id": "exp-042", "sentiment": -1.0, "query": "failed"} for _ in range(4)],
+    *[
+        {"context": "review", "note_id": "exp-042", "sentiment": -1.0, "query": "failed"}
+        for _ in range(4)
+    ],
 ]
 
 
@@ -32,7 +35,7 @@ def main() -> None:
         store=store,
         embedder=embedder,
         mood_field=lab_mood_field(),  # lab 8/4/5 s; not the 300/60/180 hypothesis
-        launch_gate=LaunchGate(required_ticks=3),
+        action_gate=ActionGate(required_ticks=3),
         journal=journal,
     )
 

@@ -1,7 +1,10 @@
 """Reduced mushroom-body circuit as the affect source for emotional-memory."""
 
-__version__ = "0.2.5"
+__version__ = "0.2.6"
 
+from . import launch_gate as _deprecated_gate_shim
+from ._legacy import DEPRECATED_EXPORTS
+from .action_gate import ActionGate, ActionGateState
 from .affect_bridge import AffectBridge, MBONDanReadout
 from .aso import ASO_CATALOG, AsoCatalog, NamedCell
 from .circuit_registry import CIRCUIT_NAMES, get_circuit
@@ -25,7 +28,6 @@ from .host_adapter import (
     sensory_frame_to_host_frame,
 )
 from .journal import ActionJournal, JournalEntry
-from .launch_gate import LaunchGate
 from .loop import AffectiveLoop, SensoryFrame
 from .malecns import MaleCNSCircuit
 from .malecns_connectome import (
@@ -150,7 +152,8 @@ __all__ = [
     "PolicyDecision",
     "ActionJournal",
     "JournalEntry",
-    "LaunchGate",
+    "ActionGate",
+    "ActionGateState",
     "MeasurementLog",
     "MeasurementRecord",
     "MeasurementSummary",
@@ -176,4 +179,12 @@ __all__ = [
     "extract_reward",
     "value_from_state",
     "Swarm",
+    *DEPRECATED_EXPORTS,
 ]
+
+
+def __getattr__(name: str):
+    """Re-export deprecated gate names from the shim module."""
+    if name in DEPRECATED_EXPORTS:
+        return getattr(_deprecated_gate_shim, name)
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

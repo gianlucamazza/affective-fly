@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """
-Demo: Mood-conditioned launch gate.
+Demo: Mood-conditioned action gate.
 
-Shows how LaunchGate prevents action when mood is avoidant,
-and only allows launch after N consecutive ticks of positive mood.
+Shows how ActionGate prevents action when mood is avoidant,
+and only allows action after N consecutive ticks of positive mood.
 """
 
 from affective_fly import (
+    ActionGate,
     AffectBridge,
-    LaunchGate,
     MockFlyCircuit,
     MoodField,
     SensoryFrame,
@@ -16,7 +16,7 @@ from affective_fly import (
 
 
 def main():
-    print("=== Affective Fly Demo: Mood-Conditioned Launch ===\n")
+    print("=== Affective Fly Demo: Mood-Conditioned Action Gate ===\n")
 
     # Initialize components
     fly_circuit = MockFlyCircuit(seed=42)
@@ -25,8 +25,8 @@ def main():
     # Hypothesis defaults remain 300 / 60 / 180 s on MoodField().
     mood_field = MoodField(tau_valence=25.0, tau_arousal=8.0, tau_approach=18.0)
 
-    # Launch gate: requires 3 consecutive ticks above threshold
-    launch_gate = LaunchGate(
+    # Action gate: requires 3 consecutive ticks above threshold
+    action_gate = ActionGate(
         threshold_approach=0.2,
         threshold_valence=-0.1,
         required_ticks=3,
@@ -34,11 +34,11 @@ def main():
 
     # Scenario: start negative, gradually improve
     scenarios = [
-        {"event": "Market crash", "sentiment": -1.0},
+        {"event": "Failed review", "sentiment": -1.0},
         {"event": "Continued decline", "sentiment": -0.8},
         {"event": "Slight recovery", "sentiment": -0.3},
         {"event": "Neutral signal", "sentiment": 0.1},
-        {"event": "Positive news", "sentiment": 0.5},
+        {"event": "Positive note", "sentiment": 0.5},
         {"event": "Strong signal", "sentiment": 0.7},
         {"event": "Continued strength", "sentiment": 0.8},
         {"event": "Peak confidence", "sentiment": 0.9},
@@ -47,44 +47,35 @@ def main():
         {"event": "Confirm", "sentiment": 0.8},
     ]
 
-    print("Simulating mood evolution and launch gate...\n")
+    print("Simulating mood evolution and action gate...\n")
 
     for i, scenario in enumerate(scenarios):
         print(f"\n--- Tick {i}: {scenario['event']} ---")
 
-        # Create sensory frame (sentiment biases the sensory vector)
         frame = SensoryFrame.from_dict(
             {"event": scenario["event"], "sentiment": scenario["sentiment"]}
         )
 
-        # Step circuit
         mbon_dan_state = fly_circuit.step(frame.visual, dt=0.05)
-
-        # Extract affect
         valence, arousal, approach = affect_bridge.readout_to_tuple(mbon_dan_state)
+        mood = mood_field.update(valence, arousal, approach, dt=5.0)
+        gate_state = action_gate.update(mood)
 
-        # Update mood (slow EMA)
-        mood = mood_field.update(valence, arousal, approach, dt=5.0)  # 5-second ticks
-
-        # Update launch gate
-        gate_state = launch_gate.update(mood)
-
-        # Display
         print(f"Sentiment: {scenario['sentiment']:+.2f}")
         print(
             f"Mood: V={mood.valence:+.2f}, A={mood.arousal:+.2f}, App={mood.approach_tendency:+.2f}"
         )
         print(
-            f"Gate: [{gate_state.consecutive_ticks}/{launch_gate.required_ticks}] {gate_state.reason}"
+            f"Gate: [{gate_state.consecutive_ticks}/{action_gate.required_ticks}] {gate_state.reason}"
         )
 
         if gate_state.is_open:
-            print("✓ LAUNCH ALLOWED")
+            print("✓ ACTION ALLOWED")
         else:
-            print("✗ LAUNCH BLOCKED")
+            print("✗ ACTION BLOCKED")
 
     print("\n" + "=" * 60)
-    print("\n=== Launch Gate Demo Complete ===")
+    print("\n=== Action Gate Demo Complete ===")
     print("The gate prevents impulsive action during negative mood.")
     print("Requires sustained positive approach + valence for safety.")
     print("This implements a 'cooling-off period' based on persistent mood.")

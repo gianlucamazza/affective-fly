@@ -17,8 +17,8 @@ format:
 demo:
 	@echo "Running demo loop..."
 	uv run python examples/demo_loop.py
-	@echo "\nRunning mood launch demo..."
-	uv run python examples/demo_mood_launch.py
+	@echo "\nRunning mood gate demo..."
+	uv run python examples/demo_mood_gate.py
 	@echo "\nRunning swarm demo..."
 	uv run python examples/demo_swarm.py
 	@echo "\nRunning three-factor learning demo..."
