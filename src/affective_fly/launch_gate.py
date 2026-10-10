@@ -10,6 +10,7 @@ from __future__ import annotations
 import warnings
 from dataclasses import dataclass
 
+from ._legacy import REMOVAL_NOTE
 from .action_gate import ActionGate, ActionGateState
 
 
@@ -19,7 +20,7 @@ class LaunchGateState(ActionGateState):
 
     def __post_init__(self) -> None:
         warnings.warn(
-            "LaunchGateState is deprecated; use ActionGateState",
+            f"LaunchGateState is deprecated; use ActionGateState; {REMOVAL_NOTE}",
             DeprecationWarning,
             stacklevel=2,
         )
@@ -35,7 +36,7 @@ class LaunchGate(ActionGate):
         required_ticks: int = 3,
     ):
         warnings.warn(
-            "LaunchGate is deprecated; use ActionGate",
+            f"LaunchGate is deprecated; use ActionGate; {REMOVAL_NOTE}",
             DeprecationWarning,
             stacklevel=2,
         )
@@ -48,7 +49,7 @@ class LaunchGate(ActionGate):
 
 def _deprecated_can_launch(self: ActionGate) -> bool:
     warnings.warn(
-        "can_launch() is deprecated; use can_act()",
+        f"can_launch() is deprecated; use can_act(); {REMOVAL_NOTE}",
         DeprecationWarning,
         stacklevel=2,
     )

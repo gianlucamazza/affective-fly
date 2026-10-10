@@ -14,3 +14,4 @@ LEGACY_ITEM_KEY_PREFIX = "ticker:"
 LEGACY_GATE_BLOCKED_MARKER = "launch gate blocked"
 
 DEPRECATED_EXPORTS = ("LaunchGate", "LaunchGateState")
+REMOVAL_NOTE = "will be removed in 0.3.0"
