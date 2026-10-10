@@ -10,6 +10,7 @@ app_file: app.py
 license: mit
 short_description: Toy fly-circuit affect loop on the circumplex
 suggested_hardware: cpu-basic
+pinned: true
 tags:
   - affective-computing
   - drosophila
@@ -85,3 +86,5 @@ uv run pytest tests/test_space_demo.py -v
 
 MIT, matching the repository. See
 [LICENSE](https://github.com/gianlucamazza/affective-fly/blob/main/LICENSE).
+
+**Author**: [Gianluca Mazza](https://gianlucamazza.it). I take LLM systems into production: state, recovery, eval, cost.
