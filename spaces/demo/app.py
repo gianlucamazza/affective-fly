@@ -11,18 +11,18 @@ from __future__ import annotations
 
 import os
 
+# No telemetry from this process. Gradio / hub clients honour these flags.
 os.environ.setdefault("GRADIO_ANALYTICS_ENABLED", "False")
 os.environ.setdefault("HF_HUB_DISABLE_TELEMETRY", "1")
 os.environ.setdefault("DO_NOT_TRACK", "1")
+import re
+import tempfile
+from pathlib import Path
 
-import re  # noqa: E402
-import tempfile  # noqa: E402
-from pathlib import Path  # noqa: E402
+import matplotlib
+from emotional_memory import EmotionalMemory, InMemoryStore
 
-import matplotlib  # noqa: E402
-from emotional_memory import EmotionalMemory, InMemoryStore  # noqa: E402
-
-from affective_fly import (  # noqa: E402
+from affective_fly import (
     ActionGate,
     ActionJournal,
     AffectiveLoop,
@@ -32,7 +32,7 @@ from affective_fly import (  # noqa: E402
     SensoryFrame,
     lab_mood_field,
 )
-from affective_fly.viz import plot_journal  # noqa: E402
+from affective_fly.viz import plot_journal
 
 matplotlib.use("Agg")
 
