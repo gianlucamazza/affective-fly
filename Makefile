@@ -7,12 +7,12 @@ test:
 	uv run pytest tests/ -v --cov=affective_fly --cov-report=term-missing
 
 lint:
-	uv run ruff check src/ tests/ examples/
+	uv run ruff check src/ tests/ examples/ spaces/
 	uv run mypy src/
 
 format:
-	uv run ruff format src/ tests/ examples/
-	uv run ruff check --fix src/ tests/ examples/
+	uv run ruff format src/ tests/ examples/ spaces/
+	uv run ruff check --fix src/ tests/ examples/ spaces/
 
 demo:
 	@echo "Running demo loop..."
