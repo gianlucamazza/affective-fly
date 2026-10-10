@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.util
+import warnings
 from pathlib import Path
 
 import pytest
@@ -86,3 +87,23 @@ def test_ui_copy_uses_action_gate(space_app):
     )
     lowered = copy.lower()
     assert "action gate" in lowered
+    assert "launchgate" not in lowered.replace(" ", "")
+    assert "launch_gate" not in lowered
+
+
+def test_run_sequence_emits_no_deprecation_warning(space_app):
+    """Space path must use ActionGate / action_gate=, not the aliases."""
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always", DeprecationWarning)
+        space_app.run_sequence(
+            space_app.DEFAULT_EVENTS_TEXT,
+            space_app.CIRCUIT_MOCK,
+            space_app.DEFAULT_SEED,
+        )
+        space_app.run_sequence(
+            space_app.DEFAULT_EVENTS_TEXT,
+            space_app.CIRCUIT_LIF,
+            space_app.DEFAULT_SEED,
+        )
+    dep = [w for w in caught if issubclass(w.category, DeprecationWarning)]
+    assert dep == []
