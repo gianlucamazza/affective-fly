@@ -11,6 +11,7 @@ from dataclasses import dataclass
 import numpy as np
 from emotional_memory import AppraisalVector, Embedder, EmotionalMemory, MemoryStore
 
+from ._legacy import REMOVAL_NOTE
 from .action_gate import ActionGate, ActionGateState
 from .affect_bridge import AffectBridge
 from .dual_path import DualPathEncoder
@@ -142,7 +143,7 @@ class AffectiveLoop:
         self.journal = journal or ActionJournal()
         if launch_gate is not None:
             warnings.warn(
-                "launch_gate= is deprecated; use action_gate=",
+                f"launch_gate= is deprecated; use action_gate=; {REMOVAL_NOTE}",
                 DeprecationWarning,
                 stacklevel=2,
             )
@@ -366,7 +367,7 @@ class AffectiveLoop:
     def launch_gate(self) -> ActionGate:
         """Deprecated alias of :attr:`action_gate`."""
         warnings.warn(
-            "AffectiveLoop.launch_gate is deprecated; use action_gate",
+            f"AffectiveLoop.launch_gate is deprecated; use action_gate; {REMOVAL_NOTE}",
             DeprecationWarning,
             stacklevel=2,
         )

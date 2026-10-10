@@ -2,20 +2,24 @@
 
 from __future__ import annotations
 
+import re
+
 import pytest
 from emotional_memory import CoreAffect, EmotionalMemory, InMemoryStore
 
 from affective_fly import ActionGate, AffectiveLoop, FakeEmbedder, Reconsolidator
-from affective_fly._legacy import LEGACY_ITEM_FIELD, LEGACY_ITEM_KEY_PREFIX
+from affective_fly._legacy import LEGACY_ITEM_FIELD, LEGACY_ITEM_KEY_PREFIX, REMOVAL_NOTE
 from affective_fly.action_gate import ActionGateState
 from affective_fly.measure import MeasurementRecord
 from affective_fly.reconsolidate import normalize_stimulus_key, stimulus_key
+
+_REMOVAL = re.escape(REMOVAL_NOTE)
 
 
 def test_launch_gate_class_alias_warns():
     from affective_fly.launch_gate import LaunchGate
 
-    with pytest.warns(DeprecationWarning, match="LaunchGate is deprecated"):
+    with pytest.warns(DeprecationWarning, match=f"LaunchGate is deprecated.*{_REMOVAL}"):
         gate = LaunchGate(required_ticks=1)
     assert isinstance(gate, ActionGate)
 
@@ -23,7 +27,7 @@ def test_launch_gate_class_alias_warns():
 def test_launch_gate_state_alias_warns():
     from affective_fly.launch_gate import LaunchGateState
 
-    with pytest.warns(DeprecationWarning, match="LaunchGateState is deprecated"):
+    with pytest.warns(DeprecationWarning, match=f"LaunchGateState is deprecated.*{_REMOVAL}"):
         state = LaunchGateState(is_open=False, consecutive_ticks=0, reason="x")
     assert isinstance(state, ActionGateState)
 
@@ -32,7 +36,7 @@ def test_can_launch_alias_warns():
     import affective_fly.launch_gate  # noqa: F401  # installs the method alias
 
     gate = ActionGate(required_ticks=1)
-    with pytest.warns(DeprecationWarning, match="can_launch"):
+    with pytest.warns(DeprecationWarning, match=f"can_launch.*{_REMOVAL}"):
         assert gate.can_launch() is False
 
 
@@ -40,7 +44,7 @@ def test_launch_gate_kwarg_warns():
     store = InMemoryStore()
     embedder = FakeEmbedder()
     gate = ActionGate(required_ticks=3)
-    with pytest.warns(DeprecationWarning, match="launch_gate="):
+    with pytest.warns(DeprecationWarning, match=f"launch_gate=.*{_REMOVAL}"):
         loop = AffectiveLoop(
             fly_circuit=__import__("affective_fly", fromlist=["MockFlyCircuit"]).MockFlyCircuit(
                 seed=0
@@ -64,16 +68,16 @@ def test_launch_gate_attr_warns():
         store=store,
         embedder=embedder,
     )
-    with pytest.warns(DeprecationWarning, match="launch_gate is deprecated"):
+    with pytest.warns(DeprecationWarning, match=f"launch_gate is deprecated.*{_REMOVAL}"):
         assert loop.launch_gate is loop.action_gate
 
 
 def test_package_reexports_deprecated_names():
     import affective_fly
 
-    with pytest.warns(DeprecationWarning, match="LaunchGate is deprecated"):
+    with pytest.warns(DeprecationWarning, match=f"LaunchGate is deprecated.*{_REMOVAL}"):
         assert isinstance(affective_fly.LaunchGate(), ActionGate)
-    with pytest.warns(DeprecationWarning, match="LaunchGateState is deprecated"):
+    with pytest.warns(DeprecationWarning, match=f"LaunchGateState is deprecated.*{_REMOVAL}"):
         assert isinstance(
             affective_fly.LaunchGateState(is_open=False, consecutive_ticks=0, reason="x"),
             ActionGateState,

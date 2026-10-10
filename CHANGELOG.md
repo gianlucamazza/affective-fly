@@ -11,5 +11,5 @@
 
 ### Deprecated
 
-- `LaunchGate`, `LaunchGateState`, `can_launch()`, `launch_gate=` / `.launch_gate`, and `from affective_fly.launch_gate import …` remain as aliases and emit `DeprecationWarning`.
+- `LaunchGate`, `LaunchGateState`, `can_launch()`, `launch_gate=` / `.launch_gate`, and `from affective_fly.launch_gate import …` remain as aliases and emit `DeprecationWarning`. They will be removed in 0.3.0.
 - Persisted `_stimulus_key` values with the old `ticker:{id}` prefix still match live `item:{id}` keys.
