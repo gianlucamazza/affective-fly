@@ -78,7 +78,7 @@ uv run pytest tests/test_space_demo.py -v
 ## Links
 
 - **GitHub**: [gianlucamazza/affective-fly](https://github.com/gianlucamazza/affective-fly)
-- **Sibling Space**: [homen3/emotional-memory-demo](https://huggingface.co/spaces/homen3/emotional-memory-demo)
+- **Sibling Space**: [gianlucamazza/emotional-memory-demo](https://huggingface.co/spaces/gianlucamazza/emotional-memory-demo)
 - **emotional-memory**: [gianlucamazza/emotional-memory](https://github.com/gianlucamazza/emotional-memory)
 
 ## License
