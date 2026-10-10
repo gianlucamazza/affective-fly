@@ -18,10 +18,10 @@ import matplotlib
 from emotional_memory import EmotionalMemory, InMemoryStore
 
 from affective_fly import (
+    ActionGate,
     ActionJournal,
     AffectiveLoop,
     FakeEmbedder,
-    LaunchGate,
     LIFCircuit,
     MockFlyCircuit,
     SensoryFrame,
@@ -181,8 +181,8 @@ def _make_circuit(circuit_name: str, seed: int):
 
 
 def _display_reason(reason: str) -> str:
-    """Keep library identifiers intact; soften wording only in the UI summary."""
-    return reason.replace("Launch gate", "Action gate").replace("LaunchGate", "action gate")
+    """Pass through the library reason (already uses 'Action gate')."""
+    return reason
 
 
 def run_sequence(
@@ -202,7 +202,7 @@ def run_sequence(
         store=store,
         embedder=embedder,
         mood_field=lab_mood_field(),
-        launch_gate=LaunchGate(required_ticks=3),
+        action_gate=ActionGate(required_ticks=3),
         journal=journal,
     )
 

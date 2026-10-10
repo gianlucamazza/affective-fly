@@ -4,13 +4,17 @@
 
 ## Unreleased
 
-MaleCNS published synapse counts (typically 1–152) are uniformly scaled into the LIF `w_max` band at load (`scale_published_weights_to_band`) so `learn()` cannot flatten anatomy; `learn()` raises if raw counts are assigned later. Docs distinguish trained-regime approach saturation (~70% `|approach|=1`) from the Phase 6 host replay (~39% on 28 little-trained ticks). Stale “Blocked” headings for the MaleCNS loader and Brian2 C++ opt-in are split into in-repo remaining limits vs host/secrets gaps. [BENCHMARKS.md](BENCHMARKS.md) now has one local `--cpp` snapshot at 200/2000/5000 KC (this machine only). Approach denominator, taus, and Policy/LaunchGate thresholds are unchanged.
+MaleCNS published synapse counts (typically 1–152) are uniformly scaled into the LIF `w_max` band at load (`scale_published_weights_to_band`) so `learn()` cannot flatten anatomy; `learn()` raises if raw counts are assigned later. Docs distinguish trained-regime approach saturation (~70% `|approach|=1`) from the Phase 6 host replay (~39% on 28 little-trained ticks). Stale “Blocked” headings for the MaleCNS loader and Brian2 C++ opt-in are split into in-repo remaining limits vs host/secrets gaps. [BENCHMARKS.md](BENCHMARKS.md) now has one local `--cpp` snapshot at 200/2000/5000 KC (this machine only). Approach denominator, taus, and Policy/ActionGate thresholds are unchanged.
 
 Docs and tooling (earlier). `benchmark_brian2_codegen.py` now sweeps KC size (default 500/1000/2000/5000) instead of a single 2000-KC point, writes machine-readable JSON alongside the text results, and is driven by `make benchmark`; the committed reference table and methodology live in [BENCHMARKS.md](BENCHMARKS.md) (the raw `.txt`/`.json` stay git-ignored, local-only). `examples/make_figures.py` (`make figures`) regenerates two committed figures under `docs/figures/`: the demo circumplex/mood readout and the LIF-vs-Brian2 scaling plot. Added a documentation index ([docs/README.md](README.md)) cross-linking every doc.
 
+## v0.2.6
+
+Public names: `ActionGate` / `ActionGateState` / `can_act()` / `action_gate=`. Stimulus identity field is `item` (key `item:{id}`). Deprecated aliases remain for one cycle. Not a trading or financial product.
+
 ## v0.2.5
 
-Calibration pass. Every circuit backend now lands in the MBON 10–100 Hz / DAN 5–80 Hz band of [MAPPING_MBON_DAN.md](MAPPING_MBON_DAN.md), so Policy and LaunchGate are driven by the spiking circuits and not only by `MockFlyCircuit`. Before this, `LIFCircuit` ran at 7–10 Hz with arousal stuck at 0 and `Brian2Circuit` at 290–410 Hz with arousal pinned at 1.0 — both returned the same decision for every input.
+Calibration pass. Every circuit backend now lands in the MBON 10–100 Hz / DAN 5–80 Hz band of [MAPPING_MBON_DAN.md](MAPPING_MBON_DAN.md), so Policy and ActionGate are driven by the spiking circuits and not only by `MockFlyCircuit`. Before this, `LIFCircuit` ran at 7–10 Hz with arousal stuck at 0 and `Brian2Circuit` at 290–410 Hz with arousal pinned at 1.0 — both returned the same decision for every input.
 
 - `LIFCircuit` sub-steps at `dt_sim` (1 ms), uses delta synapses, non-negative weights, and a `syn_gain` derived from `n_kc` (`950 · n_kc^(−0.70)`), rescaled by actual KC→MBON fan-in after a published connectome load. One Euler step of the caller's 50 ms both under-sampled a 20 ms membrane and capped every rate at `1/dt`.
 - `Brian2Circuit` recalibrated through `w_max` (0.12), which now sets both the weight ceiling and the init scale; the `syn_w` parameter it used before is gone.
@@ -19,7 +23,7 @@ Calibration pass. Every circuit backend now lands in the MBON 10–100 Hz / DAN 
 - `valence` and `approach_tendency` are no longer the same number: relative contrast vs absolute net drive. A near-silent population no longer reads as full-confidence avoidance.
 - `arousal` is `[0, 1]` everywhere, matching `CoreAffect`. `Policy(threshold_calm=-0.5)` was dead code; the default is now 0.0, anchored to the DAN baseline. Memory-driven avoidance is evaluated before the arousal gate.
 - The numpy `Any`-return suppressions added in v0.2.4 are replaced by explicit `np.asarray(..., dtype=float)`, and the `Appraiser` protocol no longer widens to `Any`. `mypy src/` is clean without any `type: ignore`.
-- Demo scene changed from token-launch (ticker MEME, page launchpad) to research-journal episode (context: journal, note_id for research episodes). Tests, examples, and README now use the journal context. Token-launch product stays out of scope.
+- Demo scene uses a research-journal episode (context: journal, note_id). Tests, examples, and README use that journal context.
 
 ## v0.2.4
 
@@ -46,11 +50,11 @@ v0.2.0 plus: MoodField JSON round-trip, delayed US through `AffectiveLoop`, `mak
 
 **Still blocked on a host or secrets**:
 
-- Phase 6 empirics (fitted τ, approach-denominator change, Policy/LaunchGate retune). Scaffolding is in-repo; numbers stay hypotheses until a real human/production-host session. Do not invent Hige IDs or fake traces.
+- Phase 6 empirics (fitted τ, approach-denominator change, Policy/ActionGate retune). Scaffolding is in-repo; numbers stay hypotheses until a real human/production-host session. Do not invent Hige IDs or fake traces.
 - Production LLM keys (`DualPathEncoder.from_llm`).
 - Semantic embedder download in default CI (`--extra embed`).
 
-Not in scope for this repo: token-launch product, sex/mating ensembles, swarm N ≫ 8.
+Not a trading or financial product. Also out of scope: sex/mating ensembles, swarm N ≫ 8.
 
 ## Questions
 

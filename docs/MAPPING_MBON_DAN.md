@@ -23,14 +23,14 @@ arousal           = clip((R_DAN - 5) / (80 - 5), 0, 1)     # [0, 1]
 |    60 |   40 |    20 |   +0.20 |    +1.00 |    0.20 |
 |     0 | 0.59 |     1 |   −0.12 |    −0.03 |    0.00 |
 
-**Valence and approach share a numerator, not a denominator.** Valence is the *relative* contrast: which sign the situation has. Approach tendency is the *absolute* net drive referred to the MBON baseline: how much push there is behind it. The last two rows show the difference — the same ratio at different rates gives the same valence and very different approach. Policy and launch gate read both, so "act" means positive *and* strong.
+**Valence and approach share a numerator, not a denominator.** Valence is the *relative* contrast: which sign the situation has. Approach tendency is the *absolute* net drive referred to the MBON baseline: how much push there is behind it. The last two rows show the difference — the same ratio at different rates gives the same valence and very different approach. Policy and ActionGate read both, so "act" means positive *and* strong.
 
 Until v0.2.3 the two were algebraically identical (`(a−b)/(a+b)` and `2a/(a+b)−1`), so the gate's two thresholds were one threshold.
 
 Two measured caveats, so the separation is not oversold:
 
 - **`MockFlyCircuit` stays collinear** (r ≈ 0.997). It derives both MBON rates from one scalar — the mean of the sensory vector — so it has a single degree of freedom and cannot produce two independent axes whatever the bridge does. On the spiking backends the correlation is 0.77–0.85.
-- **Approach saturates in the trained regime.** Net drive passes `2 × mbon_baseline` = 20 Hz easily once a circuit has learned, so `|approach| = 1` in ~70% of ticks and the axis stops carrying information above that. A later Phase 6 host replay (emotional-memory `#137`, 28 ticks, little-trained `LIFCircuit(n_kc=200)`) measured `approach_saturated_fraction ≈ 0.393` — a different condition, not a new default. Referring the axis to `mbon_max` instead would remove the saturation, but the Policy and LaunchGate thresholds were chosen against the baseline-referred scale and there is no data to re-tune them against — see ROADMAP. Do not treat 70% or 39% as a retune target.
+- **Approach saturates in the trained regime.** Net drive passes `2 × mbon_baseline` = 20 Hz easily once a circuit has learned, so `|approach| = 1` in ~70% of ticks and the axis stops carrying information above that. A later Phase 6 host replay (emotional-memory `#137`, 28 ticks, little-trained `LIFCircuit(n_kc=200)`) measured `approach_saturated_fraction ≈ 0.393` — a different condition, not a new default. Referring the axis to `mbon_max` instead would remove the saturation, but the Policy and ActionGate thresholds were chosen against the baseline-referred scale and there is no data to re-tune them against — see ROADMAP. Do not treat 70% or 39% as a retune target.
 
 **`confidence` guards the silent circuit.** With a bare ratio, a single spike on an otherwise silent population reads as full-confidence avoidance: `R_app=0, R_av=0.59` gave valence `−1.00`. Below `mbon_min_active` (5 Hz total) the readout is scaled toward neutral.
 
@@ -38,7 +38,7 @@ Two measured caveats, so the separation is not oversold:
 
 ## Circuit calibration
 
-The bridge constants are fixed, so each backend must land in the band rather than the band moving to the backend. Before v0.2.4 only `MockFlyCircuit` did: `LIFCircuit` ran at 7–10 Hz MBON with arousal stuck at 0, `Brian2Circuit` at 290–410 Hz with arousal pinned at 1.0 and valence ≈ 0. Policy and LaunchGate were therefore exercised only by the mock, and both spiking backends returned a constant decision for every input.
+The bridge constants are fixed, so each backend must land in the band rather than the band moving to the backend. Before v0.2.4 only `MockFlyCircuit` did: `LIFCircuit` ran at 7–10 Hz MBON with arousal stuck at 0, `Brian2Circuit` at 290–410 Hz with arousal pinned at 1.0 and valence ≈ 0. Policy and ActionGate were therefore exercised only by the mock, and both spiking backends returned a constant decision for every input.
 
 What changed:
 

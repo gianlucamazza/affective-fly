@@ -1,7 +1,7 @@
 """
 Reconsolidation: update an existing memory instead of duplicating it.
 
-If the same stimulus (note_id, ticker, event, or page) is re-encoded inside
+If the same stimulus (note_id, item, event, or page) is re-encoded inside
 the labile window, blend the new circuit affect into the stored tag.
 This is a computational analogue of retrieval-induced updating, not a
 claim about molecular reconsolidation in flies.
@@ -25,18 +25,33 @@ from typing import Any
 
 from emotional_memory import CoreAffect, Embedder, Memory, MemoryStore
 
+from ._legacy import LEGACY_ITEM_FIELD, LEGACY_ITEM_KEY_PREFIX
+
+
+def normalize_stimulus_key(key: str | None) -> str | None:
+    """Map a stored or live stimulus key onto the current spelling.
+
+    Legacy item-key prefixes from ``_legacy`` compare equal to ``item:{id}``.
+    """
+    if key is None:
+        return None
+    if key.startswith(LEGACY_ITEM_KEY_PREFIX):
+        return f"item:{key[len(LEGACY_ITEM_KEY_PREFIX) :]}"
+    return key
+
 
 def stimulus_key(context: dict[str, Any]) -> str | None:
     """Identity of a stimulus for match-or-encode.
 
-    note_id (or ticker for backward compat) wins so the same odor key reconsolidates across contexts.
+    note_id (or item, including the legacy field name) wins so the same
+    odor key reconsolidates across contexts.
     """
     note_id = context.get("note_id")
     if note_id:
         return f"note_id:{note_id}"
-    ticker = context.get("ticker")
-    if ticker:
-        return f"ticker:{ticker}"
+    item = context.get("item") or context.get(LEGACY_ITEM_FIELD)
+    if item:
+        return f"item:{item}"
     event = context.get("event")
     if event:
         return f"event:{event}"
@@ -78,7 +93,7 @@ class Reconsolidator:
         for mem in store.list_all():
             md = mem.metadata or {}
             stored_key = md.get("_stimulus_key") or stimulus_key(md)
-            if stored_key != key:
+            if normalize_stimulus_key(stored_key) != normalize_stimulus_key(key):
                 continue
             ts = mem.tag.timestamp
             if ts.tzinfo is None:

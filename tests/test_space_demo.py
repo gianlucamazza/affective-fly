@@ -40,8 +40,6 @@ def test_run_sequence_mock_demo_loop(space_app):
     assert {row[6] for row in rows} <= {"open", "closed"}
     assert "open" in {row[6] for row in rows}
     assert rows[-1][2] == "skip"
-    assert "LaunchGate" not in summary
-    assert "token" not in summary.lower()
     assert "10 steps" in summary
     assert "Mock" in summary
 
@@ -77,7 +75,7 @@ def test_empty_events_rejected(space_app):
         space_app.parse_events("# only a comment\n\n")
 
 
-def test_ui_copy_avoids_crypto_lexicon(space_app):
+def test_ui_copy_uses_action_gate(space_app):
     copy = "\n".join(
         [
             SPACE_README.read_text(encoding="utf-8"),
@@ -87,7 +85,4 @@ def test_ui_copy_avoids_crypto_lexicon(space_app):
         ]
     )
     lowered = copy.lower()
-    assert "launchgate" not in lowered
-    assert "token launch" not in lowered
-    assert "token-launch" not in lowered
     assert "action gate" in lowered

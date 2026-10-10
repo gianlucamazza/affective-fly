@@ -34,7 +34,7 @@ def test_host_owns_memory_and_timestamp_mood_dt():
     assert host.mood.tau_arousal == HYPOTHESIS_TAU_AROUSAL
     assert host.mood.tau_approach == HYPOTHESIS_TAU_APPROACH
     assert host.loop.policy.threshold_act == 0.2
-    assert host.loop.launch_gate.threshold_approach == 0.2
+    assert host.loop.action_gate.threshold_approach == 0.2
     assert host.loop.policy.threshold_calm == 0.0
 
     frames = [

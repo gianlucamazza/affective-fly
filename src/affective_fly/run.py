@@ -8,12 +8,12 @@ from pathlib import Path
 
 from emotional_memory import EmotionalMemory, SQLiteStore
 
+from .action_gate import ActionGate
 from .circuit_registry import get_circuit
 from .fake_embedder import FakeEmbedder
 from .fly_circuit import FlyAffectReadout
 from .host_adapter import HostAdapter, HostFrame
 from .journal import ActionJournal
-from .launch_gate import LaunchGate
 from .loop import AffectiveLoop
 from .measure import MeasurementLog
 from .mood_field import lab_mood_field
@@ -86,7 +86,7 @@ def live_loop(
         store=store,
         embedder=embedder,
         mood_field=mood,
-        launch_gate=LaunchGate(required_ticks=3),
+        action_gate=ActionGate(required_ticks=3),
         journal=ActionJournal(filepath=str(journal_path)),
         measurement_log=MeasurementLog(filepath=measure_path),
     )

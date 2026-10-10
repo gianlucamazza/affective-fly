@@ -117,8 +117,8 @@ class ActionJournal:
             decision: PolicyDecision from policy
             sensory_context: Current sensory frame/context
             retrieved_count: Number of memories retrieved
-            gate_open: LaunchGate open/closed at this step
-            gate_reason: LaunchGate reason string
+            gate_open: ActionGate open/closed at this step
+            gate_reason: ActionGate reason string
             reconsolidated: True if this step updated a labile memory
             appraisal_novelty: Slow-path novelty in [-1, 1]
             td_delta: Rescorla–Wagner residual r − V if an outcome was present
@@ -128,7 +128,7 @@ class ActionJournal:
             mood_dt: Seconds passed to MoodField.update
             tau_*: Taus actually used this tick
             tau_set: hypothesis / lab / custom
-            gate_consecutive_ticks: LaunchGate counter
+            gate_consecutive_ticks: ActionGate counter
             store_size: Memories after this encode
             approach_denominator: 2 × mbon_baseline (frozen, section 1.4)
         """

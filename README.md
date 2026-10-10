@@ -18,7 +18,7 @@ Each tick (`AffectiveLoop.step`; full flow in [`docs/ARCHITECTURE.md`](docs/ARCH
 
 ```
 SensoryFrame → fly circuit (KC→DAN→MBON) → CoreAffect (valence/arousal + approach)
-            → MoodField (slow EMA) → Policy + LaunchGate → Decision
+            → MoodField (slow EMA) → Policy + ActionGate → Decision
 ```
 
 - **Encode**: the current affect is attached to the memory via `EmotionalMemory.set_affect` / `encode`.
@@ -30,20 +30,20 @@ The circumplex/mood readout of a demo episode is shown under [Usage](#usage).
 ## Objectives
 
 - Provide a stable, interpretable valence/arousal signal as input to `emotional-memory`.
-- Keep a documented, calibrated mapping from spiking rates to the MBON/DAN bands ([`docs/MAPPING_MBON_DAN.md`](docs/MAPPING_MBON_DAN.md)), so real circuits — not only `MockFlyCircuit` — drive Policy and LaunchGate.
+- Keep a documented, calibrated mapping from spiking rates to the MBON/DAN bands ([`docs/MAPPING_MBON_DAN.md`](docs/MAPPING_MBON_DAN.md)), so real circuits — not only `MockFlyCircuit` — drive Policy and ActionGate.
 - Support three-factor learning and versioned host integration (`HostFrame`, journal replay).
 - Stay honest and reproducible: `ruff`/`mypy` clean, tests green, benchmarks committed, and no claim beyond what the code does (without a real connectome the KC→MBON weights are random, and the code says so).
 
 ## Not in scope
 
-Token-launch product, sex/mating ensembles, and swarms of N ≫ 8 (see [`docs/ROADMAP.md`](docs/ROADMAP.md)). Brian2 C++ standalone codegen is opt-in (`Brian2Circuit(codegen_target="cpp_standalone")`); the default remains numpy so CI needs no compiler.
+Not a trading or financial product. Sex/mating ensembles and swarms of N ≫ 8 are also out of scope (see [`docs/ROADMAP.md`](docs/ROADMAP.md)). Brian2 C++ standalone codegen is opt-in (`Brian2Circuit(codegen_target="cpp_standalone")`); the default remains numpy so CI needs no compiler.
 
 ## Installation
 
 ```bash
 git clone https://github.com/gianlucamazza/affective-fly.git
 cd affective-fly
-git checkout v0.2.5
+git checkout v0.2.6
 uv sync --extra dev --extra brian --extra viz
 ```
 
@@ -65,7 +65,7 @@ make figures      # regenerate docs/figures/ (needs viz extra)
 
 `python -m affective_fly run` uses lab mood taus (8 / 4 / 5 s) so valence moves in seconds and writes `measure.jsonl` with `mood_dt=1.0`. `python -m affective_fly study` uses `MoodField()` defaults (300 / 60 / 180 s) and wall-clock `mood_dt`. Those taus stay unvalidated hypotheses until a real host session — see [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) and [`docs/PHASE6_MEASUREMENT.md`](docs/PHASE6_MEASUREMENT.md).
 
-A demo episode: sustained approach opens the launch gate (shaded), then failed reviews pull valence down and memory-driven avoidance yields SKIP. Regenerate with `make figures`.
+A demo episode: sustained approach opens the action gate (shaded), then failed reviews pull valence down and memory-driven avoidance yields SKIP. Regenerate with `make figures`.
 
 ![circumplex and mood over a demo episode](docs/figures/circumplex_mood.png)
 

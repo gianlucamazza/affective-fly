@@ -5,16 +5,17 @@ Integrates all components into a single decision cycle.
 """
 
 import hashlib
+import warnings
 from dataclasses import dataclass
 
 import numpy as np
 from emotional_memory import AppraisalVector, Embedder, EmotionalMemory, MemoryStore
 
+from .action_gate import ActionGate, ActionGateState
 from .affect_bridge import AffectBridge
 from .dual_path import DualPathEncoder
 from .fly_circuit import FlyAffectReadout
 from .journal import ActionJournal
-from .launch_gate import LaunchGate, LaunchGateState
 from .measure import (
     SATURATION_ABS,
     MeasurementLog,
@@ -39,12 +40,12 @@ class SensoryFrame:
     - olfactory: virtual odor (e.g., note_id as odor signature)
     - context: metadata (journal text, outcome, etc.)
 
-    ``ticker`` / ``event`` / ``page`` remain valid stimulus identifiers
-    (reconsolidation keys); they are not a token-launch product surface.
+    ``item`` / ``event`` / ``page`` remain valid stimulus identifiers
+    (reconsolidation keys).
     """
 
     visual: np.ndarray  # Raw sensory vector
-    context: dict  # Metadata (note_id, page, outcome, ticker, etc.)
+    context: dict  # Metadata (note_id, page, outcome, item, etc.)
 
     @classmethod
     def from_dict(cls, data: dict, dim: int = 64) -> "SensoryFrame":
@@ -78,7 +79,7 @@ class AffectiveLoop:
     5. Slow-path appraisal attached to the tag (circuit CoreAffect unchanged)
     6. Retrieve memories weighted by current mood
     7. Policy decision based on mood + memories
-    8. LaunchGate blocks impulsive CLICK/TYPE until mood holds for N ticks
+    8. ActionGate blocks impulsive CLICK/TYPE until mood holds for N ticks
     9. Log to journal
     """
 
@@ -92,12 +93,13 @@ class AffectiveLoop:
         mood_field: MoodField | None = None,
         policy: Policy | None = None,
         journal: ActionJournal | None = None,
-        launch_gate: LaunchGate | None = None,
+        action_gate: ActionGate | None = None,
         dual_path: DualPathEncoder | None = None,
         reconsolidator: Reconsolidator | None = None,
         td_sequential: bool = False,
         td_prediction_error: bool = False,
         measurement_log: MeasurementLog | None = None,
+        launch_gate: ActionGate | None = None,
     ):
         """
         Initialize loop with all components.
@@ -115,9 +117,11 @@ class AffectiveLoop:
             mood_field: MoodField (default created if None)
             policy: Policy (default created if None)
             journal: ActionJournal (default created if None)
-            launch_gate: LaunchGate (default created if None). Pass a
+            action_gate: ActionGate (default created if None). Pass a
                 pre-configured gate to change thresholds; gating always
                 runs so CLICK/TYPE require sustained approach+valence.
+            launch_gate: Deprecated alias of ``action_gate``. Emits
+                DeprecationWarning. Do not pass both.
             dual_path: Slow-path appraisal (default HeuristicAppraisalEngine).
             reconsolidator: Labile-window updater (default 10 min window).
             td_sequential: If True, a reward on this frame is a delayed US
@@ -136,7 +140,16 @@ class AffectiveLoop:
         self.mood_field = mood_field or MoodField()
         self.policy = policy or Policy()
         self.journal = journal or ActionJournal()
-        self.launch_gate = launch_gate or LaunchGate()
+        if launch_gate is not None:
+            warnings.warn(
+                "launch_gate= is deprecated; use action_gate=",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            if action_gate is not None:
+                raise TypeError("pass action_gate= or launch_gate=, not both")
+            action_gate = launch_gate
+        self.action_gate = action_gate or ActionGate()
         self.dual_path = dual_path or DualPathEncoder()
         self.reconsolidator = reconsolidator or Reconsolidator()
         self.td_sequential = td_sequential
@@ -144,7 +157,7 @@ class AffectiveLoop:
         self.measurement_log = measurement_log
 
         self.step_count = 0
-        self.last_gate_state: LaunchGateState | None = None
+        self.last_gate_state: ActionGateState | None = None
         self.last_appraisal: AppraisalVector | None = None
         self.last_reconsolidated = False
         self.last_td: TDResult | None = None
@@ -248,8 +261,8 @@ class AffectiveLoop:
         # 7. Policy decision
         decision = self.policy.decide(mood, retrieved_dicts, sensory_frame.context)
 
-        # 8. Mood-conditioned launch gate: block impulsive CLICK/TYPE
-        gate_state = self.launch_gate.update(mood)
+        # 8. Mood-conditioned action gate: block impulsive CLICK/TYPE
+        gate_state = self.action_gate.update(mood)
         self.last_gate_state = gate_state
         if not gate_state.is_open and decision.action in (Action.CLICK, Action.TYPE):
             decision = PolicyDecision(
@@ -259,14 +272,12 @@ class AffectiveLoop:
                 mood_valence=decision.mood_valence,
                 mood_arousal=decision.mood_arousal,
                 approach_tendency=decision.approach_tendency,
-                reason=(f"Launch gate blocked {decision.action.value}: {gate_state.reason}"),
+                reason=(f"Action gate blocked {decision.action.value}: {gate_state.reason}"),
             )
 
         # 9. Log to journal + Phase 6 measurement
         denom = approach_denominator(self.affect_bridge.mbon_baseline)
-        net_hz = float(mbon_dan_state.mbon_approach_rate) - float(
-            mbon_dan_state.mbon_avoid_rate
-        )
+        net_hz = float(mbon_dan_state.mbon_approach_rate) - float(mbon_dan_state.mbon_avoid_rate)
         tau_set = classify_tau_set(
             self.mood_field.tau_valence,
             self.mood_field.tau_arousal,
@@ -274,7 +285,7 @@ class AffectiveLoop:
         )
         store_size = self._store_size()
         saturated = abs(approach) >= SATURATION_ABS
-        blocked = (not gate_state.is_open) and "Launch gate blocked" in decision.reason
+        blocked = (not gate_state.is_open) and "Action gate blocked" in decision.reason
         raw_elig = getattr(self.fly_circuit, "elig_tau", None)
         elig_tau = float(raw_elig) if raw_elig is not None else None
         record = MeasurementRecord(
@@ -304,7 +315,7 @@ class AffectiveLoop:
             action=decision.action.value,
             reason=decision.reason,
             threshold_act=float(self.policy.threshold_act),
-            threshold_approach=float(self.launch_gate.threshold_approach),
+            threshold_approach=float(self.action_gate.threshold_approach),
             threshold_calm=float(self.policy.threshold_calm),
             retrieved_count=len(retrieved_dicts),
             store_size=store_size,
@@ -351,11 +362,21 @@ class AffectiveLoop:
         self.step_count += 1
         return decision
 
+    @property
+    def launch_gate(self) -> ActionGate:
+        """Deprecated alias of :attr:`action_gate`."""
+        warnings.warn(
+            "AffectiveLoop.launch_gate is deprecated; use action_gate",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.action_gate
+
     def reset(self) -> None:
         """Reset all components."""
         self.fly_circuit.reset()
         self.mood_field.reset()
-        self.launch_gate.reset()
+        self.action_gate.reset()
         self.dual_path.reset()
         self.last_gate_state = None
         self.last_appraisal = None

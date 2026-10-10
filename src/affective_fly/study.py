@@ -10,7 +10,7 @@ This module is the study path:
 emotional-memory is the in-process store/retrieve engine, not a product host.
 The study loop already wires ``EmotionalMemory`` + ``SQLiteStore`` and logs
 through ``AffectiveLoop.measurement_log``. Do not invent outcomes, fitted τ,
-or new Policy / LaunchGate defaults from a CLI/synthetic session.
+or new Policy / ActionGate defaults from a CLI/synthetic session.
 """
 
 from __future__ import annotations
@@ -21,12 +21,12 @@ from pathlib import Path
 
 from emotional_memory import EmotionalMemory, SQLiteStore
 
+from .action_gate import ActionGate
 from .circuit_registry import get_circuit
 from .fake_embedder import FakeEmbedder
 from .fly_circuit import FlyAffectReadout
 from .host_adapter import HostAdapter, HostFrame, mood_dts_from_timestamps
 from .journal import ActionJournal
-from .launch_gate import LaunchGate
 from .loop import AffectiveLoop
 from .measure import MeasurementLog, classify_tau_set
 from .mood_field import MoodField
@@ -92,7 +92,7 @@ def host_study_loop(
         store=store,
         embedder=embedder,
         mood_field=mood,
-        launch_gate=LaunchGate(required_ticks=3),
+        action_gate=ActionGate(required_ticks=3),
         journal=ActionJournal(filepath=str(journal_path)),
         measurement_log=MeasurementLog(filepath=measure_path),
     )

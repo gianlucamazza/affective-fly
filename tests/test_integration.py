@@ -4,10 +4,10 @@ import numpy as np
 from emotional_memory import EmotionalMemory, InMemoryStore
 
 from affective_fly import (
+    ActionGate,
     ActionJournal,
     AffectiveLoop,
     FakeEmbedder,
-    LaunchGate,
     LIFCircuit,
     MockFlyCircuit,
     MoodField,
@@ -206,8 +206,8 @@ def test_loop_reset():
 
     assert loop.step_count == 0
     assert loop.mood_field.valence == 0.0
-    assert loop.launch_gate.is_open is False
-    assert loop.launch_gate.consecutive_ticks == 0
+    assert loop.action_gate.is_open is False
+    assert loop.action_gate.consecutive_ticks == 0
 
 
 def test_sensory_frame_applies_sentiment():
@@ -225,14 +225,14 @@ def test_sensory_frame_seed_stable():
     assert np.allclose(a.visual, b.visual)
 
 
-def test_loop_launch_gate_blocks_impulsive_action():
+def test_loop_action_gate_blocks_impulsive_action():
     """CLICK/TYPE wait until mood criteria hold for N ticks."""
     fly_circuit = MockFlyCircuit(seed=42)
     store = InMemoryStore()
     embedder = FakeEmbedder()
     emotional_memory = EmotionalMemory(store=store, embedder=embedder)
     mood_field = MoodField(tau_valence=0.01, tau_arousal=0.01, tau_approach=0.01)
-    gate = LaunchGate(threshold_approach=0.2, threshold_valence=-0.1, required_ticks=3)
+    gate = ActionGate(threshold_approach=0.2, threshold_valence=-0.1, required_ticks=3)
 
     loop = AffectiveLoop(
         fly_circuit=fly_circuit,
@@ -240,7 +240,7 @@ def test_loop_launch_gate_blocks_impulsive_action():
         store=store,
         embedder=embedder,
         mood_field=mood_field,
-        launch_gate=gate,
+        action_gate=gate,
     )
 
     frame = SensoryFrame.from_dict({"note_id": "exp-001", "sentiment": 1.0})
@@ -254,7 +254,7 @@ def test_loop_launch_gate_blocks_impulsive_action():
     assert "gate" in d1.reason.lower()
     assert d2.action == Action.WAIT
     assert d3.action in (Action.CLICK, Action.TYPE)
-    assert loop.launch_gate.is_open is True
+    assert loop.action_gate.is_open is True
     assert all(e.gate_open is not None for e in loop.journal.entries)
 
 
@@ -276,7 +276,7 @@ def test_loop_attaches_appraisal_without_new_memory():
     assert loop.journal.entries[0].appraisal_novelty is not None
 
 
-def test_loop_reconsolidates_same_ticker():
+def test_loop_reconsolidates_same_item():
     store = InMemoryStore()
     embedder = FakeEmbedder()
     loop = AffectiveLoop(
@@ -318,7 +318,7 @@ def test_full_emotional_memory_integration_path():
     Demonstrates real EmotionalMemory APIs throughout AffectiveLoop with LIFCircuit:
     1. Memory store grows on encode
     2. Positive memory doesn't block action
-    3. Negative memory for same ticker reconsolidates (no duplicate)
+    3. Negative memory for same item reconsolidates (no duplicate)
     4. Retrieved negative valence influences policy to SKIP
     """
     fly_circuit = LIFCircuit(n_kc=80, n_dan=8, n_mbon=16, seed=42)
@@ -337,12 +337,14 @@ def test_full_emotional_memory_integration_path():
     assert len(store.list_all()) == 0
 
     # 2. Encode positive memory for experiment session
-    positive_frame = SensoryFrame.from_dict({
-        "note_id": "exp-session-042",
-        "context": "journal",
-        "query": "peak result breakthrough reward",
-        "sentiment": 1.0,
-    })
+    positive_frame = SensoryFrame.from_dict(
+        {
+            "note_id": "exp-session-042",
+            "context": "journal",
+            "query": "peak result breakthrough reward",
+            "sentiment": 1.0,
+        }
+    )
     d1 = loop.step(positive_frame, encode_memory=True, retrieve_top_k=5)
 
     # Memory store grew to 1
@@ -357,13 +359,15 @@ def test_full_emotional_memory_integration_path():
     assert d1.action in (Action.WAIT, Action.SKIP, Action.CLICK, Action.TYPE)
 
     # 3. Encode negative memory for same session
-    negative_frame = SensoryFrame.from_dict({
-        "note_id": "exp-session-042",
-        "context": "review",
-        "query": "experiment failed replication",
-        "sentiment": -0.8,
-        "reward": -0.9,
-    })
+    negative_frame = SensoryFrame.from_dict(
+        {
+            "note_id": "exp-session-042",
+            "context": "review",
+            "query": "experiment failed replication",
+            "sentiment": -0.8,
+            "reward": -0.9,
+        }
+    )
     loop.step(negative_frame, encode_memory=True, retrieve_top_k=5)
 
     # 4. Reconsolidation occurred: still only 1 memory (no duplicate)
@@ -377,12 +381,14 @@ def test_full_emotional_memory_integration_path():
 
     # 5. Third step: retrieve with query on same session
     # Retrieved memory has negative valence → policy blocks action
-    query_frame = SensoryFrame.from_dict({
-        "note_id": "exp-session-042",
-        "context": "journal",
-        "query": "should I repeat this experiment approach?",
-        "sentiment": 0.1,  # Weakly positive sensory, but memory overrides
-    })
+    query_frame = SensoryFrame.from_dict(
+        {
+            "note_id": "exp-session-042",
+            "context": "journal",
+            "query": "should I repeat this experiment approach?",
+            "sentiment": 0.1,  # Weakly positive sensory, but memory overrides
+        }
+    )
     d3 = loop.step(query_frame, encode_memory=False, retrieve_top_k=5)
 
     # Policy decision influenced by negative retrieved memory

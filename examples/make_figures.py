@@ -23,10 +23,10 @@ from pathlib import Path
 from emotional_memory import EmotionalMemory, InMemoryStore
 
 from affective_fly import (
+    ActionGate,
     ActionJournal,
     AffectiveLoop,
     FakeEmbedder,
-    LaunchGate,
     MockFlyCircuit,
     MoodField,
     SensoryFrame,
@@ -59,7 +59,7 @@ def make_circumplex_figure(output: Path) -> Path:
         store=store,
         embedder=embedder,
         mood_field=MoodField(tau_valence=8.0, tau_arousal=4.0, tau_approach=5.0),
-        launch_gate=LaunchGate(required_ticks=3),
+        action_gate=ActionGate(required_ticks=3),
         journal=journal,
     )
     for scenario in SCENARIOS:

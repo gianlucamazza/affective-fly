@@ -12,7 +12,7 @@ Two-panel readout of a deterministic demo episode (`MockFlyCircuit`, seed 42; th
 scenario shape as `make demo`): six positive `journal` events on `exp-042` followed by four
 negative `review` events. Left: the circumplex (valence × arousal), one marker per step.
 Right: mood valence and approach tendency over steps; the shaded span is when the
-`LaunchGate` is open, and marker glyphs give the chosen action (`o` wait, `^` type/click,
+`ActionGate` is open, and marker glyphs give the chosen action (`o` wait, `^` type/click,
 `x` skip). Sustained approach opens the gate; the later failed reviews pull valence down and
 memory-driven avoidance yields `skip`. Rendered by `viz.plot_journal`.
 
