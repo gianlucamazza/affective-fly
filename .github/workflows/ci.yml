@@ -16,7 +16,7 @@ jobs:
       - name: Install
         run: uv sync --extra dev --extra brian --extra viz --extra connectome
       - name: Lint
-        run: uv run ruff check src/ tests/ examples/
+        run: uv run ruff check src/ tests/ examples/ spaces/
       - name: Types
         run: uv run mypy src/
       - name: Test
