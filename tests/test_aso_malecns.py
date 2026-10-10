@@ -117,7 +117,7 @@ def test_malecns_real_weights_committed_fixture():
 def test_malecns_real_weights_full_data():
     """Optional test with full KC→MBON connectivity (61,210 edges).
 
-    Skips when data/malecns/ files are absent (CI). Passes on Lenovo/local
+    Skips when data/malecns/ files are absent (CI). Passes locally
     with full downloaded dataset.
     """
     connectivity_path = _find_connectivity_file()
