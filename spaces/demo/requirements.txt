@@ -2,12 +2,13 @@
 # Do not list gradio here — the platform installs it from sdk_version in README.md.
 #
 # Pin affective-fly to a git commit (not a floating branch) so Space builds are
-# reproducible. SHA 60c4938f5247f99a2cf606ae113bf2df9e32357a is the v0.2.6
-# library tip this overlay wraps. That commit ships AffectiveLoop + ActionGate +
-# MockFlyCircuit / LIFCircuit + FakeEmbedder + viz.plot_journal (post-rename
-# v0.2.6). The spaces/ folder is not part of the installed package, so this pin
-# does not need to wait for a post-PR tag. Bump the SHA when the Space should
-# pick up a later library change.
+# reproducible. SHA 60c4938f5247f99a2cf606ae113bf2df9e32357a is current main:
+# #35 squash (ActionGate / item names, v0.2.6) on top of the #34 Space overlay.
+# That commit ships AffectiveLoop + ActionGate + MockFlyCircuit / LIFCircuit +
+# FakeEmbedder + viz.plot_journal. The
+# spaces/ folder is not part of the installed package, so this pin does not
+# need to wait for a post-PR tag. Bump the SHA when the Space should pick up
+# a later library change.
 git+https://github.com/gianlucamazza/affective-fly.git@60c4938f5247f99a2cf606ae113bf2df9e32357a
 
 # numpy <2 matches the library pin (Brian2 2.9 on CPython 3.11). This Space
