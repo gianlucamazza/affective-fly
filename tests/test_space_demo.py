@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.util
+import os
 import warnings
 from pathlib import Path
 
@@ -89,6 +90,18 @@ def test_ui_copy_uses_action_gate(space_app):
     assert "action gate" in lowered
     assert "launchgate" not in lowered.replace(" ", "")
     assert "launch_gate" not in lowered
+
+
+def test_gradio_analytics_disabled_on_import(space_app):
+    """Telemetry flags are set before Gradio (or anything that loads it) imports."""
+    assert os.environ["GRADIO_ANALYTICS_ENABLED"] == "False"
+    assert os.environ.get("HF_HUB_DISABLE_TELEMETRY") == "1"
+    assert os.environ.get("DO_NOT_TRACK") == "1"
+
+
+def test_requirements_pin_omits_legacy_gate_name():
+    text = (SPACE_APP.parent / "requirements.txt").read_text(encoding="utf-8")
+    assert "LaunchGate" not in text
 
 
 def test_run_sequence_emits_no_deprecation_warning(space_app):

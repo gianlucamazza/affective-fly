@@ -10,14 +10,19 @@ No Brian2, no C++ compiler, no MiniLM / sentence-transformers download.
 from __future__ import annotations
 
 import os
-import re
-import tempfile
-from pathlib import Path
 
-import matplotlib
-from emotional_memory import EmotionalMemory, InMemoryStore
+os.environ.setdefault("GRADIO_ANALYTICS_ENABLED", "False")
+os.environ.setdefault("HF_HUB_DISABLE_TELEMETRY", "1")
+os.environ.setdefault("DO_NOT_TRACK", "1")
 
-from affective_fly import (
+import re  # noqa: E402
+import tempfile  # noqa: E402
+from pathlib import Path  # noqa: E402
+
+import matplotlib  # noqa: E402
+from emotional_memory import EmotionalMemory, InMemoryStore  # noqa: E402
+
+from affective_fly import (  # noqa: E402
     ActionGate,
     ActionJournal,
     AffectiveLoop,
@@ -27,7 +32,7 @@ from affective_fly import (
     SensoryFrame,
     lab_mood_field,
 )
-from affective_fly.viz import plot_journal
+from affective_fly.viz import plot_journal  # noqa: E402
 
 matplotlib.use("Agg")
 
