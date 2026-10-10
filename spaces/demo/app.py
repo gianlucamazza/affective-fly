@@ -86,7 +86,7 @@ KC→MBON weights are **random**. The embedder is a **fake hashed stand-in** (`F
 nothing is downloaded, and there is no MiniLM or other network model. The circuit path is
 numpy only (no Brian2, no compiler).
 
-Sibling demo: [emotional-memory](https://huggingface.co/spaces/homen3/emotional-memory-demo)
+Sibling demo: [emotional-memory](https://huggingface.co/spaces/gianlucamazza/emotional-memory-demo)
 (the memory engine this library is the affect source for). Source:
 [gianlucamazza/affective-fly](https://github.com/gianlucamazza/affective-fly).
 """
