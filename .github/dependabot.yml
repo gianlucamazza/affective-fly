@@ -11,3 +11,6 @@ updates:
         patterns:
           - "pydantic"
           - "pydantic-core"
+      version-updates:
+        applies-to: version-updates
+        patterns: ['*']
