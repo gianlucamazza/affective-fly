@@ -120,12 +120,12 @@ class Swarm:
         approaches = [m.approach_tendency for m in moods]
 
         return {
-            "valence_mean": np.mean(valences),
-            "valence_std": np.std(valences),
-            "arousal_mean": np.mean(arousals),
-            "arousal_std": np.std(arousals),
-            "approach_mean": np.mean(approaches),
-            "approach_std": np.std(approaches),
+            "valence_mean": float(np.mean(valences)),
+            "valence_std": float(np.std(valences)),
+            "arousal_mean": float(np.mean(arousals)),
+            "arousal_std": float(np.std(arousals)),
+            "approach_mean": float(np.mean(approaches)),
+            "approach_std": float(np.std(approaches)),
         }
 
     def reset_all(self) -> None:

@@ -2,6 +2,7 @@
 
 __version__ = "0.2.6"
 
+from . import _numpy2 as _numpy2_compat  # noqa: F401  # NumPy 2 / Brian2 import hook
 from . import launch_gate as _deprecated_gate_shim
 from ._legacy import DEPRECATED_EXPORTS
 from .action_gate import ActionGate, ActionGateState

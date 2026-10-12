@@ -17,9 +17,8 @@ Two τ sets live in this module and must not be confused:
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
-
-import numpy as np
 
 # Hypothesis time constants — MoodField defaults. Unvalidated (Phase 6).
 HYPOTHESIS_TAU_VALENCE = 300.0
@@ -44,9 +43,9 @@ class MoodState:
     def as_dict(self) -> dict:
         """Export as dictionary for logging."""
         return {
-            "valence": self.valence,
-            "arousal": self.arousal,
-            "approach_tendency": self.approach_tendency,
+            "valence": float(self.valence),
+            "arousal": float(self.arousal),
+            "approach_tendency": float(self.approach_tendency),
         }
 
 
@@ -122,9 +121,11 @@ class MoodField:
         Returns:
             Updated MoodState
         """
-        alpha_v = 1.0 - np.exp(-dt / self.tau_valence)
-        alpha_a = 1.0 - np.exp(-dt / self.tau_arousal)
-        alpha_p = 1.0 - np.exp(-dt / self.tau_approach)
+        # math.exp keeps Python floats. NumPy 2 scalars are no longer
+        # subclasses of float, so json.dumps(journal) would fail.
+        alpha_v = 1.0 - math.exp(-dt / self.tau_valence)
+        alpha_a = 1.0 - math.exp(-dt / self.tau_arousal)
+        alpha_p = 1.0 - math.exp(-dt / self.tau_approach)
 
         self.valence += (current_valence - self.valence) * alpha_v
         self.arousal += (current_arousal - self.arousal) * alpha_a

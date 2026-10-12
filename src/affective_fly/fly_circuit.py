@@ -160,16 +160,16 @@ class MockFlyCircuit(FlyAffectReadout):
             approach = self.baseline_approach + mean_input * 10
             avoid = self.baseline_avoid - mean_input * 30
 
-        approach = np.clip(approach + self.approach_bias, 0, 100)
-        avoid = np.clip(avoid + self.avoid_bias, 0, 100)
+        approach = float(np.clip(approach + self.approach_bias, 0, 100))
+        avoid = float(np.clip(avoid + self.avoid_bias, 0, 100))
 
         # DAN tracks valence (approach - avoid)
         dan = self.baseline_dan + (approach - avoid) * 0.5
-        dan = np.clip(dan, 0, 80)
+        dan = float(np.clip(dan, 0, 80))
 
         # Arousal from magnitude
         arousal = self.baseline_dan + abs_input * 40
-        arousal = np.clip(arousal, 0, 80)
+        arousal = float(np.clip(arousal, 0, 80))
 
         state = MBONDanState(
             mbon_approach_rate=approach,
