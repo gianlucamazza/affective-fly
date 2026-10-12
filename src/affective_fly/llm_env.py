@@ -49,6 +49,9 @@ def build_llm_client() -> Callable[[str, dict[str, Any]], str] | None:
         """
         Call OpenAI-compatible API with structured output.
 
+        Uses the Responses API (openai>=1.66 / 3.x). Same prompt + JSON
+        schema contract as before: callable(prompt, schema) -> JSON string.
+
         Args:
             prompt: The prompt text
             schema: JSON schema for structured output
@@ -56,20 +59,20 @@ def build_llm_client() -> Callable[[str, dict[str, Any]], str] | None:
         Returns:
             JSON string matching the schema
         """
-        response = client.chat.completions.create(
+        response = client.responses.create(
             model=model,
-            messages=[{"role": "user", "content": prompt}],
-            response_format={
-                "type": "json_schema",
-                "json_schema": {
+            input=prompt,
+            text={
+                "format": {
+                    "type": "json_schema",
                     "name": "appraisal_response",
                     "strict": True,
                     "schema": schema,
-                },
+                }
             },
         )
-        content: str | None = response.choices[0].message.content
-        if content is None:
+        content = getattr(response, "output_text", None)
+        if not isinstance(content, str) or not content:
             raise ValueError("Empty response from LLM")
         return content
 

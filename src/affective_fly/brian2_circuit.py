@@ -21,6 +21,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from ._numpy2 import array_copy
 from .fly_circuit import FlyAffectReadout, MBONDanState
 
 if TYPE_CHECKING:
@@ -326,11 +327,11 @@ class Brian2Circuit(FlyAffectReadout):
         self.kc.I = kc_input
         self.dan.I = 0
         self.mbon.I = 0
-        dan_before = np.array(self.mon_dan.count[:], dtype=int)
-        mbon_before = np.array(self.mon_mbon.count[:], dtype=int)
+        dan_before = array_copy(self.mon_dan.count[:], dtype=int)
+        mbon_before = array_copy(self.mon_mbon.count[:], dtype=int)
         self.net.run(dt * b2.second, report=None)
-        dan_delta = np.array(self.mon_dan.count[:], dtype=int) - dan_before
-        mbon_delta = np.array(self.mon_mbon.count[:], dtype=int) - mbon_before
+        dan_delta = array_copy(self.mon_dan.count[:], dtype=int) - dan_before
+        mbon_delta = array_copy(self.mon_mbon.count[:], dtype=int) - mbon_before
         return dan_delta, mbon_delta
 
     def _run_cpp(self, kc_input: np.ndarray, dt: float) -> tuple[np.ndarray, np.ndarray]:
@@ -347,11 +348,11 @@ class Brian2Circuit(FlyAffectReadout):
                 self.syn_km.w: np.asarray(self.w_kc_mbon, dtype=float).ravel(),
             }
         )
-        self._v_kc = np.array(self.kc.v[:], dtype=float)
-        self._v_dan = np.array(self.dan.v[:], dtype=float)
-        self._v_mbon = np.array(self.mbon.v[:], dtype=float)
-        dan_delta = np.array(self.mon_dan.count[:], dtype=int)
-        mbon_delta = np.array(self.mon_mbon.count[:], dtype=int)
+        self._v_kc = array_copy(self.kc.v[:], dtype=float)
+        self._v_dan = array_copy(self.dan.v[:], dtype=float)
+        self._v_mbon = array_copy(self.mbon.v[:], dtype=float)
+        dan_delta = array_copy(self.mon_dan.count[:], dtype=int)
+        mbon_delta = array_copy(self.mon_mbon.count[:], dtype=int)
         return dan_delta, mbon_delta
 
     def step(self, sensory_input: np.ndarray, dt: float = 0.001) -> MBONDanState:
