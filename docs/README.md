@@ -35,3 +35,4 @@ Reduced *Drosophila* mushroom-body circuit as the affect source for
 ## Planning
 
 - [ROADMAP.md](ROADMAP.md) — release history, open questions, and development phases.
+- [COMPLETION_ROADMAP.md](COMPLETION_ROADMAP.md) — gated roadmap to research-grade completion, ownership boundaries, measurable acceptance criteria, and optional FlyMSG bridge.
