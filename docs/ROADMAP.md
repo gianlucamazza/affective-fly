@@ -1,5 +1,7 @@
 # Roadmap
 
+Forward-looking completion plan with gates, comparative baselines, and optional FlyMSG integration: [COMPLETION_ROADMAP.md](COMPLETION_ROADMAP.md). This file retains historical release phases and existing open questions.
+
 [ARCHITECTURE.md](ARCHITECTURE.md), [MAPPING_MBON_DAN.md](MAPPING_MBON_DAN.md), [BENCHMARKS.md](BENCHMARKS.md).
 
 ## Unreleased
